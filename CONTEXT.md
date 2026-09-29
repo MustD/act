@@ -17,6 +17,13 @@ An authorization that has been started but not yet completed — the user is awa
 verifier and `state` that the eventual token exchange needs, and is worthless once either is lost. _Avoid_: Auth
 request, in-flight login
 
+**Sign-in**:
+One attempt to start a Session — from arming a Redirect Capture, through the user's time away on myanimelist.net, to
+the token exchange or to backing out. At most one at a time; starting another ends the first. It ends on its own
+outcome, when the user backs out, or when the Session stops being Authorizing by some other route; nothing about the
+screen going away ends it. Its durable half is the Pending Authorization, which outlives it. In code it is `SignIn`.
+_Avoid_: Login (the event a successful Sign-in produces), auth flow
+
 **Redirect Capture**:
 The platform-specific means by which the authorization code gets from MAL's redirect back into the app: a loopback HTTP
 listener on desktop, a custom-scheme intent or Auth Tab result on Android, a popup message or same-origin route on web.
