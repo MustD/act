@@ -169,8 +169,8 @@ class LoopbackRedirectListener(
             }
         } finally {
             // Both of these block, and this runs on the caller's dispatcher — on desktop that is
-            // `viewModelScope`, i.e. Swing. `NonCancellable` because the cancellation path is the
-            // one that most needs the port back.
+            // `SignIn`'s scope, i.e. `Main.immediate`, i.e. Swing. `NonCancellable` because the
+            // cancellation path is the one that most needs the port back.
             withContext(NonCancellable + Dispatchers.IO) {
                 attempt.lingerForTheDonePage()
                 // Safe here and nowhere inside a handler: `stop` waits for handlers to finish.

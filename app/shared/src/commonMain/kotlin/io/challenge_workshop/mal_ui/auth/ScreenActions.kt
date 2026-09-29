@@ -90,8 +90,8 @@ data class DiagnosticsActions(
 )
 
 /**
- * Wires the Sign-in, the session controls, the Anime List and the Layout to the three actions records, in one place
- * so `App()` and the rendering tests cannot drift about what a control does.
+ * Wires the Sign-in, the Session Controls, the Anime List and the Layout to the three actions
+ * records, in one place so `App()` and the rendering tests cannot drift about what a control does.
  *
  * Not a `@Composable` and not remembered here: the caller is what has to `remember` the result, since
  * the whole value of these records is being the *same object* across recompositions.
