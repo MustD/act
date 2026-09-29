@@ -101,6 +101,7 @@ fun AnimeListFilters(
                 selected = filter == selected,
                 onClick = { onSelect(filter) },
                 enabled = enabled,
+                elevation = null, //chip mouse hover frame issue workaround
                 label = { Text(filter.filterLabel()) },
             )
         }
