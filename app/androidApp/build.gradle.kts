@@ -39,6 +39,15 @@ android {
     testOptions {
         // Robolectric needs the merged manifest and the compiled resources.
         unitTests.isIncludeAndroidResources = true
+        // Robolectric runs on targetSdk's android-all, and from 37 that pokes FileDescriptor through
+        // jdk.internal.access, which JDK 21 keeps closed: every test fails in setup with
+        // "Failed to interact with raw FileDescriptor internals".
+        unitTests.all {
+            it.jvmArgs(
+                "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED",
+                "--add-opens=java.base/java.io=ALL-UNNAMED",
+            )
+        }
     }
     packaging {
         resources {

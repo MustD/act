@@ -118,3 +118,13 @@ kotlin {
 dependencies {
     androidRuntimeClasspath(libs.compose.uiTooling)
 }
+
+// Robolectric runs on compileSdk's android-all here (a library has no targetSdk), and from 37 that
+// pokes FileDescriptor through jdk.internal.access, which JDK 21 keeps closed: every test fails in
+// setup with "Failed to interact with raw FileDescriptor internals". Same flags as :app:androidApp.
+tasks.withType<Test>().matching { it.name == "testAndroidHostTest" }.configureEach {
+    jvmArgs(
+        "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED",
+        "--add-opens=java.base/java.io=ALL-UNNAMED",
+    )
+}
