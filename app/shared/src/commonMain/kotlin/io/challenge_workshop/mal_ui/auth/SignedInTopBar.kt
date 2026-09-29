@@ -45,7 +45,7 @@ import io.challenge_workshop.mal_ui.screen.ScreenState
  * the only way a human ever sees the refresh path execute. Nothing was deleted to make room.
  *
  * **Words, not glyphs, on the overflow button.** This project pulls in no Material icon dependency —
- * see `AnimeListLayout.layoutLabel` — and a three-dot glyph drawn by hand for four Targets would be
+ * see `AnimeListLayout.layoutLabel` — and a three-dot glyph drawn by hand for three Targets would be
  * a `Canvas` apiece to say what one word says.
  *
  * `state.refreshing` is the **Session** refreshing, not the list: it shows as a spinner beside the

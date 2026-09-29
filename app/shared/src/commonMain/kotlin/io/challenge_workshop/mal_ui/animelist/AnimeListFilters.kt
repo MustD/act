@@ -79,7 +79,7 @@ fun WatchStatus.emptyListMessage(): String = when (this) {
  * The filter row: one Watch Status at a time, All to begin with.
  *
  * **A horizontally scrollable [Row] rather than a tab row**, because six tabs do not fit the width
- * of a phone and one scrolling row is the arrangement that works unchanged on all four Targets.
+ * of a phone and one scrolling row is the arrangement that works unchanged on every Target.
  *
  * [enabled] is false while the replacement first page is in flight. The previously loaded entries
  * stay on screen behind it until the replacement lands, so without this the row would invite a

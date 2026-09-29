@@ -6,13 +6,11 @@ import kotlin.js.ExperimentalWasmJsInterop
 import kotlin.js.JsAny
 
 /**
- * The browser calls the popup Redirect Capture makes, written once for the `js` and the `wasmJs`
- * target.
+ * The browser calls the popup Redirect Capture makes.
  *
  * All of it goes through `js()` rather than `kotlin-browser`'s typed `web.*` API, for the same
- * reason [currentSearch] does: the stdlib declares `js()` as an `expect` returning `Nothing` in its
- * own shared web source set, so one `webMain` body compiles for both targets and `String`,
- * `Boolean` and `JsAny` all cross the boundary directly. `js()` constrains the shape — the call must
+ * reason [currentSearch] does: the stdlib declares `js()` returning `Nothing`, so `String`, `Boolean` and
+ * `JsAny` all cross the boundary directly. `js()` constrains the shape — the call must
  * be the whole body, the argument a compile-time constant, and the function package-level with an
  * explicit return type — but it can refer to the enclosing function's parameters, including
  * function-typed ones.

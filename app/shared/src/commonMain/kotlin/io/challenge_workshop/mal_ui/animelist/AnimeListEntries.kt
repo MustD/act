@@ -124,11 +124,11 @@ internal fun AnimeListRow(entry: AnimeListEntry, modifier: Modifier = Modifier) 
  * load draws nothing over the placeholder, and Coil neither throws nor propagates that failure — so
  * a broken cover costs its own card and takes the row, the grid and the scroll with it nowhere.
  *
- * **Nothing here looks at a status code, and nothing can.** On the web Targets a missing image is a
+ * **Nothing here looks at a status code, and nothing can.** On the web Target a missing image is a
  * network-level CORS failure with no status at all — the CDN sends `Access-Control-*` headers on a
  * 200 and none on a 404 — while jvm and android see a plain 404. A branch on "was it a 404" would
- * therefore be right on two Targets and silently wrong on the other two; the placeholder-behind is
- * the same on all four.
+ * therefore be right on two Targets and silently wrong on the third; the placeholder-behind is
+ * the same on all three.
  *
  * [contentDescription] is null on purpose: the title is drawn beside the art in both Layouts, so the
  * cover is decorative and a screen reader announcing it would read the title twice.

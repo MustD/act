@@ -66,7 +66,7 @@ data class AnimeListState(
  * Decided here, in `:core`, rather than in the composable that draws it: which screen a combination
  * of paging facts means used to be worked out inside the screen from a bag of booleans whose
  * invariants lived only in comments, and was tested only by rendering it on jvm. As a value it is
- * `./gradlew :core:allTests`'s, on four Targets, and a contradictory combination has no variant to
+ * `./gradlew :core:allTests`'s, on every Target, and a contradictory combination has no variant to
  * be. The same principle as ADR-0004, one level down: the choice is `:core`'s, the drawing
  * `:app:shared`'s.
  */

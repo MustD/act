@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
  * In `:core` because the Layout is an input to the Screen State, and the value that combines those
  * inputs cannot depend on anything in `:app:shared` — the same reason [AnimeListRepository] lives
  * here. It also means the ordering below is covered by
- * `./gradlew :core:allTests` on all four Targets rather than only wherever a Compose test can run.
+ * `./gradlew :core:allTests` on every Target rather than only wherever a Compose test can run.
  *
  * It owns exactly the piece of state that is *not* the pager's. A Layout change re-draws the entries
  * already loaded and issues no request, which is why the pager has never heard of it.
@@ -47,7 +47,7 @@ class LayoutPreference(
      * `docs/adr/0001-refresh-token-in-web-session-storage.md`. So this survives a reload but not a
      * closed tab there, and survives everything on jvm and android. Deliberately not split: one
      * store, one record, and a preference that lived somewhere the Session does not would be a second
-     * persistence rule to keep in step across four Targets.
+     * persistence rule to keep in step across every Target.
      */
     val value: StateFlow<AnimeListLayout> = _value.asStateFlow()
 

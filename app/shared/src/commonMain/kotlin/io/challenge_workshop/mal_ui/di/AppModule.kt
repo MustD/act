@@ -22,7 +22,7 @@ import org.koin.dsl.module
 import kotlin.time.Clock
 
 /**
- * Everything shared by all four targets.
+ * Everything shared by every target.
  *
  * `:core` stays Koin-free — no annotations, no module declarations, no `koin-core` dependency — so
  * `:server` and `./gradlew :core:allTests` are untouched by dependency injection existing at all.
@@ -112,7 +112,7 @@ val appModule: Module = module {
 expect val platformModule: Module
 
 /**
- * Starts Koin. Called by every entry point, so the four of them cannot drift.
+ * Starts Koin. Called by every entry point, so they cannot drift.
  *
  * @param extra additional modules, used by tests to override a binding.
  * @param declaration runs before the modules are loaded. Android uses it for `androidContext(this)`,

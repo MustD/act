@@ -5,7 +5,7 @@ import kotlin.test.assertNull
 
 /**
  * The write-read-remove round trip every [KeyValueStore] actual has to satisfy, asserted once so
- * the four target-specific tests cannot drift into testing different things.
+ * the three target-specific tests cannot drift into testing different things.
  *
  * There is one contract test per target rather than a single common one because the whole point of
  * these implementations is the platform API underneath them — `SharedPreferences`, a `0600` file,

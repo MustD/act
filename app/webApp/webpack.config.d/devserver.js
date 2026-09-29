@@ -1,8 +1,7 @@
-// Dev server settings shared by the js and wasmJs browser targets.
+// Dev server settings for the wasmJs browser target.
 //
-// Ports are deliberately NOT set here — they differ per target and come from
-// build.gradle.kts (wasmJs 18020, js 18030). This file only holds what is identical
-// for both. Guarded because webpack.config.d is also applied to production bundling,
+// The port is deliberately NOT set here — it comes from build.gradle.kts (18020).
+// Guarded because webpack.config.d is also applied to production bundling,
 // where there is no devServer.
 if (config.devServer) {
     // Bind IPv4 explicitly. The reverse proxy forwards to 127.0.0.1, while `localhost`

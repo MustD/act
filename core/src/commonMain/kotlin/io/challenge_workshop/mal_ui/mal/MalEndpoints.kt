@@ -103,7 +103,7 @@ const val ANDROID_REDIRECT_URI: String = "$ANDROID_REDIRECT_SCHEME://oauth/callb
  * `http://localhost:18020`.
  *
  * Derived from the live origin for the same reason [relayEndpointsFor] is: one build has to work
- * behind the reverse proxy and on either direct dev-server port. All four of those origins are
+ * behind the reverse proxy and on the direct dev-server port. Both of those origins are
  * registered on the MAL app, because there is no wildcard and no normalization to lean on.
  */
 fun redirectUriFor(origin: String): String = origin.trimEnd('/') + OAUTH_CALLBACK_PATH

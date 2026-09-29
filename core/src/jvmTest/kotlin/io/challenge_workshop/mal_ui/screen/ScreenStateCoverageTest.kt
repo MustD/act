@@ -10,7 +10,7 @@ import kotlin.test.assertEquals
  *
  * **jvm-only, and not by choice.** `KClass.sealedSubclasses` exists on jvm and nowhere else, so the
  * enumeration cannot be common code. That is the right half to lose: the *mapping* is what has to run
- * on four Targets, and it does — this only asks whether the list of cases is complete, which is a
+ * on every Target, and it does — this only asks whether the list of cases is complete, which is a
  * question about the source tree rather than about any Target.
  */
 class ScreenStateCoverageTest {

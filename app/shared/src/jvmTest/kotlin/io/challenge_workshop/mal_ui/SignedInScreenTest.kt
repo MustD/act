@@ -51,7 +51,7 @@ import kotlin.test.assertTrue
  * page load can be in, and the three controls over it.
  *
  * *Which* screen a load is, and what a control *causes*, are `:core`'s — `AnimeListPagerTest` and
- * `AnimeListRepositoryTest`, on four Targets. What only a rendering can answer is
+ * `AnimeListRepositoryTest`, on every Target. What only a rendering can answer is
  * that each state reaches a different part of the screen, that a person can read what it says, and
  * that the control they tap is wired to the right action.
  */
@@ -153,7 +153,7 @@ class SignedInScreenTest {
     /**
      * Each Anime List screen, drawing its own part of the screen and none of the others'.
      *
-     * *Which* screen a page load is is `AnimeListPagerTest`'s, on four Targets; this builds each from
+     * *Which* screen a page load is is `AnimeListPagerTest`'s, on every Target; this builds each from
      * its variant and asserts what it draws. What only a rendering can answer is that each reaches a different part of the screen —
      * collapsing an empty slice into an empty account, or a failed first page into the retry row at
      * the bottom, is the easiest mistake in this feature and is invisible in the state.
@@ -263,7 +263,7 @@ class SignedInScreenTest {
      *
      * The pager will not re-request a page that failed, so without these buttons a
      * scroll trigger that has given up is a dead end. What a retry then *does* — which offset it
-     * re-requests, and what it keeps — is the pager's, on four Targets.
+     * re-requests, and what it keeps — is the pager's, on every Target.
      */
     @Test
     fun both_failures_offer_a_retry_that_reaches_the_pager() {
@@ -283,7 +283,7 @@ class SignedInScreenTest {
 
                 // `loadMore` filtered out rather than asserted against: the retry row sits at the
                 // bottom, so scrolling to it enters the prefetch zone and the trigger fires. That it
-                // costs nothing is the pager's guard, on four Targets — `next()` refuses while a
+                // costs nothing is the pager's guard, on every Target — `next()` refuses while a
                 // page is showing its error.
                 assertEquals(listOf("retry"), actions.calls.filterNot { it == "loadMore" }, label)
             }
@@ -315,7 +315,7 @@ class SignedInScreenTest {
      * Paging is driven by proximity to the end of the list rather than by a button, so the trigger is
      * a scroll and nothing else.
      *
-     * Which offsets that then produces is `AnimeListPagerTest`'s, on four Targets. What only a
+     * Which offsets that then produces is `AnimeListPagerTest`'s, on every Target. What only a
      * rendering can show is that scrolling reaches the trigger at all — and that a list that has
      * ended costs nothing at its bottom, which is exactly where a user parks. Whether it is armed is
      * the value's `pagingArmed`, decided in `:core`.
@@ -411,8 +411,8 @@ class SignedInScreenTest {
      * The filter row: exactly one chip active, the tapped one reaches the pager, and the row stays
      * reachable from wherever the user has scrolled to.
      *
-     * That the chip's value reaches MAL's `status` parameter is `AnimeListPagerTest`'s, on four
-     * Targets.
+     * That the chip's value reaches MAL's `status` parameter is `AnimeListPagerTest`'s, on every
+     * Target.
      */
     @Test
     fun choosing_a_watch_status_selects_exactly_that_chip_and_asks_for_that_slice() {

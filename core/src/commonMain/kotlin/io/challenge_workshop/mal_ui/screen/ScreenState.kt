@@ -26,7 +26,7 @@ import io.challenge_workshop.mal_ui.session.SignedOutReason
  *
  * In `:core` and not in `:app:shared` because the *choice* is `:core`'s and the *drawing* is
  * `:app:shared`'s, exactly as for [AnimeListLayout] and `AnimeListSortOrder` — and because
- * `./gradlew :core:allTests` is the one task that runs a test on four Targets in one command. See
+ * `./gradlew :core:allTests` is the one task that runs a test on every Target in one command. See
  * `docs/adr/0004-screen-state-in-core.md`.
  */
 sealed interface ScreenState {
@@ -138,8 +138,8 @@ data class MalRouting(
 /**
  * Why a Session is absent, in words — the whole reason [SignedOutReason] is carried at all.
  *
- * Here rather than in a composable so that "these four say different things" is a four-Target
- * assertion over a value instead of four renderings on jvm.
+ * Here rather than in a composable so that "these four say different things" is an
+ * assertion over a value on every Target instead of four renderings on jvm.
  */
 fun explain(reason: SignedOutReason): String = when (reason) {
     SignedOutReason.NeverSignedIn ->

@@ -27,8 +27,8 @@ import kotlin.time.Duration.Companion.minutes
  * The single source of truth for whether there is a Session, the only thing that writes to the token
  * store, and the owner of the two HTTP clients that talk to MAL.
  *
- * Lives in `:core` rather than `:app:shared` so `./gradlew :core:allTests` covers it on all four
- * targets, and so it stays free of Compose and of Koin.
+ * Lives in `:core` rather than `:app:shared` so `./gradlew :core:allTests` covers it on every
+ * target, and so it stays free of Compose and of Koin.
  *
  * **There must be exactly one of these per process.** Two would mean two Ktor `AuthTokenHolder`
  * caches over one store, and therefore a refresh race that the plugin's own mutex cannot see.

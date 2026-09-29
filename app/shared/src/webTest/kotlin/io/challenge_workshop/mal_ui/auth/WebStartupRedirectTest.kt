@@ -12,7 +12,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * Runs under both `jsTest` and `wasmJsTest`, against the real `window.location` and `history` —
+ * Runs against the real `window.location` and `history` —
  * there is nothing else to this class. The served URL is put back in teardown so the next test, and
  * Karma's own asset loading, see the page they were given.
  */

@@ -10,10 +10,6 @@ plugins {
 kotlin {
     jvm()
 
-    js {
-        browser()
-    }
-
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
         browser()
@@ -107,7 +103,7 @@ fun Provider<String>.notBlank(): Provider<String> = map { it.trim() }.filter { i
 
 /**
  * Writes `MAL_CLIENT_ID` into `commonMain` as a plain `const val`, which needs no expect/actual and
- * works on all four targets — the whole reason this is a six-line task rather than a BuildKonfig
+ * works on every target — the whole reason this is a six-line task rather than a BuildKonfig
  * dependency.
  *
  * `inputs.property` over the `Provider` is what makes this both configuration-cache-safe and correctly

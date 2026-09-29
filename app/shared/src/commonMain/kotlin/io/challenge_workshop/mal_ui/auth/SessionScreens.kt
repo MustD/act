@@ -77,7 +77,7 @@ fun SignInScreen(
         Text(
             // The copy is the state's, not this screen's: what separates the four Signed Out Reasons
             // is exactly what they say, and `:core`'s mapping test compares all four in one place on
-            // four Targets.
+            // every Target.
             state.explanation,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -204,7 +204,7 @@ fun AuthorizingScreen(
  * fetches the next page — and a lazy layout cannot be nested inside a scrolling [Column], so the
  * chrome around the list became items in the grid rather than the grid becoming a child of the
  * chrome. That is also what gives the paging trigger a `LazyGridState` to read the last-visible
- * index off, which is the one signal that means the same thing on all four Targets.
+ * index off, which is the one signal that means the same thing on every Target.
  *
  * **One `LazyVerticalGrid` for both Layouts.** The dense Layout is the same grid at one column, so
  * the Layout changes the column count and the width cap and nothing else — no second scroll state,
@@ -296,7 +296,7 @@ fun SignedInScreen(
             // top app bar: the Sort Order button names its direction in words ("Last updated
             // (newest first)"), which is wider than a narrow phone, and a `FlowRow` is what lets it
             // take the line it needs rather than being clipped off the edge — with no size class
-            // and nothing to keep in step with the four Targets.
+            // and nothing to keep in step with the three Targets.
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

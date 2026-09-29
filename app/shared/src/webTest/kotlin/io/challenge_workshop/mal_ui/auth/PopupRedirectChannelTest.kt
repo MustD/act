@@ -15,8 +15,6 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
- * Runs under both `jsTest` and `wasmJsTest` — one `webMain` actual serves both targets.
- *
  * The popup handle is injected rather than opened for real: Karma has no user activation, so a real
  * `window.open` is blocked here and would give the channel nothing to compare `event.source` against.
  * Passing this window in its place makes a `postMessage` from the test *look* like one from the

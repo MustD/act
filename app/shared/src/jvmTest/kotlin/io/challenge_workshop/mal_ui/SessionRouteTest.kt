@@ -21,8 +21,8 @@ import kotlin.test.assertTrue
  * "renders something" — a branch could route to a composable that draws nothing, and the tagged
  * screen roots all `fillMaxSize()`, so their mere presence proves nothing. That gap is the whole
  * reason this file exists, and it is now the smallest of the five: what each screen then *draws* is
- * its own file's, and what a Session *produces* is `ScreenStateSourceTest`'s, in `:core`, on four
- * Targets.
+ * its own file's, and what a Session *produces* is `ScreenStateSourceTest`'s, in `:core`, on every
+ * Target.
  *
  * JVM-only, deliberately, like every rendering test here. [SessionRoute] is common code with no
  * `expect`/`actual` in it, so running it on a second Target would re-test Compose rather than this

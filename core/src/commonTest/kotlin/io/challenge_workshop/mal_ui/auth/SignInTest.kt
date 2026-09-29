@@ -28,7 +28,7 @@ import kotlin.test.assertTrue
 private val REDIRECT_URI = TEST_CONFIG.redirectUri
 
 /**
- * [SignIn] at its interface, on all four Targets: which phase runs when, that a captured redirect
+ * [SignIn] at its interface, on every Target: which phase runs when, that a captured redirect
  * has no parallel code path of its own, and what ends an attempt.
  *
  * Everything past the exchange is `MalSessionRepository`'s and is tested with it. `SignIn` runs on

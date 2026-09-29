@@ -9,8 +9,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * Runs under both `jsTest` and `wasmJsTest`, which is the point of one shared `webMain` source file.
- *
  * Every test drives the real `window.location` and the real `history`, since there is nothing else
  * to these two functions. The original URL is put back afterwards so the next test — and Karma's own
  * relative asset loading — sees the page it was served.

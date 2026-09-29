@@ -7,28 +7,17 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
-// Dev server ports, from this project's 18010-18090 block:
+// Dev server port, from this project's 18010-18090 block:
 //   18010  :server (Ktor MAL relay)
-//   18020  this module, wasmJs target
-//   18030  this module, js target
-// The two web targets get separate ports so both can run at once.
+//   18020  this module
 //
-// Host binding, allowed hosts, and the /mal proxy live in webpack.config.d/devserver.js,
-// which both targets pick up. Ports are set here instead so they can differ per target.
+// Host binding, allowed hosts, and the /mal proxy live in webpack.config.d/devserver.js.
+// The port is set here because it belongs to the target's own webpack config.
 //
-// Each port is written inline rather than held in a script-level `val`: the webpack config
+// The port is written inline rather than held in a script-level `val`: the webpack config
 // block would then capture the enclosing script object, which the configuration cache
 // cannot serialize.
 kotlin {
-    js {
-        browser {
-            commonWebpackConfig {
-                devServer = (devServer ?: KotlinWebpackConfig.DevServer()).apply { port = 18030 }
-            }
-        }
-        binaries.executable()
-    }
-
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
         browser {

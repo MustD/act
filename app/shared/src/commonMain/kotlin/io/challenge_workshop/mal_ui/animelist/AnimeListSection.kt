@@ -50,7 +50,7 @@ import kotlinx.coroutines.flow.first
  *
  * Everything this screen can be *other* than a list of entries is here too: the skeleton, the two
  * empty states, and the two failures. Which of them it is is not decided here — it is
- * [AnimeListState.content], decided in `:core` and tested on four Targets — so this is a `when` over
+ * [AnimeListState.content], decided in `:core` and tested on every Target — so this is a `when` over
  * that value and draws each variant, with no condition of its own.
  */
 fun LazyGridScope.animeListItems(
@@ -204,7 +204,7 @@ internal val fullLineSpan: LazyGridItemSpanScope.() -> GridItemSpan = { GridItem
  * Asks for the next page about a screenful before the end of what is laid out.
  *
  * Reads the last-visible index off the lazy layout rather than counting pixels or attaching to a
- * scroll offset, so it behaves identically on all four Targets — a mouse wheel, a fling and a
+ * scroll offset, so it behaves identically on every Target — a mouse wheel, a fling and a
  * `Page Down` all move the same index. "A screenful" is measured in items rather than fixed at a
  * number, so it adapts to whatever the current Layout fits on screen — which is also what makes it
  * correct for a grid, where a screenful is a dozen cards rather than five rows;
@@ -312,7 +312,7 @@ private const val SKELETON_ITEMS: Int = 8
  * divides whatever width it is given by [ANIME_CARD_MIN_WIDTH] and stretches the cards to fit, so a
  * phone lands on two columns, a desktop window on five or six and a browser dragged between the two
  * changes column count as it goes — with no size class, no `WindowSizeClass` dependency and nothing
- * to keep in step with the four Targets' idea of a screen.
+ * to keep in step with the three Targets' idea of a screen.
  *
  * [AnimeListLayout.List] is the same grid at one column, which is what makes the dense Layout a
  * Layout rather than a second lazy container. See [animeListItems].

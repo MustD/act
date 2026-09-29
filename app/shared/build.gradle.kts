@@ -11,10 +11,6 @@ plugins {
 kotlin {
     jvm()
 
-    js {
-        browser()
-    }
-
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
         browser()
@@ -61,7 +57,7 @@ kotlin {
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
-            // Cover art. Coil 3 is the only image loader with all four of this project's targets;
+            // Cover art. Coil 3 is the only image loader with all of this project's targets;
             // `coil-network-ktor3` is what makes it fetch over Ktor rather than over a
             // platform-specific stack, so one `MalImageLoader` covers every Target.
             implementation(libs.coil.compose)
@@ -98,9 +94,6 @@ kotlin {
             // `SessionState::class.sealedSubclasses`, so the test's own coverage is checked against
             // the sealed interface rather than against a list someone has to remember to update.
             implementation(libs.kotlin.reflect)
-        }
-        jsMain.dependencies {
-            implementation(libs.wrappers.browser)
         }
         // Coil's Ktor fetcher builds an engine-less `HttpClient()` of its own, so — exactly as in
         // `:core` — an engine has to be on each target's runtime classpath for it to resolve one.

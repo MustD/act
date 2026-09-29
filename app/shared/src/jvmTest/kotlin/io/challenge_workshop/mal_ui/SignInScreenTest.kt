@@ -152,7 +152,7 @@ class SignInScreenTest {
      * The Signed Out Reason is on screen, in a node of its own, so a person reads why rather than a
      * bare "signed out".
      *
-     * That the four reasons *differ from each other* is `ScreenStateSourceTest`'s, on four Targets —
+     * That the four reasons *differ from each other* is `ScreenStateSourceTest`'s, on every Target —
      * it is a comparison between four strings, and it needed a rendered tree only for as long as the
      * copy was built inside a composable. What is left here is that the screen draws whichever one it
      * is handed, which no value can say.

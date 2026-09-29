@@ -21,8 +21,7 @@ private fun sessionStorageRemove(key: String) {
 }
 
 /**
- * Web [KeyValueStore]: `sessionStorage`, one implementation shared by the `js` and `wasmJs`
- * targets.
+ * Web [KeyValueStore]: `sessionStorage`.
  *
  * The whole Session — refresh token included — lives here, deliberately and against the letter of
  * `draft-ietf-oauth-browser-based-apps`. See `docs/adr/0001-refresh-token-in-web-session-storage.md`:

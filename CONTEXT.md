@@ -129,5 +129,5 @@ CORS headers. Must be same-origin with the app; native targets bypass it and cal
 holds no tokens of its own — a BFF is the thing it could become)
 
 **Target**:
-One of the four compilation targets — `android`, `jvm`, `js`, `wasmJs`. Distinct from an app module (`:app:webApp` is
-one module producing two targets).
+One of the three compilation targets — `android`, `jvm`, `wasmJs`. Distinct from an app module (`:app:desktopApp`
+produces the `jvm` target, and `:server` is a plain JVM app that is not a Target at all).

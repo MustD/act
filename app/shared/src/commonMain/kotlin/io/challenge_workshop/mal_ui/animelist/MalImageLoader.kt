@@ -10,16 +10,16 @@ import coil3.request.crossfade
  *
  * **Built by hand rather than left to Coil's default**, because the default only knows how to fetch
  * over the network on the targets that have a platform HTTP stack Coil ships a fetcher for. The web
- * targets do not, so a default loader there resolves every `https://` model to nothing and the card
+ * Target does not, so a default loader there resolves every `https://` model to nothing and the card
  * Layout becomes a grid of placeholders — the exact failure ticket 07 exists to avoid, arriving
- * silently and only on two of the four Targets.
+ * silently and only on the web Target.
  *
  * **It must not be `MalSessionRepository`'s client.** That one carries Ktor's `Auth` plugin, so
  * reusing it would attach the user's MAL access token to every request to `cdn.myanimelist.net` — a
  * bearer token sent to a host that has no business seeing one. Cover art needs no credential at all:
  * the CDN answers anonymously and with `Access-Control-Allow-Origin: *`, which is what
- * `docs/mal-api/cover-art-cors.md` measured and what makes the same URL work unchanged on all four
- * Targets, with no Relay route and no per-platform branch.
+ * `docs/mal-api/cover-art-cors.md` measured and what makes the same URL work unchanged on every
+ * Target, with no Relay route and no per-platform branch.
  *
  * Coil's Ktor fetcher builds an engine-less `HttpClient()`, which resolves whichever engine is on
  * the target's runtime classpath — okhttp, CIO and the JS engine, each declared in this module's

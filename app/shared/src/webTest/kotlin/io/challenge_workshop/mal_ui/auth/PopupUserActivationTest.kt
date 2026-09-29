@@ -37,7 +37,7 @@ import kotlin.test.assertTrue
  * `sessionStorage`. Both are `suspend`; neither may reach a suspension point.
  *
  * So this asserts the stretch has already reached `open` **by the time `start` returns**, with the
- * production dispatcher and the production channel, on both web targets. If it ever stops holding,
+ * production dispatcher and the production channel, in a real browser. If it ever stops holding,
  * the popup is silently blocked on Safari first and the symptom is a login that only ever takes the
  * full-page-redirect path.
  */

@@ -76,7 +76,7 @@ private data class Paging(
 /**
  * The Anime List's paging state machine: what has been loaded, what is in flight, and what failed.
  *
- * In `:core` rather than in a ViewModel so `./gradlew :core:allTests` covers it on all four Targets,
+ * In `:core` rather than in a ViewModel so `./gradlew :core:allTests` covers it on every Target,
  * and so it stays free of Compose and of Koin — the same seam `MalSessionRepository` draws.
  *
  * **`offset` is driven from here.** MAL's `paging.next` is an absolute URL to `api.myanimelist.net`,

@@ -5,7 +5,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-/** Runs under both `jsTest` and `wasmJsTest`, in a real browser, against real `sessionStorage`. */
+/** Runs in a real browser, against real `sessionStorage`. */
 class SessionStorageKeyValueStoreTest {
 
     @Test

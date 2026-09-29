@@ -52,7 +52,7 @@ import io.challenge_workshop.mal_ui.session.SignedOutReason
  *
  * **What is *not* here is as deliberate.** Nothing in this file decides anything. Which screen a
  * Session produces, what a filter or a Sort Order change produces, and what the four Signed Out
- * Reasons say are all `ScreenStateSourceTest`'s, in `:core`, on four Targets. These fixtures only
+ * Reasons say are all `ScreenStateSourceTest`'s, in `:core`, on every Target. These fixtures only
  * say what a screen is handed.
  */
 internal val TEST_ROUTING = MalRouting(

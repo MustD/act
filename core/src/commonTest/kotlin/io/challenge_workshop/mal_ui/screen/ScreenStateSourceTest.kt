@@ -26,7 +26,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
- * The mapping from six flows to one [ScreenState], on all four Targets.
+ * The mapping from six flows to one [ScreenState], on every Target.
  *
  * Driven by six [MutableStateFlow]s and no fakes at all: there is no repository here, no store, no
  * HTTP engine and no port to bind, which is the entire point of the seam. Everything a screen can be
@@ -63,7 +63,7 @@ class ScreenStateSourceTest {
      *
      * The cases are [SESSION_STATE_CASES], and `ScreenStateCoverageTest` in `jvmTest` is what holds
      * that list to the sealed interface — `KClass.sealedSubclasses` exists only on jvm, so the
-     * *enumeration* is one Target's and the *mapping* asserted here is all four's.
+     * *enumeration* is one Target's and the *mapping* asserted here is every Target's.
      */
     @Test
     fun every_session_state_produces_a_screen_state() {
@@ -274,8 +274,8 @@ class ScreenStateSourceTest {
      * fetch", and nothing else in the app can tell the user why.
      *
      * Asserted against [platformMalEndpoints] rather than against a value pinned by the test, which is
-     * what makes this worth running on four Targets: it says the browsers are relayed and jvm and
-     * android are not, which is the actual claim. A pinned value would have said the same thing four
+     * what makes this worth running on every Target: it says the browsers are relayed and jvm and
+     * android are not, which is the actual claim. A pinned value would have said the same thing three
      * times.
      */
     @Test

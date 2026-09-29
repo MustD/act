@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.stateIn
 /**
  * The one place a [ScreenState] is decided: six flows in, one flow out.
  *
- * No Compose and no Koin, so `./gradlew :core:allTests` covers the mapping on all four Targets and
+ * No Compose and no Koin, so `./gradlew :core:allTests` covers the mapping on every Target and
  * the alternative — the same `when` written inside a composable — cannot be tested at all without a
  * rendering harness per Target.
  *
@@ -38,7 +38,7 @@ import kotlinx.coroutines.flow.stateIn
  * parameter: [platformMalEndpoints] is an `expect fun` and therefore already this Target's answer, and
  * injecting it would be a seam with one production implementation — the same objection that kept a
  * `(PendingAuthorization) -> String` adapter out. A test asserts it against `platformMalEndpoints()`
- * on whichever of the four Targets it is running on, which is a stronger claim than a pinned value.
+ * on whichever Target it is running on, which is a stronger claim than a pinned value.
  *
  * @param scope where the combine runs. `SharingStarted.Eagerly`, because [state] is read by a
  * composable that must have an answer before it first draws — and [state]`.value` is right even

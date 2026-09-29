@@ -8,11 +8,9 @@ import kotlin.js.ExperimentalWasmJsInterop
 /**
  * Reading and clearing the `?code=…` a Redirect Capture lands on in the browser.
  *
- * Both are written with `js()` in `webMain` rather than through `kotlinx.browser` so one
- * implementation serves the js and the wasmJs target: the stdlib declares `js()` as an `expect`
- * returning `Nothing` in its own shared web source set, so it satisfies any declared return type
- * and `String` crosses the boundary directly. Written *inside* `jsMain` these would bind to the
- * `dynamic` actual instead and stop being shareable.
+ * Both are written with `js()` rather than through `kotlinx.browser`, which the Wasm stdlib does not
+ * carry: the stdlib declares `js()` returning `Nothing`, so it satisfies any declared return type
+ * and `String` crosses the boundary directly.
  *
  * `js()` constrains what can be written here: the call must be the whole body, its argument must be
  * a compile-time constant, and the function must be package-level with an explicit return type. It

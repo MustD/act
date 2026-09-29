@@ -7,8 +7,8 @@ import androidx.compose.runtime.remember
 import kotlin.js.ExperimentalWasmJsInterop
 
 /**
- * One actual for both browser targets: [PopupRedirectChannel] has nothing target-specific in it, so
- * it lives in `webMain` and compiles once for `js` and `wasmJs`.
+ * The browser actual: [PopupRedirectChannel] has nothing target-specific in it, so it lives in
+ * `webMain` with the rest of the web code.
  *
  * Remembered rather than constructed per recomposition, because it holds the attempt in flight —
  * the message listener and the popup handle. A fresh channel between `arm` and `await` would leave

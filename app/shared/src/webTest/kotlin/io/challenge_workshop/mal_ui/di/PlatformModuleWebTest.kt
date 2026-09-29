@@ -10,7 +10,6 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertIs
 
-/** Runs under both `jsTest` and `wasmJsTest` — one `webMain` actual serves both targets. */
 class PlatformModuleWebTest {
 
     @AfterTest

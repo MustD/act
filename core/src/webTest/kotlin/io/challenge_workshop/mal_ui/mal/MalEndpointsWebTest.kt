@@ -4,14 +4,14 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/** Runs under both `jsTest` and `wasmJsTest`, which is the point of one shared `webMain` actual. */
+/** Runs under `wasmJsTest`, in a real browser, against the real `window.location`. */
 class MalEndpointsWebTest {
 
     @Test
     fun theBrowserRedirectUriIsDerivedFromTheLiveOrigin() {
-        // Not hardcoded, so one build works behind the reverse proxy and on either direct dev-server
+        // Not hardcoded, so one build works behind the reverse proxy and on the direct dev-server
         // port. The origin under test is whatever Karma is serving from, which is precisely the point
-        // — none of the four registered web origins is named here.
+        // — none of the registered web origins is named here.
         val origin = browserOrigin()
         assertTrue(origin.startsWith("http"), "the test page has a real origin to derive from: $origin")
         assertEquals("$origin/oauth/callback", platformRedirectUri())

@@ -18,8 +18,8 @@ import kotlin.test.assertEquals
  * Compose test cannot hold the two apart: `runComposeUiTest` brings its own scheduler, so a coroutine
  * resumed inside it lands whenever that scheduler gets to it and the race the test means to set up
  * never happens. `runTest`'s [StandardTestDispatcher][kotlinx.coroutines.test.StandardTestDispatcher]
- * and [runCurrent] make the ordering the test's to choose. Being in `:core` it also runs on all four
- * Targets under `./gradlew :core:allTests`.
+ * and [runCurrent] make the ordering the test's to choose. Being in `:core` it also runs on every
+ * Target under `./gradlew :core:allTests`.
  *
  * Every coroutine here is a child of the test's own scope rather than of `backgroundScope`:
  * [advanceUntilIdle] does not run background work, so a startup read parked on a gate would still be

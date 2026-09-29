@@ -1,13 +1,16 @@
+@file:OptIn(ExperimentalWasmJsInterop::class)
+
 package io.challenge_workshop.mal_ui.mal
+
+import kotlin.js.ExperimentalWasmJsInterop
 
 /**
  * The page's own origin, such as `https://mal-ui.localhost` or `http://localhost:18020`.
  *
- * The one thing the two browser targets cannot share: `kotlinx.browser` is a JS-target dependency,
- * so Wasm reads the same property through an external declaration instead. Everything built on top
- * of it lives here, in `webMain`, and is compiled once for both.
+ * Read with `js()` rather than via `kotlinx.browser`, which the Wasm stdlib does not carry — this
+ * avoids adding a dependency just to read one string.
  */
-internal expect fun browserOrigin(): String
+internal fun browserOrigin(): String = js("window.location.origin")
 
 /**
  * Browsers must go through the same-origin `:server` relay — see [platformMalEndpoints].
@@ -17,7 +20,7 @@ actual fun platformMalEndpoints(): MalEndpoints = relayEndpointsFor(browserOrigi
 
 /**
  * The callback route on whichever origin this build is being served from, so one build works behind
- * the reverse proxy and on either direct dev-server port. All four origins are registered on the MAL
- * app; an unregistered one fails as a 401 `invalid_client`.
+ * the reverse proxy and on the direct dev-server port. Both origins are registered on the MAL app;
+ * an unregistered one fails as a 401 `invalid_client`.
  */
 actual fun platformRedirectUri(): String = redirectUriFor(browserOrigin())

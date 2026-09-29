@@ -6,8 +6,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * Runs under both `jsTest` and `wasmJsTest`.
- *
  * The decision and the ordering are driven through the injectable form, because a test document
  * cannot be opened as a popup and must not close itself. What is checked against the real browser
  * is the one thing that matters for the app document: [relaySignInRedirectToOpener] leaves a

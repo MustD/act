@@ -18,7 +18,6 @@ composeMultiplatform = "1.12.1"
 junit = "4.13.2"
 koin = "4.2.2"
 kotlin = "2.4.20"
-kotlin-wrappers = "2026.9.2"
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
 ktor = "3.6.0"
@@ -74,7 +73,6 @@ ktor-serverCors = { module = "io.ktor:ktor-server-cors-jvm", version.ref = "ktor
 ktor-serverCallLogging = { module = "io.ktor:ktor-server-call-logging-jvm", version.ref = "ktor" }
 ktor-serverNetty = { module = "io.ktor:ktor-server-netty-jvm", version.ref = "ktor" }
 ktor-serverTestHost = { module = "io.ktor:ktor-server-test-host-jvm", version.ref = "ktor" }
-wrappers-browser = { module = "org.jetbrains.kotlin-wrappers:kotlin-browser", version.ref = "kotlin-wrappers" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

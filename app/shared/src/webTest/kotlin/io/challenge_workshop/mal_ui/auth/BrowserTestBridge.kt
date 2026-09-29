@@ -6,8 +6,8 @@ import kotlin.js.ExperimentalWasmJsInterop
 import kotlin.js.JsAny
 
 /**
- * The browser calls the web tests drive, in one place because they run under both `jsTest` and
- * `wasmJsTest` and were otherwise copied per file.
+ * The browser calls the web tests drive, in one place because they were otherwise copied per
+ * file.
  *
  * These are the test-side counterparts of `PopupBridge.kt`: same `js()` constraints, same reason
  * they live in `webMain`/`webTest` rather than a per-target source set.

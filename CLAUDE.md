@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Kotlin Multiplatform / Compose Multiplatform project targeting Android, Web (JS + Wasm), Desktop (JVM), and a Ktor server. Package namespace throughout: `io.challenge_workshop.mal_ui`.
+Kotlin Multiplatform / Compose Multiplatform project targeting Android, Web (Wasm), Desktop (JVM), and a Ktor server. Package namespace throughout: `io.challenge_workshop.mal_ui`.
 
 ## Commands
 
@@ -16,24 +16,23 @@ Build / run:
 ./gradlew :app:desktopApp:hotRun --auto              # Desktop with Compose Hot Reload
 ./gradlew :server:run                                            # Ktor server on :18010
 ./gradlew :app:webApp:wasmJsBrowserDevelopmentRun --continuous   # Web, Wasm target, on :18020
-./gradlew :app:webApp:jsBrowserDevelopmentRun --continuous       # Web, JS target, on :18030
 ```
 
-`--continuous` is required for the web targets, not just for hot reload: the run task starts webpack-dev-server without
+`--continuous` is required for the web target, not just for hot reload: the run task starts webpack-dev-server without
 blocking, so without it Gradle finishes (`BUILD SUCCESSFUL` in well under a second) and takes the dev server down with
 it, leaving nothing on the port.
 
-The web targets need `:server` running as well — see [MAL authentication](#mal-authentication).
+The web target needs `:server` running as well — see [MAL authentication](#mal-authentication).
 
 ### Ports
 
-This project owns the **18010–18090** block. Ports are assigned in decade slots; 18050 onwards is unallocated.
+This project owns the **18010–18090** block. Ports are assigned in decade slots; 18030 and 18050 onwards are
+unallocated.
 
 | Port  | Service                                              |
 |-------|------------------------------------------------------|
 | 18010 | `:server` — Ktor, MAL relay, loopback only           |
-| 18020 | `:app:webApp` dev server, wasmJs target              |
-| 18030 | `:app:webApp` dev server, js target                  |
+| 18020 | `:app:webApp` dev server                             |
 | 18040 | Desktop OAuth callback on `127.0.0.1` — `LoopbackRedirectListener`, bound only while signing in |
 
 18040 cannot be made ephemeral: MAL does no RFC 8252 §7.3 port-lenient matching, so the port is part of the byte-exact
@@ -44,12 +43,11 @@ listener uses `com.sun.net.httpserver`, which is why `:app:desktopApp` declares
 `nativeDistributions { modules("jdk.httpserver") }` — Compose's default runtime modules do not include it, and the gap
 only shows up in a packaged build.
 
-The two web targets have separate ports so both can run at once. Ports are set per target in
-`app/webApp/build.gradle.kts`; everything shared by both (host binding, `allowedHosts`, the `/mal` proxy, and the
-`historyApiFallback` that serves the app on `/oauth/callback`) is in `app/webApp/webpack.config.d/devserver.js`.
+The port is set in `app/webApp/build.gradle.kts`; everything else about the dev server (host binding, `allowedHosts`,
+the `/mal` proxy, and the `historyApiFallback` that serves the app on `/oauth/callback`) is in
+`app/webApp/webpack.config.d/devserver.js`.
 
-Optionally reachable as `https://mal-ui.localhost` (wasmJs) and `https://js.mal-ui.localhost`
-(js) through a local reverse proxy that routes `/mal` to 18010 and everything else to the dev server. Same-origin
+Optionally reachable as `https://mal-ui.localhost` through a local reverse proxy that routes `/mal` to 18010 and everything else to the dev server. Same-origin
 routing is required, not cosmetic — see below. That config lives outside this repo; in Caddy terms it is:
 
 ```caddyfile
@@ -58,7 +56,7 @@ mal-ui.localhost {
 		reverse_proxy 127.0.0.1:18010
 	}
 	handle {
-		reverse_proxy 127.0.0.1:18020   # 18030 for js.mal-ui.localhost
+		reverse_proxy 127.0.0.1:18020
 	}
 }
 ```
@@ -74,7 +72,6 @@ Tests — there is no single aggregate target that covers everything; each platf
 ./gradlew :app:shared:testAndroidHostTest   # androidHostTest + commonTest
 ./gradlew :app:shared:jvmTest               # jvmTest + commonTest
 ./gradlew :app:shared:wasmJsTest            # webTest + commonTest
-./gradlew :app:shared:jsTest                # webTest + commonTest
 ./gradlew :app:androidApp:testDebugUnitTest # the manifest drift guard, and nothing else
 ./gradlew :server:test
 ./gradlew build                             # everything
@@ -87,7 +84,7 @@ Single test (works for JVM-hosted test tasks):
 ./gradlew :app:shared:jvmTest --tests "*.MalSessionViewModelTest.signing_in_is_blocked_until_a_client_id_is_present"
 ```
 
-`:core` has the same per-target split; `./gradlew :core:allTests` covers all four at once.
+`:core` has the same per-target split; `./gradlew :core:allTests` covers all three at once.
 
 ## MAL authentication
 
@@ -140,7 +137,7 @@ than a mandatory step. Precedence at runtime: **the Client ID last signed in wit
 default → prompt**.
 
 The build-time default is generated by the `generateMalBuildConfig` task in `core/build.gradle.kts` as
-`const val MAL_CLIENT_ID` in `commonMain` — a plain `const val` needs no expect/actual and works on all four targets,
+`const val MAL_CLIENT_ID` in `commonMain` — a plain `const val` needs no expect/actual and works on every target,
 which is why there is no BuildKonfig dependency. Resolution, highest precedence first:
 
 1. a `mal.clientId` Gradle property — `-Pmal.clientId=...`, or `~/.gradle/gradle.properties` (outside the repo
@@ -176,7 +173,7 @@ targets, where the store is `sessionStorage` and goes with the tab.
 
 Two tiers of shared code, deliberately separated:
 
-- **`:core`** — pure Kotlin Multiplatform, **no Compose dependency**. Logic that must also be usable by the Ktor server (`:server` depends on it as a plain JVM library). Targets jvm, js, wasmJs, android.
+- **`:core`** — pure Kotlin Multiplatform, **no Compose dependency**. Logic that must also be usable by the Ktor server (`:server` depends on it as a plain JVM library). Targets jvm, wasmJs, android.
 - **`:app:shared`** — Compose Multiplatform UI plus platform abstractions. Exposes `:core` via `api(project(":core"))`, so app modules get `:core`'s API transitively.
 
 The three client modules (`:app:androidApp`, `:app:desktopApp`, `:app:webApp`) are thin entry points only: each has a `main`/`Activity` that sets up its platform's window and calls the single `App()` composable from `:app:shared`. Put UI in `:app:shared`, not in the app modules.
@@ -189,11 +186,11 @@ The two additions to that are both sign-in plumbing that only an entry point can
 
 ### expect/actual
 
-`Platform.kt` in `commonMain` declares `expect fun getPlatform(): Platform`. Actuals live in `Platform.android.kt`, `Platform.jvm.kt`, `Platform.js.kt`, `Platform.wasmJs.kt`. Adding a target means adding an actual in that source set or the build breaks at compile time.
+`Platform.kt` in `commonMain` declares `expect fun getPlatform(): Platform`. Actuals live in `Platform.android.kt`, `Platform.jvm.kt`, `Platform.wasmJs.kt`. Adding a target means adding an actual in that source set or the build breaks at compile time.
 
 ### Source-set layout quirks
 
-- `webMain` / `webTest` are the intermediate source sets shared by **both** the `js` and `wasmJs` targets (from Kotlin's default hierarchy template). `:app:webApp` has only `webMain` — one source tree, two executables. Code in `webTest` runs under both `jsTest` and `wasmJsTest`.
+- The web code lives in `webMain` / `webTest`, the intermediate source sets from Kotlin's default hierarchy template, not in `wasmJsMain`. `wasmJs` is the only web target — the `js` target was removed — so today the split is one level deeper than it needs to be, but it keeps browser code in one tree that another web target could compile unchanged. `wasmJsMain` holds only the `Platform` actual; put browser code in `webMain`. Code in `webTest` runs under `wasmJsTest`.
 - `:core` and `:app:shared` use the **`com.android.kotlin.multiplatform.library`** plugin (AGP 9), not the classic library plugin. Its unit tests live in **`androidHostTest`**, not `androidUnitTest`/`test`. The task is `testAndroidHostTest`.
 - `:app:androidApp` is the only classic Android module (`com.android.application`) and holds all Android resources and the manifest.
 
@@ -203,7 +200,7 @@ Assets go in `app/shared/src/commonMain/composeResources/<qualifier>/` and are r
 
 ### Web hosting page
 
-`app/webApp/src/webMain/resources/index.html` hardcodes `<script src="/webApp.js">`. Both the JS and Wasm builds emit that filename, so the same page serves both targets.
+`app/webApp/src/webMain/resources/index.html` hardcodes `<script src="/webApp.js">`, the filename the Wasm build emits.
 
 The leading slash is load-bearing: the same page is served for `/oauth/callback` by the dev server's
 `historyApiFallback`, and a relative `webApp.js` there resolves to `/oauth/webApp.js`, which 404s — the page renders its

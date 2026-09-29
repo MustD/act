@@ -22,7 +22,7 @@ import kotlin.coroutines.cancellation.CancellationException
  * by a route this class did not take (a sign-out, a startup redirect).
  *
  * In `:core` so that the orchestration — arm, open, await, and the race between a capture and
- * Paste-the-code — is covered by `:core:allTests` on all four Targets. [AuthRedirectChannel] has no
+ * Paste-the-code — is covered by `:core:allTests` on every Target. [AuthRedirectChannel] has no
  * Compose dependency, and this is the layer that was in a ViewModel only because nothing else was
  * there.
  *

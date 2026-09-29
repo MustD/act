@@ -28,7 +28,7 @@ import kotlin.test.assertSame
 import kotlin.time.Clock
 
 /**
- * Resolves every type [appModule] declares, on all four targets.
+ * Resolves every type [appModule] declares, on every target.
  *
  * This stands in for Koin's `checkModules()` / `verify()`, which are JVM-reflective and so would only
  * ever cover one of the four. Resolving each declaration for real catches the same class of mistake —

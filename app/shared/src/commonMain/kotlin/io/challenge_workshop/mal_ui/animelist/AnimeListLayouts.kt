@@ -16,7 +16,7 @@ val ANIME_LIST_LAYOUTS: List<AnimeListLayout> = AnimeListLayout.entries.toList()
  * What each Layout is called on screen.
  *
  * Words rather than icons, and that is a constraint rather than a preference: this project pulls in
- * no Material icon dependency, and a grid-versus-list glyph drawn by hand for four Targets would be
+ * no Material icon dependency, and a grid-versus-list glyph drawn by hand for three Targets would be
  * a `Canvas` apiece to say what two words say. Here rather than in `:core` for the reason
  * [AnimeListSortOrder] gives — `:server` depends on that tier and has no business carrying display
  * copy.

@@ -43,11 +43,11 @@ fun App(
     layout: LayoutPreference = koinInject(),
 ) {
     // Coil's singleton, replaced here at the root because its default cannot fetch over the network
-    // on the web Targets — see [malImageLoader]. `setSingletonImageLoaderFactory` remembers the
+    // on the web Target — see [malImageLoader]. `setSingletonImageLoaderFactory` remembers the
     // factory, so this is once per process and not once per recomposition. Deliberately *not* in
     // `initKoin()`: the loader needs a `PlatformContext`, which on Android is the one thing only a
     // composition (or an Activity) has, and each entry point starting Koin differently is exactly
-    // how three of the four Targets would end up without one.
+    // how two of the three Targets would end up without one.
     setSingletonImageLoaderFactory { context -> malImageLoader(context) }
 
     MaterialTheme {

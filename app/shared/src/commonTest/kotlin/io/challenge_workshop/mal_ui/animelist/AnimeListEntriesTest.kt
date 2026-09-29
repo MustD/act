@@ -13,7 +13,7 @@ import kotlin.test.assertNull
  * it has no value for and adds values this build has never heard of, and every one of those cases is
  * a string this code has to produce anyway.
  *
- * In `commonTest`, so `./gradlew :app:shared:testAndroidHostTest`, `:jvmTest`, `:jsTest` and
+ * In `commonTest`, so `./gradlew :app:shared:testAndroidHostTest`, `:jvmTest` and
  * `:wasmJsTest` each run it — the labels are common code and a divergence would be a per-Target one.
  */
 class AnimeListEntriesTest {
