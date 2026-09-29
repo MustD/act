@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -21,6 +22,8 @@ import io.challenge_workshop.mal_ui.auth.LoopbackRedirectListenerTest
 import io.challenge_workshop.mal_ui.auth.MalSessionViewModel
 import io.challenge_workshop.mal_ui.auth.SIGNED_OUT_REASON_TAG
 import io.challenge_workshop.mal_ui.auth.SignIn
+import io.challenge_workshop.mal_ui.auth.SignInPhase
+import io.challenge_workshop.mal_ui.auth.SignInState
 import io.challenge_workshop.mal_ui.auth.SessionScreenTag
 import io.challenge_workshop.mal_ui.auth.StartupRedirect
 import io.challenge_workshop.mal_ui.auth.awaitLoopbackPortFree
@@ -186,9 +189,30 @@ class SignInScreenTest {
 
             onNodeWithText("./gradlew :server:run", substring = true).assertDoesNotExist()
 
-            state = signedOut(error = "Failed to fetch", relayHint = true)
+            state = signedOut(error = "Failed to fetch", errorRelayHint = true)
 
             onNodeWithText("./gradlew :server:run", substring = true).assertIsDisplayed()
+        }
+    }
+
+    /** Two error cards, two hints: the advice lands under the error it explains and nowhere else. */
+    @Test
+    fun the_relay_advice_goes_on_the_card_it_is_about() {
+        runComposeUiTest {
+            setContent {
+                SessionRoute(
+                    signedOut(
+                        error = "invalid_grant",
+                        signIn = SignInState(clientId = "a-client-id", phase = SignInPhase.Failed("Failed to fetch")),
+                        signInRelayHint = true,
+                    ),
+                    RecordedActions().actions,
+                )
+            }
+
+            onNodeWithText("invalid_grant").assertIsDisplayed()
+            onNodeWithText("Failed to fetch", substring = true)
+                .assertTextContains("./gradlew :server:run", substring = true)
         }
     }
 }

@@ -108,7 +108,8 @@ class ScreenStateSource(
                 error = session.error,
                 signIn = signIn,
                 routing = routing,
-                relayHint = routing.suggestsDeadRelay(session.error) || routing.suggestsDeadRelay(signIn.error),
+                errorRelayHint = routing.suggestsDeadRelay(session.error),
+                signInRelayHint = routing.suggestsDeadRelay(signIn.error),
             )
 
             is SessionState.Authorizing -> ScreenState.Authorizing(

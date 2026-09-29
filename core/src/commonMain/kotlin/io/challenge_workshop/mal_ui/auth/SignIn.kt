@@ -73,12 +73,12 @@ class SignIn(
     }
 
     fun setClientId(value: String) {
-        _state.update { it.copy(clientId = value, phase = it.phase.unlessFailed()) }
+        _state.update { it.copy(clientId = value, phase = it.phase.clearingFailure()) }
         repository.useClientId(value)
     }
 
     fun setPastedRedirect(value: String) {
-        _state.update { it.copy(pastedRedirect = value, phase = it.phase.unlessFailed()) }
+        _state.update { it.copy(pastedRedirect = value, phase = it.phase.clearingFailure()) }
     }
 
     /**
@@ -204,7 +204,7 @@ class SignIn(
 
     /** A capture that ends without an outcome must not erase a failure the user has not yet seen. */
     private fun idleUnlessFailed() {
-        _state.update { if (it.phase is SignInPhase.Failed) it else it.copy(phase = SignInPhase.Idle) }
+        _state.update { it.copy(phase = it.phase.keepingFailure()) }
     }
 
     private fun fail(message: String) {
@@ -233,12 +233,7 @@ class SignIn(
             if (leftAuthorizing && _state.value.phase !is SignInPhase.Exchanging) {
                 endAttempt()
                 // A Failed phase is this class's own outcome and outlives the transition that caused it.
-                _state.update {
-                    it.copy(
-                        pastedRedirect = "",
-                        phase = if (it.phase is SignInPhase.Failed) it.phase else SignInPhase.Idle,
-                    )
-                }
+                _state.update { it.copy(pastedRedirect = "", phase = it.phase.keepingFailure()) }
             }
         }
     }
@@ -250,5 +245,8 @@ class SignIn(
     }
 
     /** Edits clear a failure, and only a failure. */
-    private fun SignInPhase.unlessFailed(): SignInPhase = if (this is SignInPhase.Failed) SignInPhase.Idle else this
+    private fun SignInPhase.clearingFailure(): SignInPhase = if (this is SignInPhase.Failed) SignInPhase.Idle else this
+
+    /** The inverse: back to Idle, unless this is a failure the user has not yet seen. */
+    private fun SignInPhase.keepingFailure(): SignInPhase = if (this is SignInPhase.Failed) this else SignInPhase.Idle
 }

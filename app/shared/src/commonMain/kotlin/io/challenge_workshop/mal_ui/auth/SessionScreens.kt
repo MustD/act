@@ -122,8 +122,8 @@ fun SignInScreen(
             if (state.signIn.busy) CircularProgressIndicator(Modifier.padding(4.dp))
         }
 
-        state.error?.let { ErrorCard("Sign-in failed", it.withRelayAdvice(state.relayHint)) }
-        state.signIn.error?.let { ErrorCard("Sign-in failed", it.withRelayAdvice(state.relayHint)) }
+        state.error?.let { ErrorCard("Sign-in failed", it.withRelayAdvice(state.errorRelayHint)) }
+        state.signIn.error?.let { ErrorCard("Sign-in failed", it.withRelayAdvice(state.signInRelayHint)) }
     }
 }
 
@@ -388,8 +388,8 @@ internal val PANE_MAX_WIDTH = 560.dp
 
 /**
  * On web a dead relay surfaces as a bare "Failed to fetch"; when `:core` says that is the likely
- * cause ([ScreenState.SignedOut.relayHint] and its siblings), name it. The predicate is `:core`'s,
- * the wording is here.
+ * cause ([ScreenState.SignedOut.errorRelayHint] and its siblings), name it. The predicate is
+ * `:core`'s, the wording is here.
  */
 internal fun String.withRelayAdvice(relayHint: Boolean): String =
     if (relayHint) {

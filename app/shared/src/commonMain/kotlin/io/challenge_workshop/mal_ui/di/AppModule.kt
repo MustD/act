@@ -72,7 +72,8 @@ val appModule: Module = module {
     // A `single` with a scope of its own, like the Anime List: a Sign-in lasts until it ends, and
     // nothing about a screen or composition going away is one of the ways it ends. `Main.immediate` so
     // that `start` runs inside the click that asked for it — a web popup's user activation depends on it.
-    // Constructing it restores the Session, so it is resolved eagerly by `App()`.
+    // Constructing it restores the Session. Until the ViewModel below goes, it is resolved through that
+    // ViewModel's construction rather than by `App()` directly.
     single {
         SignIn(
             repository = get(),

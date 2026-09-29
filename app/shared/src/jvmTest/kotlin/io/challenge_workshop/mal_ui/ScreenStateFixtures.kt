@@ -67,19 +67,22 @@ internal fun signedOut(
     reason: SignedOutReason = SignedOutReason.NeverSignedIn,
     error: String? = null,
     signIn: SignInState = SignInState(clientId = "a-client-id"),
-    relayHint: Boolean = false,
+    errorRelayHint: Boolean = false,
+    signInRelayHint: Boolean = false,
 ) = ScreenState.SignedOut(
     explanation = explain(reason),
     error = error,
     signIn = signIn,
     routing = TEST_ROUTING,
-    relayHint = relayHint,
+    errorRelayHint = errorRelayHint,
+    signInRelayHint = signInRelayHint,
 )
 
 internal fun authorizing(
     authorizationUrl: String = TEST_AUTHORIZATION_URL,
     signIn: SignInState = SignInState(clientId = "a-client-id"),
-) = ScreenState.Authorizing(authorizationUrl = authorizationUrl, signIn = signIn)
+    relayHint: Boolean = false,
+) = ScreenState.Authorizing(authorizationUrl = authorizationUrl, signIn = signIn, relayHint = relayHint)
 
 internal fun signedIn(
     user: MalUser? = MalUser(1, "someone"),
@@ -89,6 +92,7 @@ internal fun signedIn(
     busy: Boolean = false,
     error: String? = null,
     diagnostics: SessionDiagnostics? = null,
+    relayHint: Boolean = false,
 ) = ScreenState.SignedIn(
     user = user,
     refreshing = refreshing,
@@ -98,6 +102,7 @@ internal fun signedIn(
     error = error,
     diagnostics = diagnostics,
     routing = TEST_ROUTING,
+    relayHint = relayHint,
 )
 
 /**

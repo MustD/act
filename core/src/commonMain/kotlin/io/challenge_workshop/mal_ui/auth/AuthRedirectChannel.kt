@@ -57,8 +57,8 @@ sealed interface AuthRedirectResult {
  * - **[open] is not `suspend`** so the web popup keeps its user activation. Activation is a timestamp
  *   window and WebKit caps gesture forwarding at **1 second**, so any `launch { }` or real suspension
  *   between the click and `window.open` loses it.
- * - **The channel comes from [rememberAuthRedirectChannel]**, a `@Composable`, so Android can hold an
- *   `ActivityResultLauncher` — which can only be registered from composition.
+ * - **The channel comes from `rememberAuthRedirectChannel`** in `:app:shared`, a `@Composable`, so
+ *   Android can hold an `ActivityResultLauncher` — which can only be registered from composition.
  *
  * **A capture transports and filters; it never interprets.** Whatever MAL sent comes back as
  * [AuthRedirectResult.Received] — a denial too — and is judged by `completeAuthorization` exactly as

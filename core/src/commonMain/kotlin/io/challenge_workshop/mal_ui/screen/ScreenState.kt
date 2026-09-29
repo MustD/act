@@ -51,8 +51,14 @@ sealed interface ScreenState {
         val error: String?,
         val signIn: SignInState,
         val routing: MalRouting,
-        /** See [MalRouting.suggestsDeadRelay]; true when [error] or the Sign-in's failure reads that way. */
-        val relayHint: Boolean = false,
+        /**
+         * See [MalRouting.suggestsDeadRelay]; true when [error] reads that way. One per error rather
+         * than one for the screen, because the two errors are two cards and advice about one
+         * attached to the other would be wrong.
+         */
+        val errorRelayHint: Boolean,
+        /** The same, for the Sign-in's own failure. */
+        val signInRelayHint: Boolean,
     ) : ScreenState
 
     /**
@@ -66,7 +72,7 @@ sealed interface ScreenState {
         val authorizationUrl: String,
         val signIn: SignInState,
         /** See [MalRouting.suggestsDeadRelay]; true when the Sign-in's failure reads that way. */
-        val relayHint: Boolean = false,
+        val relayHint: Boolean,
     ) : ScreenState
 
     /**
@@ -93,7 +99,7 @@ sealed interface ScreenState {
         val diagnostics: SessionDiagnostics?,
         val routing: MalRouting,
         /** See [MalRouting.suggestsDeadRelay]; true when [error] reads that way. */
-        val relayHint: Boolean = false,
+        val relayHint: Boolean,
     ) : ScreenState
 }
 

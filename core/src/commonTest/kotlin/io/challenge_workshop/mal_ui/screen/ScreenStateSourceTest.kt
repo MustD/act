@@ -335,7 +335,7 @@ class ScreenStateSourceTest {
 
         session.value = SessionState.SignedOut(SignedOutReason.NeverSignedIn)
         signIn.value = SignInState(phase = SignInPhase.Failed("Failed to fetch"))
-        assertEquals(relayed, assertIs<ScreenState.SignedOut>(state).relayHint)
+        assertEquals(relayed, assertIs<ScreenState.SignedOut>(state).signInRelayHint)
 
         session.value = SessionState.Authorizing(pendingAuthorization())
         assertEquals(relayed, assertIs<ScreenState.Authorizing>(state).relayHint)
@@ -346,6 +346,27 @@ class ScreenStateSourceTest {
 
         controls.value = SessionControlsState(operation = SessionOperation.Failed("invalid_grant"))
         assertEquals(false, signedIn().relayHint)
+    }
+
+    /**
+     * The sign-in screen shows two errors in two cards, and each card's advice is about its own text:
+     * a dead relay behind the Sign-in's failure says nothing about why the Session ended.
+     */
+    @Test
+    fun each_error_on_the_sign_in_screen_carries_its_own_relay_hint() {
+        val relayed = platformMalEndpoints().tokenEndpoint != MalAuthConfig.DEFAULT_TOKEN_ENDPOINT
+
+        session.value = SessionState.SignedOut(SignedOutReason.RefreshRejected, error = "invalid_grant")
+        signIn.value = SignInState(phase = SignInPhase.Failed("Failed to fetch"))
+        val bothFailed = assertIs<ScreenState.SignedOut>(state)
+        assertEquals(false, bothFailed.errorRelayHint)
+        assertEquals(relayed, bothFailed.signInRelayHint)
+
+        session.value = SessionState.SignedOut(SignedOutReason.RefreshRejected, error = "Failed to fetch")
+        signIn.value = SignInState(phase = SignInPhase.Failed("invalid_grant"))
+        val swapped = assertIs<ScreenState.SignedOut>(state)
+        assertEquals(relayed, swapped.errorRelayHint)
+        assertEquals(false, swapped.signInRelayHint)
     }
 
     private fun signedIn(): ScreenState.SignedIn = assertIs<ScreenState.SignedIn>(state)
