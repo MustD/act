@@ -19,7 +19,6 @@ import io.challenge_workshop.mal_ui.animelist.AnimeListRepository
 import io.challenge_workshop.mal_ui.animelist.LayoutPreference
 import io.challenge_workshop.mal_ui.auth.LoopbackRedirectListener
 import io.challenge_workshop.mal_ui.auth.LoopbackRedirectListenerTest
-import io.challenge_workshop.mal_ui.auth.MalSessionViewModel
 import io.challenge_workshop.mal_ui.auth.SIGNED_OUT_REASON_TAG
 import io.challenge_workshop.mal_ui.auth.SignIn
 import io.challenge_workshop.mal_ui.auth.SignInPhase
@@ -61,7 +60,7 @@ class SignInScreenTest {
     /**
      * The seam the channel abstraction rests on, exercised for real: `rememberAuthRedirectChannel()`
      * resolves to this Target's actual — a [LoopbackRedirectListener] that binds 18040 — the click
-     * reaches the ViewModel through it, and the browser is opened by the *channel* rather than by the
+     * reaches the Sign-in through it, and the browser is opened by the *channel* rather than by the
      * screen. Paste-the-code stays on offer throughout regardless.
      *
      * **The one case in this file that still builds the whole stack**, and the reason it does is that
@@ -81,7 +80,7 @@ class SignInScreenTest {
      */
     @Test
     fun signing_in_arms_this_targets_capture_and_still_offers_paste_the_code() {
-        // The ViewModel's operations run on Dispatchers.Main, which the JVM test platform does not provide.
+        // The modules' operations run on Dispatchers.Main, which the JVM test platform does not provide.
         Dispatchers.setMain(UnconfinedTestDispatcher())
         val store = JsonTokenStore(FakeKeyValueStore())
         val repository = MalSessionRepository(
@@ -94,11 +93,8 @@ class SignInScreenTest {
         // Built in a scope of its own, cancelled below: `SignIn` is process-scoped and nothing else
         // would end it.
         val signInScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
-        val viewModel = MalSessionViewModel(
-            repository,
-            SignIn(repository, StartupRedirect.None, signInScope),
-            SessionControls(repository, signInScope),
-        )
+        val signIn = SignIn(repository, StartupRedirect.None, signInScope)
+        val controls = SessionControls(repository, signInScope)
         // Its own scope, cancelled below: nothing else would ever end the collector that watches the
         // Session, or a page request still in flight when the repository underneath is closed.
         val listScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
@@ -111,7 +107,7 @@ class SignInScreenTest {
                     // Otherwise the desktop `UriHandler` really does launch a browser from a unit
                     // test.
                     CompositionLocalProvider(LocalUriHandler provides RecordingUriHandler(opened)) {
-                        AppScreen(viewModel, animeList, layout)
+                        AppScreen(repository, signIn, controls, animeList, layout)
                     }
                 }
 
@@ -172,7 +168,7 @@ class SignInScreenTest {
         }
     }
 
-    /** The Client ID field is the source of truth for the Client ID, and it reaches the ViewModel. */
+    /** The Client ID field is the source of truth for the Client ID, and it reaches the Sign-in. */
     @Test
     fun the_client_id_field_reports_what_is_typed_into_it() {
         val actions = RecordedActions()

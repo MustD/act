@@ -14,7 +14,7 @@ import io.challenge_workshop.mal_ui.animelist.AnimeListRepository
 import io.challenge_workshop.mal_ui.animelist.LayoutPreference
 import io.challenge_workshop.mal_ui.animelist.malImageLoader
 import io.challenge_workshop.mal_ui.auth.AuthorizingScreen
-import io.challenge_workshop.mal_ui.auth.MalSessionViewModel
+import io.challenge_workshop.mal_ui.auth.SignIn
 import io.challenge_workshop.mal_ui.auth.RestoringScreen
 import io.challenge_workshop.mal_ui.auth.ScreenActions
 import io.challenge_workshop.mal_ui.auth.SessionScreenTag
@@ -24,8 +24,9 @@ import io.challenge_workshop.mal_ui.auth.rememberAuthRedirectChannel
 import io.challenge_workshop.mal_ui.auth.screenActions
 import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.screen.ScreenStateSource
+import io.challenge_workshop.mal_ui.session.MalSessionRepository
+import io.challenge_workshop.mal_ui.session.SessionControls
 import org.koin.compose.koinInject
-import org.koin.compose.viewmodel.koinViewModel
 
 /**
  * The whole app: a `when` over [ScreenState].
@@ -33,12 +34,16 @@ import org.koin.compose.viewmodel.koinViewModel
  * No navigation library. A four-destination switch does not need one, and adding one alongside Koin
  * would have meant two unfamiliar failure modes at once.
  *
- * There is no `@Preview` any more: the screen resolves its ViewModel from Koin, so a preview without a
+ * There is no `@Preview` any more: the screen resolves its modules from Koin, so a preview without a
  * started Koin would fail at render time rather than usefully show anything.
+ *
+ * Resolving [SignIn] is also what restores the Session: its construction runs `restore()`.
  */
 @Composable
 fun App(
-    viewModel: MalSessionViewModel = koinViewModel(),
+    repository: MalSessionRepository = koinInject(),
+    signIn: SignIn = koinInject(),
+    controls: SessionControls = koinInject(),
     animeList: AnimeListRepository = koinInject(),
     layout: LayoutPreference = koinInject(),
 ) {
@@ -52,18 +57,18 @@ fun App(
 
     MaterialTheme {
         Surface(modifier = Modifier) {
-            AppScreen(viewModel, animeList, layout)
+            AppScreen(repository, signIn, controls, animeList, layout)
         }
     }
 }
 
 /**
- * The adapter between the Session's ViewModel, the Anime List, the Layout and the one value the
- * screens take.
+ * The adapter between the Session, the Sign-in, the Session's controls, the Anime List, the Layout and
+ * the one value the screens take.
  *
  * Split from [App] so it can be rendered without replacing Coil's singleton or re-theming, and split
- * from [SessionRoute] because *this* is the half that needs a ViewModel at all: the routing below is a
- * `when` over a value and a record of lambdas, and nothing in it knows what a ViewModel is.
+ * from [SessionRoute] because *this* is the half that touches the modules: the routing below is a
+ * `when` over a value and a record of lambdas, and nothing in it knows they exist.
  *
  * **Everything here is `remember`ed on what it was built from.** A [ScreenStateSource] rebuilt per
  * recomposition would restart its combine on every frame, and an actions record rebuilt per
@@ -80,7 +85,9 @@ fun App(
  */
 @Composable
 internal fun AppScreen(
-    viewModel: MalSessionViewModel,
+    repository: MalSessionRepository,
+    signIn: SignIn,
+    controls: SessionControls,
     animeList: AnimeListRepository,
     layout: LayoutPreference,
 ) {
@@ -88,20 +95,20 @@ internal fun AppScreen(
     val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
 
-    val source = remember(viewModel, animeList, layout, scope) {
+    val source = remember(repository, signIn, controls, animeList, layout, scope) {
         ScreenStateSource(
-            session = viewModel.state,
-            config = viewModel.config,
+            session = repository.state,
+            config = repository.config,
             animeList = animeList.state,
             layout = layout.value,
-            signIn = viewModel.signInState,
-            controls = viewModel.controls,
+            signIn = signIn.state,
+            controls = controls.state,
             scope = scope,
         )
     }
 
-    val actions = remember(viewModel, animeList, layout, channel, uriHandler) {
-        screenActions(viewModel, animeList, layout, channel, uriHandler::openUri)
+    val actions = remember(signIn, controls, animeList, layout, channel, uriHandler) {
+        screenActions(signIn, controls, animeList, layout, channel, uriHandler::openUri)
     }
 
     SessionRoute(source.state.collectAsStateWithLifecycle().value, actions)

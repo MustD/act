@@ -4,12 +4,15 @@ package io.challenge_workshop.mal_ui.di
 
 import io.challenge_workshop.mal_ui.animelist.AnimeListRepository
 import io.challenge_workshop.mal_ui.animelist.LayoutPreference
+import io.challenge_workshop.mal_ui.auth.SignIn
+import io.challenge_workshop.mal_ui.auth.StartupRedirect
 import io.challenge_workshop.mal_ui.mal.HttpClientFactory
 import io.challenge_workshop.mal_ui.mal.MAL_CLIENT_ID
 import io.challenge_workshop.mal_ui.mal.MalUser
 import io.challenge_workshop.mal_ui.session.JsonTokenStore
 import io.challenge_workshop.mal_ui.session.KeyValueStore
 import io.challenge_workshop.mal_ui.session.MalSessionRepository
+import io.challenge_workshop.mal_ui.session.SessionControls
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -47,6 +50,8 @@ class AppGraphTest {
                 override suspend fun remove(key: String) = Unit
             }
         }
+        // `platformModule` is not loaded here, and `SignIn` needs the platform's startup redirect.
+        single<StartupRedirect> { StartupRedirect.None }
     }
 
     private fun koin(): Koin = startKoin { modules(appModule, fakeStore) }.koin
@@ -75,6 +80,8 @@ class AppGraphTest {
         assertNotNull(koin.get<MalSessionRepository>())
         assertNotNull(koin.get<LayoutPreference>())
         assertNotNull(koin.get<AnimeListRepository>())
+        assertNotNull(koin.get<SignIn>())
+        assertNotNull(koin.get<SessionControls>())
 
         koin.get<MalSessionRepository>().close()
     }
@@ -132,6 +139,21 @@ class AppGraphTest {
         val koin = koin()
 
         assertSame(koin.get<AnimeListRepository>(), koin.get<AnimeListRepository>())
+
+        koin.get<MalSessionRepository>().close()
+    }
+
+    /**
+     * One Sign-in and one set of controls for the whole process, and no ViewModel to scope them: the
+     * form the screen reads has to be the one the actions write, and a second `SignIn` would restore
+     * the Session a second time.
+     */
+    @Test
+    fun the_sign_in_and_the_session_controls_are_singletons() {
+        val koin = koin()
+
+        assertSame(koin.get<SignIn>(), koin.get<SignIn>())
+        assertSame(koin.get<SessionControls>(), koin.get<SessionControls>())
 
         koin.get<MalSessionRepository>().close()
     }

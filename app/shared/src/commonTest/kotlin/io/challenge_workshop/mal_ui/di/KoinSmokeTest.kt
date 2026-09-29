@@ -11,7 +11,7 @@ import kotlin.test.assertSame
 /**
  * Proves the Koin *runtime* works on every target, not just that it compiles.
  *
- * `koin-compose-viewmodel:4.1.0` was built with Kotlin 2.1.20 while this repo is on 2.4.10;
+ * `koin-compose` was built with Kotlin 2.1.20 while this repo is on 2.4.10;
  * a stale wasmJs klib is the specific risk. Running under `jvmTest`, `testAndroidHostTest`
  * and `wasmJsTest` is what makes that risk visible rather than latent.
  */

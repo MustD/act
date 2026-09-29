@@ -13,13 +13,13 @@ import kotlinx.coroutines.flow.first
  * (see `CONTEXT.md`), and nothing here forwards anything to MyAnimeList. This holds one redirect
  * until somebody takes it.
  *
- * A custom-scheme redirect does not arrive at a channel, a ViewModel or a composable. It arrives at
+ * A custom-scheme redirect does not arrive at a channel, a Sign-in or a composable. It arrives at
  * `MainActivity` — as a launch Intent on a cold start, or through `onNewIntent` on a warm one — and
  * `MainActivity` is the one part of this app that Compose, Koin and the session layer all sit
  * underneath. So it forwards to here and does nothing else, and the layers above take from here.
  *
  * **`replay = 1` is load-bearing.** `onNewIntent` runs before `onResume`, and on a cold start the
- * Intent is in hand before Koin has built a ViewModel — so a redirect is routinely delivered before
+ * Intent is in hand before Koin has built the Sign-in — so a redirect is routinely delivered before
  * anything is collecting. Without a replay it would be dropped, and the symptom would be a sign-in
  * that hangs with no error anywhere.
  *

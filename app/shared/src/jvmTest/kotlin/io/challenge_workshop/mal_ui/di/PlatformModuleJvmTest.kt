@@ -20,7 +20,7 @@ class PlatformModuleJvmTest {
         val koin = initKoin().koin
 
         assertIs<FileKeyValueStore>(koin.get<KeyValueStore>())
-        // Declared rather than left out: without it the ViewModel does not resolve at all, and the
+        // Declared rather than left out: without it `SignIn` does not resolve at all, and the
         // symptom is a crash on launch rather than a missing feature.
         assertSame(StartupRedirect.None, koin.get<StartupRedirect>())
 

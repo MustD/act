@@ -169,7 +169,7 @@ internal const val TEST_AUTHORIZATION_URL: String =
 /**
  * A [ScreenActions] that writes down what it was asked to do.
  *
- * What a control *causes* is the ViewModel's or the Anime List's, and both are tested where they live. What
+ * What a control *causes* is the Sign-in's, the session controls' or the Anime List's, and all are tested where they live. What
  * is left for a rendering test is that the control the user can see is wired to the right one of
  * them — a Layout toggle bound to `onReload` still renders perfectly.
  */

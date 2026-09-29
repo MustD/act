@@ -25,7 +25,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         // A cold start *is* a redirect delivery when the process was killed while the user was away.
-        // Before `setContent`, so the inbox is already holding it when the ViewModel asks.
+        // Before `setContent`, so the inbox is already holding it when the Sign-in asks.
         AuthRedirectInbox.Shared.deliver(intent)
 
         setContent {

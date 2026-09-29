@@ -7,6 +7,7 @@ import io.challenge_workshop.mal_ui.animelist.AnimeListSortOrder
 import io.challenge_workshop.mal_ui.animelist.LayoutPreference
 import io.challenge_workshop.mal_ui.animelist.WatchStatus
 import io.challenge_workshop.mal_ui.screen.ScreenState
+import io.challenge_workshop.mal_ui.session.SessionControls
 
 /**
  * Everything a screen can *do*, held apart from [ScreenState], which is everything a screen can *be*.
@@ -20,7 +21,7 @@ import io.challenge_workshop.mal_ui.screen.ScreenState
  * They are [Immutable] and built **once**, with `remember`, in `App()`. Rebuilt per recomposition
  * they would be exactly the unstable argument described above, and the annotation would be a lie.
  *
- * Not a property of the ViewModel: [SignedInActions] spans it, the Anime List and the Layout, and a
+ * Not a property of any one module: [SignedInActions] spans it, the Anime List and the Layout, and a
  * record any one of them exposed would have to reach into the others.
  */
 @Immutable
@@ -33,7 +34,7 @@ data class ScreenActions(
 /**
  * The sign-in screen.
  *
- * [onSignIn] takes no arguments: the [AuthRedirectChannel] is bound where the ViewModels are, above
+ * [onSignIn] takes no arguments: the [AuthRedirectChannel] is bound where the modules are, above
  * the routing `when`, so the channel never appears in a screen's interface. It has to be bound there
  * anyway — an Android `ActivityResultLauncher` can only be registered from composition, before the
  * Activity reaches `STARTED`, and a channel that left composition when this screen swapped for the
@@ -56,7 +57,7 @@ data class AuthorizingActions(
 /**
  * The signed-in screen, which **is** the Anime List.
  *
- * This record is the reason the ViewModel exposes no actions record of its own: Sign out and the
+ * This record is the reason no module exposes an actions record of its own: Sign out and the
  * diagnostics dialog come from the Session, Reload and the two query controls from the Anime List,
  * and the Layout from its preference.
  *
@@ -89,7 +90,7 @@ data class DiagnosticsActions(
 )
 
 /**
- * Wires the ViewModel, the Anime List and the Layout to the three actions records, in one place
+ * Wires the Sign-in, the session controls, the Anime List and the Layout to the three actions records, in one place
  * so `App()` and the rendering tests cannot drift about what a control does.
  *
  * Not a `@Composable` and not remembered here: the caller is what has to `remember` the result, since
@@ -99,22 +100,23 @@ data class DiagnosticsActions(
  * An armed [channel] opens the browser itself — on web that call *is* the popup.
  */
 internal fun screenActions(
-    viewModel: MalSessionViewModel,
+    signIn: SignIn,
+    controls: SessionControls,
     animeList: AnimeListRepository,
     layout: LayoutPreference,
     channel: AuthRedirectChannel,
     openUri: (String) -> Unit,
 ): ScreenActions = ScreenActions(
     signIn = SignInActions(
-        onClientIdChange = viewModel::onClientIdChange,
+        onClientIdChange = signIn::setClientId,
         // Straight through, with no `launch` between the click and the channel: a web popup's user
         // activation is a timestamp window and WebKit's is one second wide.
-        onSignIn = { viewModel.signIn(channel, openUri) },
+        onSignIn = { signIn.start(channel, openUri) },
     ),
     authorizing = AuthorizingActions(
-        onPastedRedirectChange = viewModel::onPastedRedirectChange,
-        onCompleteSignIn = viewModel::completeSignIn,
-        onCancelSignIn = viewModel::cancelSignIn,
+        onPastedRedirectChange = signIn::setPastedRedirect,
+        onCompleteSignIn = signIn::completePasted,
+        onCancelSignIn = signIn::cancel,
     ),
     signedIn = SignedInActions(
         onLoadMore = animeList::loadMore,
@@ -125,11 +127,11 @@ internal fun screenActions(
         // Straight to the preference, which switches inside the click and writes behind it: a Layout
         // is a presentation choice, costs no request, and needs no coroutine of this caller's.
         onSelectLayout = layout::choose,
-        onSignOut = viewModel::signOut,
+        onSignOut = controls::signOut,
         diagnostics = DiagnosticsActions(
-            onReloadDiagnostics = { viewModel.reloadDiagnostics() },
-            onRefreshUser = { viewModel.refreshUser() },
-            onForceExpireAccessToken = { viewModel.forceExpireAccessToken() },
+            onReloadDiagnostics = { controls.reloadDiagnostics() },
+            onRefreshUser = { controls.refreshUser() },
+            onForceExpireAccessToken = { controls.forceExpireAccessToken() },
         ),
     ),
 )

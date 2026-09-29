@@ -69,13 +69,11 @@ kotlin {
             implementation(libs.coil.compose)
             implementation(libs.coil.networkKtor3)
             implementation(libs.compose.uiToolingPreview)
-            implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             // `api` because the app modules call `initKoin()` and Koin's own APIs from
             // their entry points; `implementation` would hide `Module` from them.
             api(libs.koin.core)
             implementation(libs.koin.compose)
-            implementation(libs.koin.composeViewmodel)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
