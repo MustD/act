@@ -314,6 +314,31 @@ class AuthTabRedirectChannelTest {
         assertEquals(0L, currentTime, "a stale cancellation must not even open a window")
     }
 
+    /**
+     * Ticket 08. A rotation while the user is on myanimelist.net recreates the Activity, and the new
+     * composition registers its own launcher — whose callback is the one androidx delivers the result
+     * to. The channel a Sign-in is awaiting was built by the old composition, so the inbox both of
+     * them reach has to be the process's, not either composition's.
+     */
+    @Test
+    fun a_result_delivered_through_the_shared_inbox_reaches_a_channel_built_before_recreation() = runTest {
+        AuthTabResultInbox.Shared.clear()
+        val beforeRecreation = AuthTabRedirectChannel(
+            intentFilter = IntentRedirectChannel(inbox, lifecycle) { openedPlainly += it },
+            launchAuthTab = { authTabbed += it },
+            results = AuthTabResultInbox.Shared,
+        )
+        assertEquals(ArmResult.Armed, beforeRecreation.arm(ANDROID_REDIRECT_URI))
+        beforeRecreation.open(authorizationUrl("our-state"))
+        val capture = async { beforeRecreation.await() }
+        runCurrent()
+
+        // What the recreated composition's launcher callback does: it knows nothing of the old channel.
+        AuthTabResultInbox.Shared.deliver(ok(androidRedirect("our-state")))
+
+        assertEquals(AuthRedirectResult.Received(androidRedirect("our-state")), capture.await())
+    }
+
     /** One Auth Tab result, run through a whole capture, for the mapping assertions above. */
     private suspend fun TestScope.resultOf(
         resultCode: Int,

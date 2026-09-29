@@ -52,7 +52,8 @@ One is registered per platform and per web origin. _Avoid_: Redirect URL, callba
 Android only: the process-scoped hand-off that holds a redirect `Intent`'s URI until something takes it — an armed
 Redirect Capture, or the launch path when the process was killed while the user was away. In code it is
 `AuthRedirectInbox`. Deliberately not called a relay; see **Relay**, which is a different thing entirely.
-`AuthTabResultInbox` is the same idea for an Auth Tab's result code.
+`AuthTabResultInbox` is the same idea for an Auth Tab's result code, and process-scoped for the same reason: an Activity
+recreated mid-Sign-in must still reach the channel the Sign-in is awaiting.
 
 **Browser Plan**:
 Android only: which of three ways this device will be sent to MyAnimeList — an **Auth Tab** (Chrome 137+, which hands the

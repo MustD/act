@@ -33,6 +33,12 @@ internal data class AuthTabResult(val resultCode: Int, val redirect: String?)
  * on the main thread when the tab closes, which is normally long after `await` has parked on
  * [claim]. Relying on that ordering would be relying on the scheduler, and the failure it produces —
  * a sign-in that hangs with no error anywhere — is the one worth spending a buffer slot on.
+ *
+ * Process-scoped ([Shared]) for the same reason [AuthRedirectInbox] is, and for one more: the
+ * Activity can be recreated while the user is on myanimelist.net. The new composition registers its
+ * own launcher and androidx delivers the result to *that* callback, but the channel a Sign-in is
+ * awaiting was built by the old composition. An inbox owned by either would leave the two talking
+ * past each other, and the sign-in hanging until the user cancels or pastes.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class AuthTabResultInbox {
@@ -61,4 +67,12 @@ internal class AuthTabResultInbox {
 
     /** Suspends until this attempt's Auth Tab reports, and takes the result. */
     suspend fun claim(): AuthTabResult = results.first().also { results.resetReplayCache() }
+
+    companion object {
+        /**
+         * The process's inbox. Every `rememberAuthRedirectChannel()` composition writes into and
+         * reads from this one, so a result outlives the composition that launched the tab.
+         */
+        val Shared: AuthTabResultInbox = AuthTabResultInbox()
+    }
 }

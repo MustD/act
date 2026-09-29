@@ -42,7 +42,9 @@ actual fun rememberAuthRedirectChannel(): AuthRedirectChannel {
     // Compose preview — and the plan degrades accordingly.
     val activity = LocalActivity.current
 
-    val results = remember { AuthTabResultInbox() }
+    // Not remembered: the Activity can be recreated mid-sign-in, and the result then reaches the new
+    // composition's launcher while the Sign-in is still awaiting the old composition's channel.
+    val results = AuthTabResultInbox.Shared
     // Registered unconditionally, and before anything has decided whether an Auth Tab will be used,
     // because androidx requires exactly that: an `ActivityResultLauncher` must be registered before
     // the Activity reaches STARTED, so a registration behind an `if` would be missing after the
