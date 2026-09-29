@@ -122,8 +122,8 @@ fun SignInScreen(
             if (state.form.busy) CircularProgressIndicator(Modifier.padding(4.dp))
         }
 
-        state.error?.let { ErrorCard("Sign-in failed", it) }
-        state.form.error?.let { ErrorCard("Sign-in failed", it) }
+        state.error?.let { ErrorCard("Sign-in failed", it.withRelayAdvice(state.relayHint)) }
+        state.form.error?.let { ErrorCard("Sign-in failed", it.withRelayAdvice(state.relayHint)) }
     }
 }
 
@@ -193,7 +193,7 @@ fun AuthorizingScreen(
             if (state.form.busy) CircularProgressIndicator(Modifier.padding(4.dp))
         }
 
-        state.form.error?.let { ErrorCard("Could not complete the sign-in", it) }
+        state.form.error?.let { ErrorCard("Could not complete the sign-in", it.withRelayAdvice(state.relayHint)) }
     }
 }
 
@@ -313,7 +313,7 @@ fun SignedInScreen(
             // profile reload is visible from where the user actually is — and outside the grid, so
             // it does not scroll away from the controls that caused it. Under the `FlowRow` rather
             // than in it: it is a card the width of the pane, not a control to lay out beside one.
-            state.error?.let { ErrorCard("Something went wrong", it) }
+            state.error?.let { ErrorCard("Something went wrong", it.withRelayAdvice(state.relayHint)) }
         }
         LazyVerticalGrid(
             // The Layout is entirely this: how many columns the entries get, and how wide the whole
@@ -385,6 +385,19 @@ internal fun Modifier.paneItem(): Modifier = widthIn(max = PANE_MAX_WIDTH).fillM
  * does not. See `AnimeListLayout.contentMaxWidth`.
  */
 internal val PANE_MAX_WIDTH = 560.dp
+
+/**
+ * On web a dead relay surfaces as a bare "Failed to fetch"; when `:core` says that is the likely
+ * cause ([ScreenState.SignedOut.relayHint] and its siblings), name it. The predicate is `:core`'s,
+ * the wording is here.
+ */
+internal fun String.withRelayAdvice(relayHint: Boolean): String =
+    if (relayHint) {
+        "$this\n\nThe web target routes MAL calls through the relay because MAL sends no CORS " +
+            "headers. Start it with `./gradlew :server:run`."
+    } else {
+        this
+    }
 
 /** Internal, not private: the Anime List reuses it rather than growing an error card of its own. */
 @Composable

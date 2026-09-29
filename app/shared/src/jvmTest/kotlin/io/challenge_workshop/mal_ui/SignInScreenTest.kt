@@ -3,6 +3,9 @@
 package io.challenge_workshop.mal_ui
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
@@ -166,6 +169,21 @@ class SignInScreenTest {
             onNodeWithText("a-client-id").performTextReplacement("another-client-id")
 
             assertEquals(listOf("another-client-id"), actions.clientIds)
+        }
+    }
+
+    /** `:core` decides the failure looks like a dead relay; the screen appends the advice. */
+    @Test
+    fun the_relay_advice_appears_only_when_the_state_says_so() {
+        runComposeUiTest {
+            var state by mutableStateOf(signedOut(error = "Failed to fetch"))
+            setContent { SessionRoute(state, RecordedActions().actions) }
+
+            onNodeWithText("./gradlew :server:run", substring = true).assertDoesNotExist()
+
+            state = signedOut(error = "Failed to fetch", relayHint = true)
+
+            onNodeWithText("./gradlew :server:run", substring = true).assertIsDisplayed()
         }
     }
 }

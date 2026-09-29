@@ -3,8 +3,6 @@ package io.challenge_workshop.mal_ui.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.challenge_workshop.mal_ui.mal.MalAuthConfig
-import io.challenge_workshop.mal_ui.mal.platformMalEndpoints
-import io.challenge_workshop.mal_ui.screen.MalRouting
 import io.challenge_workshop.mal_ui.screen.SignInForm
 import io.challenge_workshop.mal_ui.session.MalSessionRepository
 import io.challenge_workshop.mal_ui.session.SessionDiagnostics
@@ -77,18 +75,6 @@ class MalSessionViewModel(
      */
     private val _diagnostics = MutableStateFlow<SessionDiagnostics?>(null)
     val diagnostics: StateFlow<SessionDiagnostics?> = _diagnostics.asStateFlow()
-
-    /**
-     * Where this build sends token and API traffic, which only [withRelayHint] reads.
-     *
-     * The same [MalRouting] the Screen State carries, rather than a second `startsWith` over the same
-     * origin: two answers to "is this build relayed" is exactly how the hint and the debug panel come
-     * to disagree. `redirectUri` is not read here — the screens get it off the Screen State.
-     */
-    private val routing = MalRouting(
-        endpoints = platformMalEndpoints(),
-        redirectUri = repository.config.value.redirectUri,
-    )
 
     private val busy: Boolean get() = _form.value.busy
 
@@ -254,24 +240,12 @@ class MalSessionViewModel(
                 // in an error card.
                 throw e
             } catch (e: Exception) {
-                _form.update { it.copy(error = withRelayHint(e.message ?: e.toString())) }
+                _form.update { it.copy(error = e.message ?: e.toString()) }
             } finally {
                 _form.update { it.copy(busy = false) }
             }
         }.also { authJob = it }
     }
-
-    /**
-     * On web a dead relay surfaces as a bare "Failed to fetch" with no status, because the browser
-     * blocks the request before it is sent. Name the likely cause instead.
-     */
-    private fun withRelayHint(message: String): String =
-        if (routing.usesRelay && ("fetch" in message.lowercase() || "could not reach" in message.lowercase())) {
-            "$message\n\nThe web target routes MAL calls through ${routing.endpoints.tokenEndpoint} " +
-                "because MAL sends no CORS headers. Start the relay with `./gradlew :server:run`."
-        } else {
-            message
-        }
 
     override fun onCleared() {
         // The HttpClients belong to the repository, which is process-scoped and outlives this object,

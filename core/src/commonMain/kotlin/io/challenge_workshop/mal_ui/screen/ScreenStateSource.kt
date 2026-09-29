@@ -107,11 +107,13 @@ class ScreenStateSource(
                 error = session.error,
                 form = form,
                 routing = routing,
+                relayHint = routing.suggestsDeadRelay(session.error) || routing.suggestsDeadRelay(form.error),
             )
 
             is SessionState.Authorizing -> ScreenState.Authorizing(
                 authorizationUrl = authorizationUrlFor(config, session.pending),
                 form = form,
+                relayHint = routing.suggestsDeadRelay(form.error),
             )
 
             is SessionState.SignedIn -> ScreenState.SignedIn(
@@ -123,6 +125,7 @@ class ScreenStateSource(
                 error = form.error,
                 diagnostics = diagnostics,
                 routing = routing,
+                relayHint = routing.suggestsDeadRelay(form.error),
             )
         }
     }

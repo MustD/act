@@ -291,6 +291,46 @@ class ScreenStateSourceTest {
         assertEquals(true, routingFor("https://mal-ui.localhost/mal/oauth2/token").usesRelay)
     }
 
+    /**
+     * The predicate the ViewModel's `withRelayHint` used to be: relayed × fetch-like. Asserted on the
+     * routing directly, so all four cells run on every Target, and once through the source for the
+     * variant that carries it.
+     */
+    @Test
+    fun a_relay_hint_needs_a_relayed_build_and_an_error_that_reads_like_a_failed_fetch() {
+        fun routing(tokenEndpoint: String) = MalRouting(
+            endpoints = MalEndpoints(tokenEndpoint = tokenEndpoint, apiBaseUrl = "unused"),
+            redirectUri = REDIRECT_URI,
+        )
+        val relayed = routing("https://mal-ui.localhost/mal/oauth2/token")
+        val direct = routing(MalAuthConfig.DEFAULT_TOKEN_ENDPOINT)
+
+        assertEquals(true, relayed.suggestsDeadRelay("Failed to fetch"))
+        assertEquals(true, relayed.suggestsDeadRelay("Could not reach the server"))
+        assertEquals(false, relayed.suggestsDeadRelay("invalid_grant"))
+        assertEquals(false, relayed.suggestsDeadRelay(null))
+        assertEquals(false, direct.suggestsDeadRelay("Failed to fetch"))
+        assertEquals(false, direct.suggestsDeadRelay("invalid_grant"))
+    }
+
+    @Test
+    fun the_relay_hint_follows_the_error_on_every_variant_that_shows_one() {
+        val relayed = platformMalEndpoints().tokenEndpoint != MalAuthConfig.DEFAULT_TOKEN_ENDPOINT
+
+        session.value = SessionState.SignedOut(SignedOutReason.NeverSignedIn)
+        form.value = SignInForm(error = "Failed to fetch")
+        assertEquals(relayed, assertIs<ScreenState.SignedOut>(state).relayHint)
+
+        session.value = SessionState.Authorizing(pendingAuthorization())
+        assertEquals(relayed, assertIs<ScreenState.Authorizing>(state).relayHint)
+
+        session.value = SessionState.SignedIn(MalUser(1, "someone"))
+        assertEquals(relayed, signedIn().relayHint)
+
+        form.value = SignInForm(error = "invalid_grant")
+        assertEquals(false, signedIn().relayHint)
+    }
+
     private fun signedIn(): ScreenState.SignedIn = assertIs<ScreenState.SignedIn>(state)
 }
 

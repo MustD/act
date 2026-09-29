@@ -67,11 +67,13 @@ internal fun signedOut(
     reason: SignedOutReason = SignedOutReason.NeverSignedIn,
     error: String? = null,
     form: SignInForm = SignInForm(clientId = "a-client-id"),
+    relayHint: Boolean = false,
 ) = ScreenState.SignedOut(
     explanation = explain(reason),
     error = error,
     form = form,
     routing = TEST_ROUTING,
+    relayHint = relayHint,
 )
 
 internal fun authorizing(

@@ -50,6 +50,8 @@ sealed interface ScreenState {
         val error: String?,
         val form: SignInForm,
         val routing: MalRouting,
+        /** See [MalRouting.suggestsDeadRelay]; true when [error] or the form's error reads that way. */
+        val relayHint: Boolean = false,
     ) : ScreenState
 
     /**
@@ -62,6 +64,8 @@ sealed interface ScreenState {
     data class Authorizing(
         val authorizationUrl: String,
         val form: SignInForm,
+        /** See [MalRouting.suggestsDeadRelay]; true when the form's error reads that way. */
+        val relayHint: Boolean = false,
     ) : ScreenState
 
     /**
@@ -87,6 +91,8 @@ sealed interface ScreenState {
         /** Null until the diagnostics dialog asks for it, which is the only thing that reads it. */
         val diagnostics: SessionDiagnostics?,
         val routing: MalRouting,
+        /** See [MalRouting.suggestsDeadRelay]; true when [error] reads that way. */
+        val relayHint: Boolean = false,
     ) : ScreenState
 }
 
@@ -105,6 +111,17 @@ data class MalRouting(
     /** True on web, where token and API calls go through `:server` instead of straight to MAL. */
     val usesRelay: Boolean
         get() = !endpoints.tokenEndpoint.startsWith(MYANIMELIST_ORIGIN)
+
+    /**
+     * Whether [error] is probably a dead relay rather than a MAL answer. On web a dead relay surfaces
+     * as a bare "Failed to fetch" with no status, because the browser blocks the request before it is
+     * sent, so the likely cause is worth naming next to it. The *wording* is `:app:shared`'s.
+     */
+    fun suggestsDeadRelay(error: String?): Boolean {
+        if (!usesRelay || error == null) return false
+        val lower = error.lowercase()
+        return "fetch" in lower || "could not reach" in lower
+    }
 
     private companion object {
         const val MYANIMELIST_ORIGIN = "https://myanimelist.net"
