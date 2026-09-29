@@ -63,7 +63,7 @@ class AuthTabRedirectChannelTest {
         results = results,
     )
 
-    /** An armed, opened channel with both sides collecting — where the ViewModel leaves it. */
+    /** An armed, opened channel with both sides collecting — where `SignIn` leaves it. */
     private suspend fun TestScope.capturing(state: String): Deferred<AuthRedirectResult> {
         val channel = channel()
         assertEquals(ArmResult.Armed, channel.arm(ANDROID_REDIRECT_URI))

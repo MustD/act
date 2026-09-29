@@ -1,6 +1,6 @@
 # No ViewModels: the Session's operations are process-scoped modules in `:core`
 
-Status: proposed
+Status: accepted
 
 The Sign-in (arming a Redirect Capture, the wait on myanimelist.net, Paste-the-code, the startup redirect) is owned by
 `SignIn`, and the signed-in screen's one-shot operations (sign-out, the debug panel) by `SessionControls`. Both are

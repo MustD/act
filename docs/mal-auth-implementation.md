@@ -1,5 +1,10 @@
 # MAL auth: from paste-the-code to a real redirect flow
 
+> **Historical.** This is the research and plan the redirect flow was built from. It predates ADR-0005: every mention
+> of `MalLoginViewModel`, `MalSessionViewModel`, `ViewModelStore` or `viewModelScope` below describes the design as it
+> was then. The Sign-in is now `SignIn` in `:core`, process-scoped, with no ViewModel; read
+> [ADR-0005](adr/0005-no-viewmodels.md) for what replaced it.
+
 Research and an implementation order for turning the current three-step manual login into
 `login → myanimelist.net → redirect back → tokens`, on web, desktop and Android.
 

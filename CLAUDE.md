@@ -81,7 +81,7 @@ Single test (works for JVM-hosted test tasks):
 
 ```bash
 ./gradlew :app:shared:jvmTest --tests "io.challenge_workshop.mal_ui.auth.LoopbackRedirectListenerTest"
-./gradlew :app:shared:jvmTest --tests "*.MalSessionViewModelTest.signing_in_is_blocked_until_a_client_id_is_present"
+./gradlew :core:jvmTest --tests "*.SignInTest.signing_in_is_blocked_until_a_client_id_is_present"
 ```
 
 `:core` has the same per-target split; `./gradlew :core:allTests` covers all three at once.
@@ -178,7 +178,7 @@ Two tiers of shared code, deliberately separated:
 
 The three client modules (`:app:androidApp`, `:app:desktopApp`, `:app:webApp`) are thin entry points only: each has a `main`/`Activity` that sets up its platform's window and calls the single `App()` composable from `:app:shared`. Put UI in `:app:shared`, not in the app modules.
 
-**Screens take a value, not a ViewModel.** `SessionRoute` switches on a sealed `ScreenState` produced in `:core` by `ScreenStateSource` — a total combine over six flows — and each screen takes its variant plus a separate actions record. `App()` resolves the Session's ViewModel plus `AnimeListRepository` and `LayoutPreference` (process-scoped `single`s in `:core`), and `AppScreen` wires them to the value and binds the `AuthRedirectChannel`; below that, nothing knows what a ViewModel is. The Anime List lasts one Session by `AnimeListRepository`'s own rule — it builds a pager on entering `SignedIn` and discards it on leaving — not by how anything is scoped. The actions stay out of `ScreenState` because Compose skips on `equals` and a `data class` holding a `() -> Unit` is neither equal nor stable. See `docs/adr/0004-screen-state-in-core.md`, which also carries the answer to "why is a UI type in the module `:server` depends on".
+**Screens take a value, not a ViewModel.** `SessionRoute` switches on a sealed `ScreenState` produced in `:core` by `ScreenStateSource` — a total combine over six flows — and each screen takes its variant plus a separate actions record. `App()` resolves `SignIn`, `SessionControls`, `AnimeListRepository` and `LayoutPreference` (process-scoped `single`s in `:core`, each with its own scope), and `AppScreen` wires them to the value and binds the `AuthRedirectChannel`; below that, nothing is a ViewModel, and none should be added — see `docs/adr/0005-no-viewmodels.md`. The Anime List lasts one Session by `AnimeListRepository`'s own rule — it builds a pager on entering `SignedIn` and discards it on leaving — not by how anything is scoped. The actions stay out of `ScreenState` because Compose skips on `equals` and a `data class` holding a `() -> Unit` is neither equal nor stable. See `docs/adr/0004-screen-state-in-core.md`, which also carries the answer to "why is a UI type in the module `:server` depends on".
 
 The two additions to that are both sign-in plumbing that only an entry point can do, and both forward immediately into `:app:shared` rather than deciding anything: `MainActivity.onCreate`/`onNewIntent` hand the redirect Intent to `AuthRedirectInbox`, and web's `main()` relays a popup's redirect to its opener before Koin starts. Neither is a place to add behaviour.
 
@@ -228,7 +228,7 @@ redirect sits above `MainActivity` and outlives it. (An *inbox*, not a relay: `R
 routes on `:server`, and nothing here forwards anything to MAL.)
 
 - **`replay = 1` is load-bearing.** `onNewIntent` runs before `onResume`, and on a cold start the Intent is in hand
-  before Koin has built a ViewModel, so a redirect is routinely delivered before anything is collecting. Without the
+  before Koin has built `SignIn`, so a redirect is routinely delivered before anything is collecting. Without the
   replay it is dropped and the sign-in hangs with no error anywhere.
 - **Two things take from the inbox, and only one of them always exists.** `IntentRedirectChannel` when a sign-in is
   live, filtering by `state` because the filter is exported and any app can fire that Intent. `AndroidStartupRedirect`
@@ -290,8 +290,8 @@ password is only ever typed on myanimelist.net.
 Four things in `app/androidApp/src/main/AndroidManifest.xml` are each a silent failure if lost, so
 `AndroidManifestTest` — the only test in that module — asserts all four:
 
-- **`launchMode="singleTop"`.** Under `standard` the redirect Intent starts a *second* `MainActivity` with its own
-  `ViewModelStore`, so the instance that receives the code is not the one holding the Pending Authorization. Nothing
+- **`launchMode="singleTop"`.** Under `standard` the redirect Intent starts a *second* `MainActivity`
+  instance, so the instance that receives the code is not the one the sign-in is attached to. Nothing
   throws; the redirect simply does nothing. `singleTask`/`singleInstance` avoid that too, at the price of
   task-management surprises.
 - **The custom-scheme intent filter** must stay byte-identical to `ANDROID_REDIRECT_URI` in `:core`, which MAL compares

@@ -8,7 +8,7 @@ import kotlin.test.assertEquals
  * The default channel on every target until the platform ones land.
  *
  * Whether its caller honours [ArmResult.Unsupported] by *not* opening it is
- * `MalSessionViewModelRedirectTest.an_unsupported_channel_never_gets_opened_and_falls_back_to_paste_the_code`.
+ * pinned in `SignInTest.an_unsupported_channel_never_gets_opened_and_falls_back_to_paste_the_code`.
  */
 class PasteOnlyRedirectChannelTest {
 

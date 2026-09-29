@@ -30,7 +30,7 @@ sealed interface AuthRedirectResult {
      */
     data class Received(val rawRedirect: String) : AuthRedirectResult
 
-    /** The user backed out. The Pending Authorization survives; see `MalSessionRepository.cancelAuthorization`. */
+    /** The user backed out. The Pending Authorization survives; see `SignIn.cancel`. */
     data object Cancelled : AuthRedirectResult
 
     /**

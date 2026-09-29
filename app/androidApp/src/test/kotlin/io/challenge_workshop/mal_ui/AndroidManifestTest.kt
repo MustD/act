@@ -24,7 +24,7 @@ import kotlin.test.assertTrue
  * Guards the manifest against silent drift.
  *
  * Every fact asserted here fails silently in production if it regresses: a redirect that resolves
- * nowhere, a second activity holding a different `ViewModelStore`, a refresh token in a cloud
+ * nowhere, a second `MainActivity` instance, a refresh token in a cloud
  * backup. None of them throws, and none of them shows up in a normal sign-in on a dev machine.
  *
  * Robolectric resolves against the **merged** manifest as Android itself parses it, so these assert
@@ -59,8 +59,8 @@ class AndroidManifestTest {
 
     @Test
     fun main_activity_is_single_top() {
-        // `standard` stacks a second MainActivity with its own ViewModelStore, so the instance that
-        // receives the redirect is not the one holding the Pending Authorization in memory.
+        // `standard` stacks a second MainActivity instance, so the instance that receives the
+        // redirect is not the one the sign-in's Auth Tab launcher is registered on.
         val activity = context.packageManager.getActivityInfo(
             ComponentName(context, MainActivity::class.java),
             0,

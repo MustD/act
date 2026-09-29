@@ -54,7 +54,7 @@ class IntentRedirectChannelTest {
 
     /**
      * An armed, opened channel with a capture already collecting — the state every test below
-     * starts from, and the one the ViewModel puts it in.
+     * starts from, and the one `SignIn` puts it in.
      */
     private suspend fun TestScope.capturing(state: String): Deferred<AuthRedirectResult> {
         val channel = channel()

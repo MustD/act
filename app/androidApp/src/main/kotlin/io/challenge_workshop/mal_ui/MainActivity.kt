@@ -17,7 +17,7 @@ import io.challenge_workshop.mal_ui.auth.AuthRedirectInbox
  * repository, and on a cold start neither exists yet when the Intent arrives.
  *
  * `launchMode="singleTop"` in the manifest is what makes this work at all. Under `standard` the
- * redirect Intent starts a *second* `MainActivity` with its own `ViewModelStore`, and nothing
+ * redirect Intent starts a *second* `MainActivity` instance, and nothing
  * throws — the redirect simply does nothing.
  */
 class MainActivity : ComponentActivity() {

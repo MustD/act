@@ -8,7 +8,7 @@ import kotlin.coroutines.cancellation.CancellationException
  *
  * [await] parks until [deliver] is called, so a test can inspect the Pending Authorization that the
  * sign-in just minted and then hand back a redirect carrying its `state` — which is what a real capture
- * receives and what the ViewModel checks. Pass [awaitResult] instead when the result does not depend on
+ * receives and what `SignIn` checks. Pass [awaitResult] instead when the result does not depend on
  * anything the flow produced.
  *
  * `openedUrls` is a list rather than a flag on purpose: "was `open` called at all" is the assertion the
