@@ -490,4 +490,18 @@ class SignedInScreenTest {
             )
         }
     }
+
+    /**
+     * A failed sign-out used to share the Sign-in's error field, and so showed under "Sign-in failed".
+     * It is the signed-in operation's failure now, and lands on the screen the user is looking at.
+     */
+    @Test
+    fun a_failed_sign_out_shows_on_the_signed_in_screen_and_not_as_a_failed_sign_in() {
+        runComposeUiTest {
+            setContent { SessionRoute(signedIn(error = "store is read-only"), RecordedActions().actions) }
+
+            onNodeWithText("store is read-only", substring = true).assertIsDisplayed()
+            onNodeWithText("Sign-in failed").assertDoesNotExist()
+        }
+    }
 }

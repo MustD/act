@@ -34,6 +34,7 @@ import io.challenge_workshop.mal_ui.mal.MalAuthConfig
 import io.challenge_workshop.mal_ui.session.FakeKeyValueStore
 import io.challenge_workshop.mal_ui.session.JsonTokenStore
 import io.challenge_workshop.mal_ui.session.MalSessionRepository
+import io.challenge_workshop.mal_ui.session.SessionControls
 import io.challenge_workshop.mal_ui.session.SessionState
 import io.challenge_workshop.mal_ui.session.authorizationUrlFor
 import java.util.Collections
@@ -93,7 +94,11 @@ class SignInScreenTest {
         // Built in a scope of its own, cancelled below: `SignIn` is process-scoped and nothing else
         // would end it.
         val signInScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
-        val viewModel = MalSessionViewModel(repository, SignIn(repository, StartupRedirect.None, signInScope))
+        val viewModel = MalSessionViewModel(
+            repository,
+            SignIn(repository, StartupRedirect.None, signInScope),
+            SessionControls(repository, signInScope),
+        )
         // Its own scope, cancelled below: nothing else would ever end the collector that watches the
         // Session, or a page request still in flight when the repository underneath is closed.
         val listScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)

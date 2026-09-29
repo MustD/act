@@ -10,6 +10,7 @@ import io.challenge_workshop.mal_ui.mal.MAL_CLIENT_ID
 import io.challenge_workshop.mal_ui.mal.MalAuthConfig
 import io.challenge_workshop.mal_ui.session.JsonTokenStore
 import io.challenge_workshop.mal_ui.session.MalSessionRepository
+import io.challenge_workshop.mal_ui.session.SessionControls
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -82,10 +83,19 @@ val appModule: Module = module {
         )
     }
 
+    // A `single` with a scope of its own, like `SignIn`, so an operation outlives a screen going away.
+    // `Main.immediate` runs one inside the click that asked for it.
+    single {
+        SessionControls(
+            repository = get(),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+        )
+    }
+
     // Resolved with `koinViewModel()` from `App()`. A `viewModel` rather than a `single`, so it is
     // scoped to the composition's ViewModelStore like any other ViewModel; everything durable it
     // touches lives in the repository singleton above, so being recreated costs nothing.
-    viewModel { MalSessionViewModel(repository = get(), signIn = get()) }
+    viewModel { MalSessionViewModel(repository = get(), signIn = get(), sessionControls = get()) }
 
     // A `single`, like the Session it watches: it builds one list per Session and discards it when the
     // Session ends, so that lifetime is its own interface rather than a consequence of scoping here.

@@ -24,6 +24,12 @@ outcome, when the user backs out, or when the Session stops being Authorizing by
 screen going away ends it. Its durable half is the Pending Authorization, which outlives it. In code it is `SignIn`.
 _Avoid_: Login (the event a successful Sign-in produces), auth flow
 
+**Session Controls**:
+The signed-in screen's one-shot operations — sign-out, reloading the profile, the debug panel's buttons — with a status
+of their own, so a failed sign-out is never shown as a failed Sign-in. One at a time: a call made while another is
+running is dropped, not queued. It does not know the Sign-in exists. In code it is `SessionControls`.
+_Avoid_: Session actions, account menu
+
 **Redirect Capture**:
 The platform-specific means by which the authorization code gets from MAL's redirect back into the app: a loopback HTTP
 listener on desktop, a custom-scheme intent or Auth Tab result on Android, a popup message or same-origin route on web.
