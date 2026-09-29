@@ -67,7 +67,13 @@ class SignIn(
                 repository.restore()
                 // Safe to overwrite: nothing can have been typed yet, the Restoring screen has no field.
                 _state.update { it.copy(clientId = repository.config.value.clientId) }
-                startupRedirect.consume()?.let { raw -> exchange = launchExchange(raw) }
+                startupRedirect.consume()?.let { launch ->
+                    // The one place the rule lives: a redirect is completed while a sign-in is pending,
+                    // and otherwise only when the platform says a stale one is worth reporting.
+                    if (repository.state.value is SessionState.Authorizing || launch.reportIfStale) {
+                        exchange = launchExchange(launch.rawRedirect)
+                    }
+                }
             }
         }
     }

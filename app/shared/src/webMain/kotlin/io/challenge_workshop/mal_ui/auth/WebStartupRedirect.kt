@@ -15,7 +15,7 @@ package io.challenge_workshop.mal_ui.auth
  */
 internal class WebStartupRedirect : StartupRedirect {
 
-    override suspend fun consume(): String? {
+    override suspend fun consume(): StartupRedirectValue? {
         if (!carriesAuthRedirect(currentSearch())) return null
         val redirect = currentHref()
         // Cleared here rather than after the exchange, so nothing that happens next can leave a
@@ -23,6 +23,6 @@ internal class WebStartupRedirect : StartupRedirect {
         // pick it up. What survives a failed exchange is the Pending Authorization, which is what
         // retrying actually needs.
         clearAuthQuery()
-        return redirect
+        return StartupRedirectValue(redirect, reportIfStale = true)
     }
 }

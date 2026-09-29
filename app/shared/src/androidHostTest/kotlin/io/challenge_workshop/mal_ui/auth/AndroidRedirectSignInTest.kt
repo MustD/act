@@ -278,7 +278,7 @@ class AndroidRedirectSignInTest {
         private val signInScope = CoroutineScope(SupervisorJob() + UnconfinedTestDispatcher(scope.testScheduler))
         val signIn = SignIn(
             repository = repository,
-            startupRedirect = AndroidStartupRedirect(store, inbox),
+            startupRedirect = AndroidStartupRedirect(inbox),
             // On the scheduler `settle()` drives, as everything in this fixture does.
             scope = signInScope,
         )

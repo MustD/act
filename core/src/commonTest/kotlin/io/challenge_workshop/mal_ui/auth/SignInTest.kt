@@ -345,7 +345,7 @@ class SignInTest {
     @Test
     fun a_launch_carrying_a_redirect_completes_the_sign_in() = signInTest(
         seed = { seedPending() },
-        startup = { "$REDIRECT_URI?code=a-code&state=a-state" },
+        startup = { redirect() },
     ) {
         awaitSignedIn()
         assertNull(store.readPending(), "A spent Pending Authorization must not survive the launch.")
@@ -358,7 +358,7 @@ class SignInTest {
     @Test
     fun the_store_is_read_before_the_redirect_is_completed() = signInTest(
         seed = { seedPending() },
-        startup = { "$REDIRECT_URI?code=a-code&state=a-state" },
+        startup = { redirect() },
     ) {
         awaitSignedIn()
         assertTrue(stateWhenConsumed is SessionState.Authorizing, "$stateWhenConsumed")
@@ -366,7 +366,7 @@ class SignInTest {
 
     @Test
     fun a_launch_carrying_a_code_with_nothing_to_complete_it_says_so() = signInTest(
-        startup = { "$REDIRECT_URI?code=a-code&state=a-state" },
+        startup = { redirect() },
     ) {
         // Silence here reads as "the sign-in button did nothing".
         val error = assertNotNull(signIn.state.value.error)
@@ -375,9 +375,43 @@ class SignInTest {
     }
 
     @Test
+    fun a_stale_launch_redirect_is_completed_when_the_platform_says_to_report_it() = signInTest(
+        startup = { redirect(reportIfStale = true) },
+    ) {
+        assertNotNull(signIn.state.value.error)
+    }
+
+    @Test
+    fun a_stale_launch_redirect_is_discarded_silently_when_the_platform_says_not_to() = signInTest(
+        startup = { redirect(reportIfStale = false) },
+    ) {
+        assertNull(signIn.state.value.error)
+        assertEquals(SignInPhase.Idle, signIn.state.value.phase)
+        assertEquals(SessionState.SignedOut(SignedOutReason.NeverSignedIn), repository.state.value)
+    }
+
+    @Test
+    fun an_authorizing_session_completes_a_launch_redirect_that_is_not_reported_if_stale() = signInTest(
+        seed = { seedPending() },
+        startup = { redirect(reportIfStale = false) },
+    ) {
+        awaitSignedIn()
+        assertNull(store.readPending())
+    }
+
+    @Test
+    fun an_authorizing_session_completes_a_launch_redirect_that_is_reported_if_stale() = signInTest(
+        seed = { seedPending() },
+        startup = { redirect(reportIfStale = true) },
+    ) {
+        awaitSignedIn()
+        assertNull(store.readPending())
+    }
+
+    @Test
     fun a_launch_carrying_a_denial_fails_exactly_as_the_same_paste_would() = signInTest(
         seed = { seedPending() },
-        startup = { "$REDIRECT_URI?error=access_denied&error_description=denied" },
+        startup = { redirect("$REDIRECT_URI?error=access_denied&error_description=denied") },
     ) {
         val pasting = another(seed = { seedPending() })
         pasting.signIn.setPastedRedirect("$REDIRECT_URI?error=access_denied&error_description=denied")
@@ -396,6 +430,11 @@ class SignInTest {
     }
 
     // ---- harness ----
+
+    private fun redirect(
+        raw: String = "$REDIRECT_URI?code=a-code&state=a-state",
+        reportIfStale: Boolean = true,
+    ) = StartupRedirectValue(raw, reportIfStale)
 
     /** One app's worth of graph, with a [SignIn] built over it on the test's own scope. */
     private class Fixture(private val testScope: TestScope, holdExchange: Boolean) {
@@ -421,7 +460,7 @@ class SignInTest {
         )
 
         /** Constructs the [SignIn] — which restores and takes the startup redirect — after seeding. */
-        fun launch(startup: (Fixture.() -> String?)?) {
+        fun launch(startup: (Fixture.() -> StartupRedirectValue?)?) {
             signIn = SignIn(
                 repository = repository,
                 startupRedirect = StartupRedirect {
@@ -450,7 +489,7 @@ class SignInTest {
 
     private fun signInTest(
         seed: suspend Fixture.() -> Unit = {},
-        startup: (Fixture.() -> String?)? = null,
+        startup: (Fixture.() -> StartupRedirectValue?)? = null,
         holdExchange: Boolean = false,
         block: suspend Fixture.() -> Unit,
     ) = runTest {

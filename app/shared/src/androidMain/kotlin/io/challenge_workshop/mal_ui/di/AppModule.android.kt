@@ -25,5 +25,5 @@ actual val platformModule: Module = module {
     // A redirect normally arrives at a *running* Activity and goes to the armed channel. It arrives
     // at a launch only when the process was killed while the user was away on myanimelist.net —
     // which is ordinary on a low-RAM device — and then there is no armed channel left to take it.
-    single<StartupRedirect> { AndroidStartupRedirect(store = get()) }
+    single<StartupRedirect> { AndroidStartupRedirect() }
 }

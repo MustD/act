@@ -25,9 +25,10 @@ fun interface StartupRedirect {
      * would find it.
      *
      * @return the redirect exactly as the platform saw it — the same unparsed string a paste or a
-     * capture produces, so all three go through one parser and fail identically.
+     * capture produces, so all three go through one parser and fail identically — together with a
+     * fact about it. The platform states the fact; `SignIn` decides what to do with it.
      */
-    suspend fun consume(): String?
+    suspend fun consume(): StartupRedirectValue?
 
     companion object {
         /**
@@ -38,3 +39,14 @@ fun interface StartupRedirect {
         val None: StartupRedirect = StartupRedirect { null }
     }
 }
+
+/**
+ * What a platform found at launch.
+ *
+ * @property rawRedirect the unparsed redirect.
+ * @property reportIfStale whether the redirect is still worth reporting when no sign-in is in
+ * progress. Web says yes: a `?code=` in the address bar always means the user *just* came back from
+ * MyAnimeList. Android says no: a launch Intent is not a user action, and the system re-delivers it
+ * on every later relaunch of the task, days after the login it belongs to finished.
+ */
+data class StartupRedirectValue(val rawRedirect: String, val reportIfStale: Boolean)

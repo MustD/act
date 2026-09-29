@@ -1,7 +1,5 @@
 package io.challenge_workshop.mal_ui.auth
 
-import io.challenge_workshop.mal_ui.session.JsonTokenStore
-
 /**
  * Android's [StartupRedirect]: a redirect that reached `MainActivity` before there was anything to
  * hand it to.
@@ -18,26 +16,23 @@ import io.challenge_workshop.mal_ui.session.JsonTokenStore
  * `MalSessionRepository.completeAuthorization`.
  */
 internal class AndroidStartupRedirect(
-    private val store: JsonTokenStore,
     private val inbox: AuthRedirectInbox = AuthRedirectInbox.Shared,
 ) : StartupRedirect {
 
     /**
-     * Takes the launch redirect, but only while there is something left to complete it with.
+     * Takes the launch redirect and marks it [StartupRedirectValue.reportIfStale] = false.
      *
-     * The guard is Android-specific and deliberate. A launch Intent is not a user action: it stays
-     * on the `ActivityRecord` of an activity that a redirect started, so the *system* re-delivers it
-     * on every later relaunch of that task — days after the login it belongs to finished. Handing
-     * that on would put "there is no sign-in in progress on this device" over a Session that is
-     * working perfectly, with nobody having done anything.
+     * A launch Intent is not a user action: it stays on the `ActivityRecord` of an activity that a
+     * redirect started, so the *system* re-delivers it on every later relaunch of that task — days
+     * after the login it belongs to finished. `SignIn` completes it only while the Session is
+     * `Authorizing` and discards it silently otherwise, rather than putting "there is no sign-in in
+     * progress" over a Session that is working perfectly. This class no longer reads the store to
+     * decide that: the Pending Authorization has one reader, `MalSessionRepository`.
      *
-     * Web hands its equivalent on unconditionally, and that difference is the point: a `?code=` in
-     * the address bar always means the user *just* came back from MyAnimeList, so there the message
-     * is worth showing. A redirect that arrives while this app is running — the ordinary case —
-     * still goes through [IntentRedirectChannel] and still reports every error it produces.
+     * Web marks its equivalent the other way, because a `?code=` in the address bar always means the
+     * user *just* came back. A redirect that arrives while this app is running still goes through
+     * [IntentRedirectChannel] and still reports every error it produces.
      */
-    override suspend fun consume(): String? {
-        if (store.readPending() == null) return null
-        return inbox.claimLaunchRedirect()
-    }
+    override suspend fun consume(): StartupRedirectValue? =
+        inbox.claimLaunchRedirect()?.let { StartupRedirectValue(it, reportIfStale = false) }
 }

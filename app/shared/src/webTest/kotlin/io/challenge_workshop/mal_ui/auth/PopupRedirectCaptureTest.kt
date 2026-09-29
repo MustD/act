@@ -83,7 +83,7 @@ class PopupRedirectCaptureTest {
                 WebStartupRedirect().consume(),
                 "the launch is carrying a redirect and nothing else will deliver it",
             )
-            repository.completeAuthorization(redirect)
+            repository.completeAuthorization(redirect.rawRedirect)
 
             assertIs<SessionState.SignedIn>(repository.state.value)
             assertEquals("", currentSearch(), "a reload must not find the single-use code again")
