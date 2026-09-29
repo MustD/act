@@ -5,6 +5,7 @@ import io.challenge_workshop.mal_ui.session.SessionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,8 +35,8 @@ import kotlinx.coroutines.launch
  * refresh already under way when the Session ends is `MalSessionRepository`'s and finishes regardless
  * — it is non-cancellable on purpose (KTOR-8285).
  *
- * The operations do not suspend. Each launches into the current Session's own `Job`, which is what
- * ending the Session cancels, and outside a Session there is no `Job` and they do nothing.
+ * The operations do not suspend. Each launches into the current Session's own scope, which is what
+ * ending the Session cancels, and outside a Session there is no scope and they do nothing.
  *
  * @param scope where everything runs. `Dispatchers.Main.immediate` in the app, which confines the
  * pager to one thread and makes an operation start inside the click that asked for it — the same
@@ -50,10 +51,10 @@ class AnimeListRepository(
     /** The current Session's Anime List, or the empty default when there is no Session. */
     val state: StateFlow<AnimeListState> = _state.asStateFlow()
 
-    /** The current Session's list, and the `Job` everything it does runs under. Null outside a Session. */
+    /** The current Session's list, and the scope everything it does runs in. Null outside a Session. */
     private var current: SessionList? = null
 
-    private class SessionList(val pager: AnimeListPager, val job: Job)
+    private class SessionList(val pager: AnimeListPager, val sessionScope: CoroutineScope)
 
     init {
         scope.launch {
@@ -73,16 +74,19 @@ class AnimeListRepository(
     private fun begin() {
         // A child of the scope's own job, and a supervisor: one operation failing must not take the
         // Session's list down with it. The pager catches every failure it can report, so this is a
-        // floor rather than a path.
-        val job = SupervisorJob(scope.coroutineContext[Job])
+        // floor rather than a path. Held as a scope rather than a bare `Job` only so nothing passes a
+        // `Job` to `launch`, an overload kotlinx.coroutines deprecates; the coroutines it runs are the same.
+        val sessionScope = CoroutineScope(
+            scope.coroutineContext + SupervisorJob(scope.coroutineContext[Job]),
+        )
         val pager = AnimeListPager(session.animeListClient())
-        current = SessionList(pager, job)
-        scope.launch(job) { pager.state.collect { _state.value = it } }
-        scope.launch(job) { pager.start() }
+        current = SessionList(pager, sessionScope)
+        sessionScope.launch { pager.state.collect { _state.value = it } }
+        sessionScope.launch { pager.start() }
     }
 
     private fun end() {
-        current?.job?.cancel()
+        current?.sessionScope?.cancel()
         current = null
         _state.value = AnimeListState()
     }
@@ -98,10 +102,10 @@ class AnimeListRepository(
     ): Boolean = this.watchStatus == watchStatus && this.sortOrder == sortOrder &&
         content !is AnimeListContent.FirstPageFailed
 
-    /** Runs [block] against the current Session's pager, under its `Job`. Nothing outside a Session. */
+    /** Runs [block] against the current Session's pager, in its scope. Nothing outside a Session. */
     private fun inSession(block: suspend (AnimeListPager) -> Unit) {
         val list = current ?: return
-        scope.launch(list.job) { block(list.pager) }
+        list.sessionScope.launch { block(list.pager) }
     }
 
     /**
