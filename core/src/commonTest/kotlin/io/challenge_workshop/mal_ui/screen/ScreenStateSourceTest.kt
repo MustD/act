@@ -5,12 +5,16 @@ import io.challenge_workshop.mal_ui.animelist.AnimeListLayout
 import io.challenge_workshop.mal_ui.animelist.AnimeListState
 import io.challenge_workshop.mal_ui.animelist.AnimeListTail
 import io.challenge_workshop.mal_ui.animelist.WatchStatus
+import io.challenge_workshop.mal_ui.auth.SignInPhase
+import io.challenge_workshop.mal_ui.auth.SignInState
 import io.challenge_workshop.mal_ui.mal.MalAuthConfig
 import io.challenge_workshop.mal_ui.mal.MalEndpoints
 import io.challenge_workshop.mal_ui.mal.MalUser
 import io.challenge_workshop.mal_ui.mal.platformMalEndpoints
 import io.challenge_workshop.mal_ui.session.PendingAuthorization
+import io.challenge_workshop.mal_ui.session.SessionControlsState
 import io.challenge_workshop.mal_ui.session.SessionDiagnostics
+import io.challenge_workshop.mal_ui.session.SessionOperation
 import io.challenge_workshop.mal_ui.session.SessionState
 import io.challenge_workshop.mal_ui.session.SignedOutReason
 import kotlinx.coroutines.CoroutineScope
@@ -39,16 +43,16 @@ class ScreenStateSourceTest {
     private val config = MutableStateFlow(MalAuthConfig(clientId = "a-client-id", redirectUri = REDIRECT_URI))
     private val animeList = MutableStateFlow(AnimeListState())
     private val layout = MutableStateFlow(AnimeListLayout.Cards)
-    private val form = MutableStateFlow(SignInForm())
-    private val diagnostics = MutableStateFlow<SessionDiagnostics?>(null)
+    private val signIn = MutableStateFlow(SignInState())
+    private val controls = MutableStateFlow(SessionControlsState())
 
     private val source = ScreenStateSource(
         session = session,
         config = config,
         animeList = animeList,
         layout = layout,
-        form = form,
-        diagnostics = diagnostics,
+        signIn = signIn,
+        controls = controls,
         scope = CoroutineScope(Dispatchers.Unconfined),
     )
 
@@ -202,12 +206,14 @@ class ScreenStateSourceTest {
      */
     @Test
     fun diagnostics_reach_only_the_signed_in_screen() {
-        diagnostics.value = SessionDiagnostics(
-            obtainedAtEpochMs = 1,
-            ageMillis = 2,
-            accessTokenLength = 3,
-            hasRefreshToken = true,
-            accessTokenIsDeliberatelyInvalid = false,
+        controls.value = SessionControlsState(
+            diagnostics = SessionDiagnostics(
+                obtainedAtEpochMs = 1,
+                ageMillis = 2,
+                accessTokenLength = 3,
+                hasRefreshToken = true,
+                accessTokenIsDeliberatelyInvalid = false,
+            ),
         )
 
         session.value = SessionState.SignedOut(SignedOutReason.NeverSignedIn)
@@ -218,38 +224,48 @@ class ScreenStateSourceTest {
     }
 
     /**
-     * `busy` and `error` are read by three screens, which is why they are on the form and not on one
-     * of them.
+     * The Sign-in reaches the two screens that show it, and the signed-in operation reaches the third:
+     * `busy` and `error` on [ScreenState.SignedIn] are the operation's, never the Sign-in's.
      */
     @Test
-    fun the_form_reaches_every_screen_that_reads_it() {
-        form.value = SignInForm(clientId = "typed", busy = true, error = "boom")
+    fun each_screen_reads_its_own_input() {
+        signIn.value = SignInState(clientId = "typed", phase = SignInPhase.Failed("boom"))
+        controls.value = SessionControlsState(operation = SessionOperation.Failed("sign-out broke"))
 
         session.value = SessionState.SignedOut(SignedOutReason.NeverSignedIn)
-        assertEquals(form.value, assertIs<ScreenState.SignedOut>(state).form)
+        assertEquals(signIn.value, assertIs<ScreenState.SignedOut>(state).signIn)
 
         session.value = SessionState.Authorizing(pendingAuthorization())
-        assertEquals(form.value, assertIs<ScreenState.Authorizing>(state).form)
+        assertEquals(signIn.value, assertIs<ScreenState.Authorizing>(state).signIn)
 
         session.value = SessionState.SignedIn(MalUser(1, "someone"))
-        assertEquals(true to "boom", signedIn().let { it.busy to it.error })
+        assertEquals(false to "sign-out broke", signedIn().let { it.busy to it.error })
+
+        controls.value = SessionControlsState(operation = SessionOperation.Running)
+        assertEquals(true to null, signedIn().let { it.busy to it.error })
     }
 
     /**
-     * The two things a form can be asked to do, and what blocks each.
+     * What blocks each of the two things the Sign-in can be asked to do.
      *
-     * Both are derived rather than stored because a screen that could disagree with the form about
-     * whether its own button is enabled is the bug this replaces.
+     * Both are derived from the phase rather than stored, because a screen that could disagree with
+     * the state about whether its own button is enabled is the bug this replaces. Paste stays
+     * available while the user is away — that is a rule in the type.
      */
     @Test
     fun a_blank_client_id_blocks_signing_in_and_a_blank_paste_blocks_completing_it() {
-        assertEquals(false, SignInForm(clientId = "  ").canStart)
-        assertEquals(false, SignInForm(clientId = "a", busy = true).canStart)
-        assertEquals(true, SignInForm(clientId = "a").canStart)
+        val busy = listOf(SignInPhase.Arming, SignInPhase.Exchanging)
+        val free = listOf(SignInPhase.Idle, SignInPhase.AwaitingRedirect, SignInPhase.Failed("x"))
 
-        assertEquals(false, SignInForm(pastedRedirect = " ").canComplete)
-        assertEquals(false, SignInForm(pastedRedirect = "x", busy = true).canComplete)
-        assertEquals(true, SignInForm(pastedRedirect = "x").canComplete)
+        assertEquals(false, SignInState(clientId = "  ").canStart)
+        assertEquals(true, SignInState(clientId = "a").canStart)
+        busy.forEach { assertEquals(false, SignInState(clientId = "a", phase = it).canStart, "$it") }
+        free.forEach { assertEquals(true, SignInState(clientId = "a", phase = it).canStart, "$it") }
+
+        assertEquals(false, SignInState(pastedRedirect = " ").canComplete)
+        assertEquals(true, SignInState(pastedRedirect = "x").canComplete)
+        busy.forEach { assertEquals(false, SignInState(pastedRedirect = "x", phase = it).canComplete, "$it") }
+        free.forEach { assertEquals(true, SignInState(pastedRedirect = "x", phase = it).canComplete, "$it") }
     }
 
     /**
@@ -318,16 +334,17 @@ class ScreenStateSourceTest {
         val relayed = platformMalEndpoints().tokenEndpoint != MalAuthConfig.DEFAULT_TOKEN_ENDPOINT
 
         session.value = SessionState.SignedOut(SignedOutReason.NeverSignedIn)
-        form.value = SignInForm(error = "Failed to fetch")
+        signIn.value = SignInState(phase = SignInPhase.Failed("Failed to fetch"))
         assertEquals(relayed, assertIs<ScreenState.SignedOut>(state).relayHint)
 
         session.value = SessionState.Authorizing(pendingAuthorization())
         assertEquals(relayed, assertIs<ScreenState.Authorizing>(state).relayHint)
 
         session.value = SessionState.SignedIn(MalUser(1, "someone"))
+        controls.value = SessionControlsState(operation = SessionOperation.Failed("Failed to fetch"))
         assertEquals(relayed, signedIn().relayHint)
 
-        form.value = SignInForm(error = "invalid_grant")
+        controls.value = SessionControlsState(operation = SessionOperation.Failed("invalid_grant"))
         assertEquals(false, signedIn().relayHint)
     }
 

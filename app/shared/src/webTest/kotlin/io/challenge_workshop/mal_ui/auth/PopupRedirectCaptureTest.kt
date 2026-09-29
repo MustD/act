@@ -66,7 +66,7 @@ class PopupRedirectCaptureTest {
      * The full-page-redirect fallback, end to end and over the real `sessionStorage`.
      *
      * The two halves are separately covered — `WebStartupRedirectTest` reads the address bar,
-     * `MalSessionViewModelStartupTest` completes over a fake store — and joining them is the point:
+     * `SignInTest` (in `:core`) completes over a fake store — and joining them is the point:
      * the code verifier has to come back from the **same** `sessionStorage` the document that
      * started the sign-in wrote it to, having survived that document being destroyed.
      */

@@ -11,18 +11,17 @@ import io.challenge_workshop.mal_ui.session.JsonTokenStore
 import io.challenge_workshop.mal_ui.session.MalSessionRepository
 import io.challenge_workshop.mal_ui.session.PendingAuthorization
 import io.challenge_workshop.mal_ui.session.SessionState
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
-import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -39,14 +38,9 @@ import kotlin.test.assertTrue
 @RunWith(RobolectricTestRunner::class)
 class AndroidRedirectSignInTest {
 
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
-
     @Test
     fun a_redirect_delivered_while_the_user_is_away_completes_the_login() = androidSignInTest {
-        signIn()
+        startSignIn()
         val pending = assertNotNull(store.readPending())
 
         inbox.deliver(redirectIntent(pending.state))
@@ -64,7 +58,7 @@ class AndroidRedirectSignInTest {
      */
     @Test
     fun a_device_without_an_auth_tab_completes_the_login_through_the_intent_filter() = androidSignInTest {
-        signInWithoutAuthTab()
+        startSignInWithoutAuthTab()
         val pending = assertNotNull(store.readPending())
 
         inbox.deliver(redirectIntent(pending.state))
@@ -82,7 +76,7 @@ class AndroidRedirectSignInTest {
      */
     @Test
     fun a_redirect_from_another_sign_in_never_reaches_the_store() = androidSignInTest {
-        signIn()
+        startSignIn()
         val pending = assertNotNull(store.readPending())
 
         inbox.deliver(redirectIntent("someone-elses-state"))
@@ -91,7 +85,7 @@ class AndroidRedirectSignInTest {
         assertEquals(pending, store.readPending(), "a redirect that is not ours must cost nothing")
         assertTrue(repository.state.value is SessionState.Authorizing, "${repository.state.value}")
         assertEquals(0, exchanges(), "nothing should have been sent to MyAnimeList")
-        assertNull(viewModel.form.value.error)
+        assertNull(signIn.state.value.error)
 
         // And the capture is still live, so the real redirect still completes it.
         inbox.deliver(redirectIntent(pending.state))
@@ -106,7 +100,7 @@ class AndroidRedirectSignInTest {
      */
     @Test
     fun the_same_redirect_twice_completes_exactly_one_exchange() = androidSignInTest {
-        signIn()
+        startSignIn()
         val pending = assertNotNull(store.readPending())
 
         inbox.deliver(redirectIntent(pending.state))
@@ -114,7 +108,7 @@ class AndroidRedirectSignInTest {
 
         assertEquals(SessionState.SignedIn(FAKE_MAL_USER), awaitSettledSession())
         assertEquals(1, exchanges(), "a re-delivered redirect must not be exchanged twice")
-        assertNull(viewModel.form.value.error)
+        assertNull(signIn.state.value.error)
     }
 
     /**
@@ -127,7 +121,7 @@ class AndroidRedirectSignInTest {
     fun suspected_cancellation_leaves_the_pending_authorization_in_the_store() = androidSignInTest {
         // No Auth Tab: the lifecycle heuristic is the only cancellation signal there is here, which
         // is the situation this rule exists for.
-        signInWithoutAuthTab()
+        startSignInWithoutAuthTab()
         val pending = assertNotNull(store.readPending())
 
         lifecycle.value = Lifecycle.State.CREATED
@@ -137,7 +131,7 @@ class AndroidRedirectSignInTest {
 
         assertEquals(pending, store.readPending(), "a suspected cancellation must keep the verifier")
         assertTrue(repository.state.value is SessionState.SignedOut, "${repository.state.value}")
-        assertTrue(viewModel.form.value.canStart, "and the sign-in button has to come back")
+        assertTrue(signIn.state.value.canStart, "and the sign-in button has to come back")
     }
 
     /**
@@ -176,7 +170,7 @@ class AndroidRedirectSignInTest {
         reopened.settle()
 
         assertEquals(SessionState.SignedIn(FAKE_MAL_USER), reopened.repository.state.value)
-        assertNull(reopened.viewModel.form.value.error, "a spent launch Intent must not be reported as a failure")
+        assertNull(reopened.signIn.state.value.error, "a spent launch Intent must not be reported as a failure")
     }
 
     /**
@@ -186,7 +180,7 @@ class AndroidRedirectSignInTest {
      */
     @Test
     fun an_auth_tab_result_and_an_intent_filter_redirect_together_exchange_once() = androidSignInTest {
-        signIn()
+        startSignIn()
         val pending = assertNotNull(store.readPending())
 
         authTabResults.deliver(
@@ -196,7 +190,7 @@ class AndroidRedirectSignInTest {
 
         assertEquals(SessionState.SignedIn(FAKE_MAL_USER), awaitSettledSession())
         assertEquals(1, exchanges(), "the two sides of the race must not both be exchanged")
-        assertNull(viewModel.form.value.error)
+        assertNull(signIn.state.value.error)
     }
 
     /**
@@ -206,7 +200,7 @@ class AndroidRedirectSignInTest {
      */
     @Test
     fun an_auth_tab_cancellation_leaves_the_pending_authorization_in_the_store() = androidSignInTest {
-        signIn()
+        startSignIn()
         val pending = assertNotNull(store.readPending())
 
         authTabResults.deliver(AuthTabResult(AuthTabIntent.RESULT_CANCELED, redirect = null))
@@ -214,8 +208,8 @@ class AndroidRedirectSignInTest {
 
         assertEquals(pending, store.readPending(), "a cancelled Auth Tab must keep the verifier")
         assertTrue(repository.state.value is SessionState.SignedOut, "${repository.state.value}")
-        assertTrue(viewModel.form.value.canStart, "and the sign-in button has to come back")
-        assertNull(viewModel.form.value.error, "backing out is not an error to report")
+        assertTrue(signIn.state.value.canStart, "and the sign-in button has to come back")
+        assertNull(signIn.state.value.error, "backing out is not an error to report")
     }
 
     /**
@@ -225,7 +219,7 @@ class AndroidRedirectSignInTest {
      */
     @Test
     fun a_cancelled_result_code_that_is_really_a_success_still_signs_in() = androidSignInTest {
-        signIn()
+        startSignIn()
         val pending = assertNotNull(store.readPending())
 
         authTabResults.deliver(AuthTabResult(AuthTabIntent.RESULT_CANCELED, redirect = null))
@@ -242,7 +236,7 @@ class AndroidRedirectSignInTest {
      */
     @Test
     fun a_stale_redirect_fired_after_a_completed_login_is_ignored() = androidSignInTest {
-        signIn()
+        startSignIn()
         val pending = assertNotNull(store.readPending())
         inbox.deliver(redirectIntent(pending.state))
         assertEquals(SessionState.SignedIn(FAKE_MAL_USER), awaitSettledSession())
@@ -252,12 +246,12 @@ class AndroidRedirectSignInTest {
         settle()
 
         assertEquals(SessionState.SignedIn(FAKE_MAL_USER), repository.state.value)
-        assertNull(viewModel.form.value.error)
+        assertNull(signIn.state.value.error)
     }
 
     /**
      * One per test, built inside `runTest` against the scheduler [settle] drives — which is what
-     * makes `viewModelScope`, and therefore every assertion here, deterministic.
+     * makes the `SignIn` scope, and therefore every assertion here, deterministic.
      */
     private class Fixture(
         private val scope: TestScope,
@@ -281,7 +275,13 @@ class AndroidRedirectSignInTest {
             ),
             clientFactory = fakeMal { requested += it.url.toString() },
         )
-        val viewModel = MalSessionViewModel(repository, AndroidStartupRedirect(store, inbox))
+        private val signInScope = CoroutineScope(SupervisorJob() + UnconfinedTestDispatcher(scope.testScheduler))
+        val signIn = SignIn(
+            repository = repository,
+            startupRedirect = AndroidStartupRedirect(store, inbox),
+            // On the scheduler `settle()` drives, as everything in this fixture does.
+            scope = signInScope,
+        )
 
         /** The Auth Tab's results, so a test can report a result code the way the launcher does. */
         val authTabResults = AuthTabResultInbox()
@@ -306,7 +306,7 @@ class AndroidRedirectSignInTest {
         fun exchanges(): Int = requested.count { it.startsWith(FAKE_MAL_TOKEN_ENDPOINT) }
 
         /** A sign-in on a device with an Auth Tab. */
-        fun signIn() = signIn(BrowserPlan.AuthTab("com.android.chrome"))
+        fun startSignIn() = startSignIn(BrowserPlan.AuthTab("com.android.chrome"))
 
         /**
          * A sign-in on a device without one, where the intent filter is the only capture there is.
@@ -315,10 +315,10 @@ class AndroidRedirectSignInTest {
          * this device there is no Auth Tab to withhold one from, so the grace window does not exist
          * and the lifecycle heuristic settles a cancellation outright.
          */
-        fun signInWithoutAuthTab() = signIn(BrowserPlan.CustomTab("org.mozilla.firefox"))
+        fun startSignInWithoutAuthTab() = startSignIn(BrowserPlan.CustomTab("org.mozilla.firefox"))
 
-        private fun signIn(plan: BrowserPlan) {
-            viewModel.signIn(channelFor(plan), openUri = {})
+        private fun startSignIn(plan: BrowserPlan) {
+            signIn.start(channelFor(plan), openUri = {})
             settle()
         }
 
@@ -328,10 +328,10 @@ class AndroidRedirectSignInTest {
             return checkNotNull(store.readPending())
         }
 
-        /** Runs everything `viewModelScope` has outstanding. */
+        /** Runs everything the `SignIn` scope has outstanding. */
         fun settle() = scope.advanceUntilIdle()
 
-        /** See `MalSessionViewModelRedirectTest` for why `settle()` alone is not enough here. */
+        /** `SignInTest` explains why `settle()` alone is not enough here. */
         suspend fun awaitSettledSession(): SessionState = repository.state.first {
             it is SessionState.SignedOut || (it is SessionState.SignedIn && it.user != null)
         }
@@ -343,13 +343,12 @@ class AndroidRedirectSignInTest {
 
         fun close() {
             children.forEach { it.close() }
+            signInScope.cancel()
             repository.close()
         }
     }
 
     private fun androidSignInTest(block: suspend Fixture.() -> Unit) = runTest {
-        // viewModelScope runs on Dispatchers.Main, which no test platform provides by default.
-        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
         val fixture = Fixture(this)
         try {
             fixture.block()

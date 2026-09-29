@@ -2,10 +2,11 @@ package io.challenge_workshop.mal_ui.screen
 
 import io.challenge_workshop.mal_ui.animelist.AnimeListLayout
 import io.challenge_workshop.mal_ui.animelist.AnimeListState
+import io.challenge_workshop.mal_ui.auth.SignInState
 import io.challenge_workshop.mal_ui.mal.MalAuthConfig
 import io.challenge_workshop.mal_ui.mal.MalEndpoints
 import io.challenge_workshop.mal_ui.mal.platformMalEndpoints
-import io.challenge_workshop.mal_ui.session.SessionDiagnostics
+import io.challenge_workshop.mal_ui.session.SessionControlsState
 import io.challenge_workshop.mal_ui.session.authorizationUrlFor
 import io.challenge_workshop.mal_ui.session.SessionState
 import kotlinx.coroutines.CoroutineScope
@@ -49,14 +50,14 @@ class ScreenStateSource(
     config: StateFlow<MalAuthConfig>,
     animeList: StateFlow<AnimeListState>,
     layout: StateFlow<AnimeListLayout>,
-    form: StateFlow<SignInForm>,
-    diagnostics: StateFlow<SessionDiagnostics?>,
+    signIn: StateFlow<SignInState>,
+    controls: StateFlow<SessionControlsState>,
     scope: CoroutineScope,
 ) {
     private val endpoints: MalEndpoints = platformMalEndpoints()
 
     val state: StateFlow<ScreenState> =
-        // Six flows through the *five*-argument overload, with the two the ViewModel owns paired
+        // Six flows through the *five*-argument overload, with the two that are not the Session's own paired
         // first. `combine` is only typed up to five: the six-argument form hands the lambda an
         // `Array<Any?>` to index and cast, which compiles just as happily when two inputs of the
         // same type are swapped. This keeps every input checked by the compiler.
@@ -65,9 +66,9 @@ class ScreenStateSource(
             config,
             animeList,
             layout,
-            combine(form, diagnostics) { form, diagnostics -> form to diagnostics },
-        ) { session, config, animeList, layout, (form, diagnostics) ->
-            screenState(session, config, animeList, layout, form, diagnostics)
+            combine(signIn, controls) { signIn, controls -> signIn to controls },
+        ) { session, config, animeList, layout, (signIn, controls) ->
+            screenState(session, config, animeList, layout, signIn, controls)
         }.stateIn(
             scope = scope,
             started = SharingStarted.Eagerly,
@@ -76,8 +77,8 @@ class ScreenStateSource(
                 config = config.value,
                 animeList = animeList.value,
                 layout = layout.value,
-                form = form.value,
-                diagnostics = diagnostics.value,
+                signIn = signIn.value,
+                controls = controls.value,
             ),
         )
 
@@ -95,8 +96,8 @@ class ScreenStateSource(
         config: MalAuthConfig,
         animeList: AnimeListState,
         layout: AnimeListLayout,
-        form: SignInForm,
-        diagnostics: SessionDiagnostics?,
+        signIn: SignInState,
+        controls: SessionControlsState,
     ): ScreenState {
         val routing = MalRouting(endpoints = endpoints, redirectUri = config.redirectUri)
         return when (session) {
@@ -105,15 +106,15 @@ class ScreenStateSource(
             is SessionState.SignedOut -> ScreenState.SignedOut(
                 explanation = explain(session.reason),
                 error = session.error,
-                form = form,
+                signIn = signIn,
                 routing = routing,
-                relayHint = routing.suggestsDeadRelay(session.error) || routing.suggestsDeadRelay(form.error),
+                relayHint = routing.suggestsDeadRelay(session.error) || routing.suggestsDeadRelay(signIn.error),
             )
 
             is SessionState.Authorizing -> ScreenState.Authorizing(
                 authorizationUrl = authorizationUrlFor(config, session.pending),
-                form = form,
-                relayHint = routing.suggestsDeadRelay(form.error),
+                signIn = signIn,
+                relayHint = routing.suggestsDeadRelay(signIn.error),
             )
 
             is SessionState.SignedIn -> ScreenState.SignedIn(
@@ -121,11 +122,11 @@ class ScreenStateSource(
                 refreshing = session.refreshing,
                 list = animeList,
                 layout = layout,
-                busy = form.busy,
-                error = form.error,
-                diagnostics = diagnostics,
+                busy = controls.busy,
+                error = controls.error,
+                diagnostics = controls.diagnostics,
                 routing = routing,
-                relayHint = routing.suggestsDeadRelay(form.error),
+                relayHint = routing.suggestsDeadRelay(controls.error),
             )
         }
     }

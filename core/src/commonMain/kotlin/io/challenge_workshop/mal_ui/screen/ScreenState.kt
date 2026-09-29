@@ -2,6 +2,7 @@ package io.challenge_workshop.mal_ui.screen
 
 import io.challenge_workshop.mal_ui.animelist.AnimeListLayout
 import io.challenge_workshop.mal_ui.animelist.AnimeListState
+import io.challenge_workshop.mal_ui.auth.SignInState
 import io.challenge_workshop.mal_ui.mal.MalEndpoints
 import io.challenge_workshop.mal_ui.mal.MalUser
 import io.challenge_workshop.mal_ui.session.SessionDiagnostics
@@ -48,9 +49,9 @@ sealed interface ScreenState {
         val explanation: String,
         /** What went wrong on the way out, if the Session ended in a failure rather than a choice. */
         val error: String?,
-        val form: SignInForm,
+        val signIn: SignInState,
         val routing: MalRouting,
-        /** See [MalRouting.suggestsDeadRelay]; true when [error] or the form's error reads that way. */
+        /** See [MalRouting.suggestsDeadRelay]; true when [error] or the Sign-in's failure reads that way. */
         val relayHint: Boolean = false,
     ) : ScreenState
 
@@ -63,8 +64,8 @@ sealed interface ScreenState {
      */
     data class Authorizing(
         val authorizationUrl: String,
-        val form: SignInForm,
-        /** See [MalRouting.suggestsDeadRelay]; true when the form's error reads that way. */
+        val signIn: SignInState,
+        /** See [MalRouting.suggestsDeadRelay]; true when the Sign-in's failure reads that way. */
         val relayHint: Boolean = false,
     ) : ScreenState
 
@@ -78,8 +79,8 @@ sealed interface ScreenState {
      * [refreshing] is the *Session* refreshing, not the list — it draws as a spinner beside the name
      * precisely because a refresh must not unmount this screen.
      *
-     * [busy] and [error] are the sign-in form's two fields, flattened: this screen has no form, but
-     * a sign-out can be in flight and a failure has to land somewhere the user is looking.
+     * [busy] and [error] are the signed-in operation's, flattened: a sign-out can be in flight and a
+     * failure has to land somewhere the user is looking.
      */
     data class SignedIn(
         val user: MalUser?,
@@ -126,30 +127,6 @@ data class MalRouting(
     private companion object {
         const val MYANIMELIST_ORIGIN = "https://myanimelist.net"
     }
-}
-
-/**
- * The ephemeral half of signing in: what is typed, whether something is in flight, and what failed.
- *
- * Separate from [SessionDiagnostics], which is the other thing `MalSessionViewModel` owns: [busy] and
- * [error] are read by three screens, diagnostics by one dialog that only opens deliberately. One
- * value would mean every keystroke in the Client ID field emitted a record carrying diagnostics
- * nothing is reading.
- *
- * Losing all of it to a configuration change or process death is correct — everything durable belongs
- * to `MalSessionRepository`.
- */
-data class SignInForm(
-    val clientId: String = "",
-    val pastedRedirect: String = "",
-    val busy: Boolean = false,
-    val error: String? = null,
-) {
-    /** Signing in needs a Client ID and nothing else in flight. */
-    val canStart: Boolean get() = clientId.isNotBlank() && !busy
-
-    /** Paste-the-code needs something pasted and nothing else in flight. */
-    val canComplete: Boolean get() = pastedRedirect.isNotBlank() && !busy
 }
 
 /**

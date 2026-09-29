@@ -94,8 +94,8 @@ internal fun AppScreen(
             config = viewModel.config,
             animeList = animeList.state,
             layout = layout.value,
-            form = viewModel.form,
-            diagnostics = viewModel.diagnostics,
+            signIn = viewModel.signInState,
+            controls = viewModel.controls,
             scope = scope,
         )
     }

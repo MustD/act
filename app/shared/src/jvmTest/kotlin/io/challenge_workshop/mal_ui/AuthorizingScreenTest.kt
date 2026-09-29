@@ -10,7 +10,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.v2.runComposeUiTest
 import io.challenge_workshop.mal_ui.mal.DESKTOP_REDIRECT_URI
-import io.challenge_workshop.mal_ui.screen.SignInForm
+import io.challenge_workshop.mal_ui.auth.SignInState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -50,7 +50,7 @@ class AuthorizingScreenTest {
      * Paste-the-code's second half: the field and the two buttons beside it.
      *
      * Every outcome lands on the same call the platform Redirect Captures funnel into, so what a
-     * paste then does is `MalSessionViewModelRedirectTest`'s — one parser and one set of error
+     * paste then does is `SignInTest`'s (in `:core`) — one parser and one set of error
      * messages, whichever way the redirect arrived. What is left here is that the field reports what
      * was typed and the two buttons are not wired to each other's action.
      */
@@ -61,7 +61,7 @@ class AuthorizingScreenTest {
         runComposeUiTest {
             setContent {
                 SessionRoute(
-                    authorizing(form = SignInForm(clientId = "a-client-id", pastedRedirect = "half a")),
+                    authorizing(signIn = SignInState(clientId = "a-client-id", pastedRedirect = "half a")),
                     actions.actions,
                 )
             }

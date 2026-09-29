@@ -113,7 +113,7 @@ internal fun screenActions(
     ),
     authorizing = AuthorizingActions(
         onPastedRedirectChange = viewModel::onPastedRedirectChange,
-        onCompleteSignIn = { viewModel.completeSignIn() },
+        onCompleteSignIn = viewModel::completeSignIn,
         onCancelSignIn = viewModel::cancelSignIn,
     ),
     signedIn = SignedInActions(

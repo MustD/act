@@ -1,5 +1,3 @@
-@file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-
 package io.challenge_workshop.mal_ui.auth
 
 import io.challenge_workshop.mal_ui.mal.DESKTOP_LOOPBACK_PORT
@@ -17,9 +15,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeout
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -32,7 +27,7 @@ import kotlin.time.Duration.Companion.seconds
  * A denial on myanimelist.net, carried by desktop's real Redirect Capture into the real repository.
  *
  * [LoopbackRedirectListenerTest] pins what the listener hands back, and
- * `MalSessionViewModelRedirectTest` what the ViewModel does with a `Received` — but that one drives a
+ * `SignInTest` what `SignIn` does with a `Received` — but that one drives a
  * fake capture, so a listener that quietly went back to judging the redirect itself would pass both.
  * This is the test that sees the drift: a denial has to end here exactly as it does on web and Android,
  * and exactly as the same redirect pasted by hand.
@@ -40,18 +35,17 @@ import kotlin.time.Duration.Companion.seconds
 class LoopbackDenialTest {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val signInJob = SupervisorJob()
 
     @AfterTest
     fun tearDown() {
         scope.cancel()
-        Dispatchers.resetMain()
+        signInJob.cancel()
         assertTrue(awaitLoopbackPortFree(), "The denial left $DESKTOP_LOOPBACK_PORT bound.")
     }
 
     @Test
     fun a_denial_signs_out_with_authorization_failed_and_clears_the_pending_authorization() = runBlocking {
-        // viewModelScope runs on Dispatchers.Main, which the JVM test platform does not provide.
-        Dispatchers.setMain(UnconfinedTestDispatcher())
         val store = JsonTokenStore(FakeKeyValueStore())
         val repository = MalSessionRepository(
             store,
@@ -63,9 +57,9 @@ class LoopbackDenialTest {
             ),
             clientFactory = fakeMal(),
         )
-        val viewModel = MalSessionViewModel(repository, StartupRedirect.None)
+        val signIn = SignIn(repository, StartupRedirect.None, CoroutineScope(signInJob + Dispatchers.Unconfined))
         try {
-            viewModel.signIn(LoopbackRedirectListener(scope, launchBrowser = {}), openUri = {})
+            signIn.start(LoopbackRedirectListener(scope, launchBrowser = {}), openUri = {})
             // Arming binds a socket on `Dispatchers.IO`, so reaching `Authorizing` is a real wait.
             val pending = withTimeout(WAIT) {
                 repository.state.filterIsInstance<SessionState.Authorizing>().first().pending
@@ -84,7 +78,7 @@ class LoopbackDenialTest {
                 "MAL said no, so the attempt is over — a verifier left behind would outlive it.",
             )
         } finally {
-            viewModel.cancelSignIn()
+            signIn.cancel()
             repository.close()
         }
     }

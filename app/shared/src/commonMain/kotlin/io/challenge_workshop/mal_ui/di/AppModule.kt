@@ -3,6 +3,7 @@ package io.challenge_workshop.mal_ui.di
 import io.challenge_workshop.mal_ui.animelist.AnimeListRepository
 import io.challenge_workshop.mal_ui.animelist.LayoutPreference
 import io.challenge_workshop.mal_ui.auth.MalSessionViewModel
+import io.challenge_workshop.mal_ui.auth.SignIn
 import io.challenge_workshop.mal_ui.auth.StartupRedirect
 import io.challenge_workshop.mal_ui.mal.HttpClientFactory
 import io.challenge_workshop.mal_ui.mal.MAL_CLIENT_ID
@@ -68,10 +69,22 @@ val appModule: Module = module {
         )
     }
 
+    // A `single` with a scope of its own, like the Anime List: a Sign-in lasts until it ends, and
+    // nothing about a screen or composition going away is one of the ways it ends. `Main.immediate` so
+    // that `start` runs inside the click that asked for it — a web popup's user activation depends on it.
+    // Constructing it restores the Session, so it is resolved eagerly by `App()`.
+    single {
+        SignIn(
+            repository = get(),
+            startupRedirect = get(),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+        )
+    }
+
     // Resolved with `koinViewModel()` from `App()`. A `viewModel` rather than a `single`, so it is
     // scoped to the composition's ViewModelStore like any other ViewModel; everything durable it
     // touches lives in the repository singleton above, so being recreated costs nothing.
-    viewModel { MalSessionViewModel(repository = get(), startupRedirect = get()) }
+    viewModel { MalSessionViewModel(repository = get(), signIn = get()) }
 
     // A `single`, like the Session it watches: it builds one list per Session and discards it when the
     // Session ends, so that lifetime is its own interface rather than a consequence of scoping here.

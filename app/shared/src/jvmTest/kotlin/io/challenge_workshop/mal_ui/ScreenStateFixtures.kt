@@ -24,6 +24,7 @@ import io.challenge_workshop.mal_ui.animelist.WatchStatus
 import io.challenge_workshop.mal_ui.auth.AuthorizingActions
 import io.challenge_workshop.mal_ui.auth.DiagnosticsActions
 import io.challenge_workshop.mal_ui.auth.SESSION_MENU_BUTTON_TAG
+import io.challenge_workshop.mal_ui.auth.SignInState
 import io.challenge_workshop.mal_ui.auth.ScreenActions
 import io.challenge_workshop.mal_ui.auth.SignInActions
 import io.challenge_workshop.mal_ui.auth.SignedInActions
@@ -33,7 +34,6 @@ import io.challenge_workshop.mal_ui.mal.MalEndpoints
 import io.challenge_workshop.mal_ui.mal.MalUser
 import io.challenge_workshop.mal_ui.screen.MalRouting
 import io.challenge_workshop.mal_ui.screen.ScreenState
-import io.challenge_workshop.mal_ui.screen.SignInForm
 import io.challenge_workshop.mal_ui.screen.explain
 import io.challenge_workshop.mal_ui.session.SessionDiagnostics
 import io.challenge_workshop.mal_ui.session.SignedOutReason
@@ -66,20 +66,20 @@ internal val TEST_ROUTING = MalRouting(
 internal fun signedOut(
     reason: SignedOutReason = SignedOutReason.NeverSignedIn,
     error: String? = null,
-    form: SignInForm = SignInForm(clientId = "a-client-id"),
+    signIn: SignInState = SignInState(clientId = "a-client-id"),
     relayHint: Boolean = false,
 ) = ScreenState.SignedOut(
     explanation = explain(reason),
     error = error,
-    form = form,
+    signIn = signIn,
     routing = TEST_ROUTING,
     relayHint = relayHint,
 )
 
 internal fun authorizing(
     authorizationUrl: String = TEST_AUTHORIZATION_URL,
-    form: SignInForm = SignInForm(clientId = "a-client-id"),
-) = ScreenState.Authorizing(authorizationUrl = authorizationUrl, form = form)
+    signIn: SignInState = SignInState(clientId = "a-client-id"),
+) = ScreenState.Authorizing(authorizationUrl = authorizationUrl, signIn = signIn)
 
 internal fun signedIn(
     user: MalUser? = MalUser(1, "someone"),

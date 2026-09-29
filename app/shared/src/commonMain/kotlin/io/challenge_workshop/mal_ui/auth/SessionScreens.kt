@@ -85,11 +85,11 @@ fun SignInScreen(
         )
 
         OutlinedTextField(
-            value = state.form.clientId,
+            value = state.signIn.clientId,
             onValueChange = actions.onClientIdChange,
             label = { Text("Client ID") },
             singleLine = true,
-            enabled = !state.form.busy,
+            enabled = !state.signIn.busy,
             modifier = Modifier.fillMaxWidth(),
             supportingText = {
                 Text(
@@ -116,14 +116,14 @@ fun SignInScreen(
             // activation is a timestamp window, and WebKit's is one second wide. A lambda hop is
             // synchronous, so routing this through an actions record does not spend any of it —
             // `PopupUserActivationTest` is what holds that to the production dispatcher.
-            Button(onClick = actions.onSignIn, enabled = state.form.canStart) {
+            Button(onClick = actions.onSignIn, enabled = state.signIn.canStart) {
                 Text("Sign in with MyAnimeList")
             }
-            if (state.form.busy) CircularProgressIndicator(Modifier.padding(4.dp))
+            if (state.signIn.busy) CircularProgressIndicator(Modifier.padding(4.dp))
         }
 
         state.error?.let { ErrorCard("Sign-in failed", it.withRelayAdvice(state.relayHint)) }
-        state.form.error?.let { ErrorCard("Sign-in failed", it.withRelayAdvice(state.relayHint)) }
+        state.signIn.error?.let { ErrorCard("Sign-in failed", it.withRelayAdvice(state.relayHint)) }
     }
 }
 
@@ -175,10 +175,10 @@ fun AuthorizingScreen(
         HorizontalDivider()
 
         OutlinedTextField(
-            value = state.form.pastedRedirect,
+            value = state.signIn.pastedRedirect,
             onValueChange = actions.onPastedRedirectChange,
             label = { Text("Redirect URL or authorization code") },
-            enabled = !state.form.busy,
+            enabled = !state.signIn.busy,
             minLines = 2,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -186,14 +186,14 @@ fun AuthorizingScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Button(onClick = actions.onCompleteSignIn, enabled = state.form.canComplete) {
+            Button(onClick = actions.onCompleteSignIn, enabled = state.signIn.canComplete) {
                 Text("Complete sign-in")
             }
-            TextButton(onClick = actions.onCancelSignIn, enabled = !state.form.busy) { Text("Cancel") }
-            if (state.form.busy) CircularProgressIndicator(Modifier.padding(4.dp))
+            TextButton(onClick = actions.onCancelSignIn, enabled = !state.signIn.busy) { Text("Cancel") }
+            if (state.signIn.busy) CircularProgressIndicator(Modifier.padding(4.dp))
         }
 
-        state.form.error?.let { ErrorCard("Could not complete the sign-in", it.withRelayAdvice(state.relayHint)) }
+        state.signIn.error?.let { ErrorCard("Could not complete the sign-in", it.withRelayAdvice(state.relayHint)) }
     }
 }
 

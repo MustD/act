@@ -20,6 +20,7 @@ import io.challenge_workshop.mal_ui.auth.LoopbackRedirectListener
 import io.challenge_workshop.mal_ui.auth.LoopbackRedirectListenerTest
 import io.challenge_workshop.mal_ui.auth.MalSessionViewModel
 import io.challenge_workshop.mal_ui.auth.SIGNED_OUT_REASON_TAG
+import io.challenge_workshop.mal_ui.auth.SignIn
 import io.challenge_workshop.mal_ui.auth.SessionScreenTag
 import io.challenge_workshop.mal_ui.auth.StartupRedirect
 import io.challenge_workshop.mal_ui.auth.awaitLoopbackPortFree
@@ -76,7 +77,7 @@ class SignInScreenTest {
      */
     @Test
     fun signing_in_arms_this_targets_capture_and_still_offers_paste_the_code() {
-        // viewModelScope runs on Dispatchers.Main, which the JVM test platform does not provide.
+        // The ViewModel's operations run on Dispatchers.Main, which the JVM test platform does not provide.
         Dispatchers.setMain(UnconfinedTestDispatcher())
         val store = JsonTokenStore(FakeKeyValueStore())
         val repository = MalSessionRepository(
@@ -86,7 +87,10 @@ class SignInScreenTest {
             // a unit test must not make that a real request to myanimelist.net.
             clientFactory = fakeMal(),
         )
-        val viewModel = MalSessionViewModel(repository, StartupRedirect.None)
+        // Built in a scope of its own, cancelled below: `SignIn` is process-scoped and nothing else
+        // would end it.
+        val signInScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val viewModel = MalSessionViewModel(repository, SignIn(repository, StartupRedirect.None, signInScope))
         // Its own scope, cancelled below: nothing else would ever end the collector that watches the
         // Session, or a page request still in flight when the repository underneath is closed.
         val listScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
@@ -131,6 +135,7 @@ class SignInScreenTest {
             }
         } finally {
             listScope.cancel()
+            signInScope.cancel()
             repository.close()
             Dispatchers.resetMain()
             assertTrue(

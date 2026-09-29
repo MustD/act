@@ -367,7 +367,7 @@ class LoopbackRedirectListenerTest {
         listener.arm(DESKTOP_REDIRECT_URI)
         listener.open(authorizationUrl(state = "a-state"))
 
-        // `Unsupported`, not `Failed`: the ViewModel's handling of it leaves the authorization URL
+        // `Unsupported`, not `Failed`: `SignIn`'s handling of it leaves the authorization URL
         // and the paste field on screen, which is exactly what a user who took too long needs.
         assertEquals(AuthRedirectResult.Unsupported, withTimeout(10.seconds) { listener.await() })
     }

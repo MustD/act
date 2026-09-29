@@ -24,6 +24,9 @@ class RecordingAuthRedirectChannel(
     var awaited: Int = 0
         private set
 
+    /** Whether [await] has been cancelled — the moment a real channel lets go of its port or popup. */
+    val isReleased: Boolean get() = released.isCompleted
+
     private val captured = CompletableDeferred<AuthRedirectResult>()
     private val released = CompletableDeferred<Unit>()
 
