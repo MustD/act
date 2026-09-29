@@ -14,6 +14,12 @@ kotlin {
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
         browser()
+        // Not an app — there is no `main` here. Compose's `checkComposeUiTestConfigurationForWasmJs`
+        // fails `wasmJsBrowserTest` for any test compilation that reaches Skiko without an
+        // executable, because only an executable gets its tests bundled by webpack, which is
+        // what loads the Skiko runtime. Compose UI arrives through commonMain, so that is every
+        // web test here. See https://youtrack.jetbrains.com/issue/CMP-4906.
+        binaries.executable()
     }
 
     android {
