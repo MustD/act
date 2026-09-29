@@ -321,7 +321,7 @@ class AuthTabRedirectChannelTest {
      * them reach has to be the process's, not either composition's.
      */
     @Test
-    fun a_result_delivered_through_the_shared_inbox_reaches_a_channel_built_before_recreation() = runTest {
+    fun a_channel_on_the_shared_inbox_takes_a_result_delivered_by_a_callback_it_never_saw() = runTest {
         AuthTabResultInbox.Shared.clear()
         val beforeRecreation = AuthTabRedirectChannel(
             intentFilter = IntentRedirectChannel(inbox, lifecycle) { openedPlainly += it },

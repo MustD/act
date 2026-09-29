@@ -120,7 +120,7 @@ Which attacker that stops, and which it does not:
 ### Consequences for this repo
 
 - **Never log the authorization URL, the code, or the verifier.** Pinned by
-  a test in the deleted `MalSessionViewModelTest`, which was not carried over to `SignInTest` — currently unpinned.
+  `SignInTest.nothing_the_ui_can_see_carries_a_token_a_code_or_a_verifier`.
 - **Strip the code from history where the platform allows it**, and both places that do exist for this rather than for
   tidiness: `LoopbackRedirectListener` answers the callback with a 302 to a bare path instead of rendering a page at the
   code-bearing URL, and web calls `history.replaceState` (never `pushState` — a new entry would preserve exactly what

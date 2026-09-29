@@ -63,7 +63,7 @@ fun App(
 }
 
 /**
- * The adapter between the Session, the Sign-in, the Session's controls, the Anime List, the Layout and
+ * The adapter between the Session, the Sign-in, the Session Controls, the Anime List, the Layout and
  * the one value the screens take.
  *
  * Split from [App] so it can be rendered without replacing Coil's singleton or re-theming, and split

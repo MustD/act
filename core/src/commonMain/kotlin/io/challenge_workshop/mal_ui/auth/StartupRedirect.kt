@@ -29,7 +29,7 @@ fun interface StartupRedirect {
      * capture produces, so all three go through one parser and fail identically — together with a
      * fact about it. The platform states the fact; `SignIn` decides what to do with it.
      */
-    suspend fun consume(): StartupRedirectValue?
+    suspend fun consume(): LaunchRedirect?
 
     companion object {
         /**
@@ -50,4 +50,4 @@ fun interface StartupRedirect {
  * MyAnimeList. Android says no: a launch Intent is not a user action, and the system re-delivers it
  * on every later relaunch of the task, days after the login it belongs to finished.
  */
-data class StartupRedirectValue(val rawRedirect: String, val reportIfStale: Boolean)
+data class LaunchRedirect(val rawRedirect: String, val reportIfStale: Boolean)

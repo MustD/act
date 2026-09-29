@@ -90,7 +90,26 @@ class BrowserPlanTest {
         plainly = { launched += "plainly:$it" },
     )
 
-    private fun BrowserPlan.channel() = redirectChannel(inbox, lifecycle, results, launchers)
+    private fun BrowserPlan.channel() = redirectChannel(inbox, lifecycle, launchers, results)
+
+    /**
+     * Ticket 08. `rememberAuthRedirectChannel()` takes the default, and the launcher callback delivers
+     * into [AuthTabResultInbox.Shared]; if the default were ever a fresh inbox, a result delivered
+     * after the Activity was recreated would never reach the channel a Sign-in is awaiting.
+     */
+    @Test
+    fun the_auth_tab_plan_reads_the_process_inbox_unless_told_otherwise() = runTest {
+        AuthTabResultInbox.Shared.clear()
+        val channel = BrowserPlan.AuthTab("com.android.chrome").redirectChannel(inbox, lifecycle, launchers)
+        channel.arm(ANDROID_REDIRECT_URI)
+        channel.open(authorizationUrl("our-state"))
+        val capture = async { channel.await() }
+        runCurrent()
+
+        AuthTabResultInbox.Shared.deliver(AuthTabResult(AuthTabIntent.RESULT_OK, androidRedirect("our-state")))
+
+        assertEquals(AuthRedirectResult.Received(androidRedirect("our-state")), capture.await())
+    }
 
     @Test
     fun the_auth_tab_plan_launches_an_auth_tab_and_honours_its_result_code() = runTest {
@@ -149,12 +168,13 @@ class BrowserPlanTest {
         // Asking the same browser that just refused an Auth Tab for a Custom Tab has no new answer in
         // it. The plain path resolves against everything installed, which does.
         val channel = BrowserPlan.AuthTab("com.android.chrome").redirectChannel(
-            inbox, lifecycle, results,
+            inbox, lifecycle,
             BrowserLaunchers(
                 authTab = { throw android.content.ActivityNotFoundException("no Auth Tab") },
                 customTab = { launched += "customTab:$it" },
                 plainly = { launched += "plainly:$it" },
             ),
+            results,
         )
         channel.arm(ANDROID_REDIRECT_URI)
 

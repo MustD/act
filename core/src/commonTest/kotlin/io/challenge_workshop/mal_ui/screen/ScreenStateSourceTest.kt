@@ -239,10 +239,10 @@ class ScreenStateSourceTest {
         assertEquals(signIn.value, assertIs<ScreenState.Authorizing>(state).signIn)
 
         session.value = SessionState.SignedIn(MalUser(1, "someone"))
-        assertEquals(false to "sign-out broke", signedIn().let { it.busy to it.error })
+        assertEquals(false to "sign-out broke", signedIn().let { it.busy to it.error?.message })
 
         controls.value = SessionControlsState(operation = SessionOperation.Running)
-        assertEquals(true to null, signedIn().let { it.busy to it.error })
+        assertEquals(true to null, signedIn().let { it.busy to it.error?.message })
     }
 
     /**
@@ -335,17 +335,17 @@ class ScreenStateSourceTest {
 
         session.value = SessionState.SignedOut(SignedOutReason.NeverSignedIn)
         signIn.value = SignInState(phase = SignInPhase.Failed("Failed to fetch"))
-        assertEquals(relayed, assertIs<ScreenState.SignedOut>(state).signInRelayHint)
+        assertEquals(relayed, assertIs<ScreenState.SignedOut>(state).signInError?.relayHint)
 
         session.value = SessionState.Authorizing(pendingAuthorization())
-        assertEquals(relayed, assertIs<ScreenState.Authorizing>(state).relayHint)
+        assertEquals(relayed, assertIs<ScreenState.Authorizing>(state).signInError?.relayHint)
 
         session.value = SessionState.SignedIn(MalUser(1, "someone"))
         controls.value = SessionControlsState(operation = SessionOperation.Failed("Failed to fetch"))
-        assertEquals(relayed, signedIn().relayHint)
+        assertEquals(relayed, signedIn().error?.relayHint)
 
         controls.value = SessionControlsState(operation = SessionOperation.Failed("invalid_grant"))
-        assertEquals(false, signedIn().relayHint)
+        assertEquals(false, signedIn().error?.relayHint)
     }
 
     /**
@@ -359,14 +359,14 @@ class ScreenStateSourceTest {
         session.value = SessionState.SignedOut(SignedOutReason.RefreshRejected, error = "invalid_grant")
         signIn.value = SignInState(phase = SignInPhase.Failed("Failed to fetch"))
         val bothFailed = assertIs<ScreenState.SignedOut>(state)
-        assertEquals(false, bothFailed.errorRelayHint)
-        assertEquals(relayed, bothFailed.signInRelayHint)
+        assertEquals(false, bothFailed.error?.relayHint)
+        assertEquals(relayed, bothFailed.signInError?.relayHint)
 
         session.value = SessionState.SignedOut(SignedOutReason.RefreshRejected, error = "Failed to fetch")
         signIn.value = SignInState(phase = SignInPhase.Failed("invalid_grant"))
         val swapped = assertIs<ScreenState.SignedOut>(state)
-        assertEquals(relayed, swapped.errorRelayHint)
-        assertEquals(false, swapped.signInRelayHint)
+        assertEquals(relayed, swapped.error?.relayHint)
+        assertEquals(false, swapped.signInError?.relayHint)
     }
 
     private fun signedIn(): ScreenState.SignedIn = assertIs<ScreenState.SignedIn>(state)

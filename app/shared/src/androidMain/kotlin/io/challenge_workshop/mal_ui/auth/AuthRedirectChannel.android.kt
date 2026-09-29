@@ -42,9 +42,6 @@ actual fun rememberAuthRedirectChannel(): AuthRedirectChannel {
     // Compose preview — and the plan degrades accordingly.
     val activity = LocalActivity.current
 
-    // Not remembered: the Activity can be recreated mid-sign-in, and the result then reaches the new
-    // composition's launcher while the Sign-in is still awaiting the old composition's channel.
-    val results = AuthTabResultInbox.Shared
     // Registered unconditionally, and before anything has decided whether an Auth Tab will be used,
     // because androidx requires exactly that: an `ActivityResultLauncher` must be registered before
     // the Activity reaches STARTED, so a registration behind an `if` would be missing after the
@@ -52,7 +49,10 @@ actual fun rememberAuthRedirectChannel(): AuthRedirectChannel {
     val launcher = rememberLauncherForActivityResult(
         remember { AuthTabIntent.AuthenticateUserResultContract() },
     ) { result ->
-        results.deliver(AuthTabResult(result.resultCode, result.resultUri?.toString()))
+        // The process's inbox, never one of this composition's: the Activity can be recreated
+        // mid-sign-in, and the result then reaches the new composition's launcher while the Sign-in
+        // is still awaiting the old composition's channel — which reads this same inbox by default.
+        AuthTabResultInbox.Shared.deliver(AuthTabResult(result.resultCode, result.resultUri?.toString()))
     }
 
     val plan = remember(activity) {
@@ -66,11 +66,10 @@ actual fun rememberAuthRedirectChannel(): AuthRedirectChannel {
         }
     }
 
-    return remember(plan, activity, launcher, results, uriHandler, lifecycle) {
+    return remember(plan, activity, launcher, uriHandler, lifecycle) {
         plan.redirectChannel(
             inbox = AuthRedirectInbox.Shared,
             lifecycleStates = lifecycle.currentStateFlow,
-            results = results,
             launchers = BrowserLaunchers(
                 authTab = { url -> launcher.launchAuthTab(plan.browserPackageOrEmpty(), url) },
                 customTab = { url -> activity?.launchCustomTab(plan.browserPackageOrEmpty(), url) },

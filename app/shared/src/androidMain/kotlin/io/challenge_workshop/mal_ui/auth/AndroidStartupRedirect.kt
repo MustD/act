@@ -20,7 +20,7 @@ internal class AndroidStartupRedirect(
 ) : StartupRedirect {
 
     /**
-     * Takes the launch redirect and marks it [StartupRedirectValue.reportIfStale] = false.
+     * Takes the launch redirect and marks it [LaunchRedirect.reportIfStale] = false.
      *
      * A launch Intent is not a user action: it stays on the `ActivityRecord` of an activity that a
      * redirect started, so the *system* re-delivers it on every later relaunch of that task — days
@@ -33,6 +33,6 @@ internal class AndroidStartupRedirect(
      * user *just* came back. A redirect that arrives while this app is running still goes through
      * [IntentRedirectChannel] and still reports every error it produces.
      */
-    override suspend fun consume(): StartupRedirectValue? =
-        inbox.claimLaunchRedirect()?.let { StartupRedirectValue(it, reportIfStale = false) }
+    override suspend fun consume(): LaunchRedirect? =
+        inbox.claimLaunchRedirect()?.let { LaunchRedirect(it, reportIfStale = false) }
 }

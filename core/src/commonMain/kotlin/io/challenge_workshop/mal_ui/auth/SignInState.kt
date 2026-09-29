@@ -30,8 +30,8 @@ sealed interface SignInPhase {
 /**
  * The ephemeral half of signing in: what is typed, and where the attempt is.
  *
- * Losing all of it to a configuration change or process death is correct — everything durable
- * belongs to `MalSessionRepository`.
+ * Held by the process-scoped [SignIn], so a configuration change keeps it (ADR-0005). Losing it to
+ * process death is correct — everything durable belongs to `MalSessionRepository`.
  */
 data class SignInState(
     val clientId: String = "",

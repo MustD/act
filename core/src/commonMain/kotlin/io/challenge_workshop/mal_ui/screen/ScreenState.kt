@@ -48,17 +48,14 @@ sealed interface ScreenState {
     data class SignedOut(
         val explanation: String,
         /** What went wrong on the way out, if the Session ended in a failure rather than a choice. */
-        val error: String?,
+        val error: ShownError?,
         val signIn: SignInState,
         val routing: MalRouting,
         /**
-         * See [MalRouting.suggestsDeadRelay]; true when [error] reads that way. One per error rather
-         * than one for the screen, because the two errors are two cards and advice about one
-         * attached to the other would be wrong.
+         * The Sign-in's own failure, [SignInState.error] as shown. Two errors are two cards, each with
+         * its own relay hint: advice about one attached to the other would be wrong.
          */
-        val errorRelayHint: Boolean,
-        /** The same, for the Sign-in's own failure. */
-        val signInRelayHint: Boolean,
+        val signInError: ShownError?,
     ) : ScreenState
 
     /**
@@ -71,8 +68,8 @@ sealed interface ScreenState {
     data class Authorizing(
         val authorizationUrl: String,
         val signIn: SignInState,
-        /** See [MalRouting.suggestsDeadRelay]; true when the Sign-in's failure reads that way. */
-        val relayHint: Boolean,
+        /** The Sign-in's failure, [SignInState.error] as shown. */
+        val signInError: ShownError?,
     ) : ScreenState
 
     /**
@@ -94,14 +91,19 @@ sealed interface ScreenState {
         val list: AnimeListState,
         val layout: AnimeListLayout,
         val busy: Boolean,
-        val error: String?,
+        val error: ShownError?,
         /** Null until the diagnostics dialog asks for it, which is the only thing that reads it. */
         val diagnostics: SessionDiagnostics?,
         val routing: MalRouting,
-        /** See [MalRouting.suggestsDeadRelay]; true when [error] reads that way. */
-        val relayHint: Boolean,
     ) : ScreenState
 }
+
+/**
+ * An error as a screen shows it: the message, and whether it reads like a dead relay — see
+ * [MalRouting.suggestsDeadRelay]. One type rather than a message and a flag side by side, because the
+ * hint is about *this* text, and a screen with two errors must not pair them up by hand.
+ */
+data class ShownError(val message: String, val relayHint: Boolean)
 
 /**
  * Where this build actually sends MAL traffic, which is otherwise unanswerable from inside a running
@@ -124,6 +126,9 @@ data class MalRouting(
      * as a bare "Failed to fetch" with no status, because the browser blocks the request before it is
      * sent, so the likely cause is worth naming next to it. The *wording* is `:app:shared`'s.
      */
+    /** [error] as a screen shows it, or null when there is none. */
+    fun shown(error: String?): ShownError? = error?.let { ShownError(it, suggestsDeadRelay(it)) }
+
     fun suggestsDeadRelay(error: String?): Boolean {
         if (!usesRelay || error == null) return false
         val lower = error.lowercase()

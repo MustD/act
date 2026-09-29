@@ -2,6 +2,7 @@ package io.challenge_workshop.mal_ui.auth
 
 import io.challenge_workshop.mal_ui.session.MalSessionRepository
 import io.challenge_workshop.mal_ui.session.SessionState
+import io.challenge_workshop.mal_ui.session.failureOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -10,7 +11,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * The Sign-in: from arming a Redirect Capture, through the user's time away on myanimelist.net, to
@@ -140,9 +140,19 @@ class SignIn(
     /** Every outcome lands on a path the paste field already uses, rather than a parallel one. */
     private suspend fun awaitCapture(channel: AuthRedirectChannel) {
         when (val captured = channel.await()) {
-            is AuthRedirectResult.Received ->
-                // A paste is already being exchanged, and a code is single-use: one exchange only.
-                if (_state.value.phase !is SignInPhase.Exchanging) exchangeRedirect(captured.rawRedirect)
+            is AuthRedirectResult.Received -> {
+                // A paste is already being exchanged, and a code is single-use: one exchange at a time.
+                // So wait for its outcome rather than dropping this redirect. A paste that works
+                // releases the capture, which cancels this wait; one that fails leaves this redirect
+                // as the one still worth exchanging.
+                if (_state.value.phase is SignInPhase.Exchanging) {
+                    exchange?.join()
+                    // The paste ended the Pending Authorization without a Session — MAL said no — so
+                    // there is nothing left for this redirect to complete, and no second error to add.
+                    if (repository.state.value !is SessionState.Authorizing) return
+                }
+                exchangeRedirect(captured.rawRedirect)
+            }
 
             AuthRedirectResult.Cancelled -> {
                 repository.cancelAuthorization()
@@ -161,7 +171,7 @@ class SignIn(
     /**
      * Paste-the-code. A paste that beats the capture ends the attempt's await, which is how the
      * channel is released — but only once the exchange has worked: a paste that fails leaves the
-     * capture listening.
+     * capture listening, including one that delivered while the paste was still being exchanged.
      */
     fun completePasted() {
         val current = _state.value
@@ -194,18 +204,9 @@ class SignIn(
         _state.update { it.copy(pastedRedirect = "", phase = SignInPhase.Idle) }
     }
 
-    /**
-     * Runs [block], turning what it throws into [SignInPhase.Failed]. Cancellation is not a failure:
-     * cancelling a Sign-in is routine and reporting it would put "job was cancelled" in an error card.
-     */
+    /** Runs [block], turning what it throws — but not its cancellation — into [SignInPhase.Failed]. */
     private suspend fun guarded(block: suspend () -> Unit) {
-        try {
-            block()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            fail(e.message ?: e.toString())
-        }
+        failureOf(block)?.let(::fail)
     }
 
     /** A capture that ends without an outcome must not erase a failure the user has not yet seen. */

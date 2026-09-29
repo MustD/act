@@ -34,6 +34,7 @@ import io.challenge_workshop.mal_ui.mal.MalEndpoints
 import io.challenge_workshop.mal_ui.mal.MalUser
 import io.challenge_workshop.mal_ui.screen.MalRouting
 import io.challenge_workshop.mal_ui.screen.ScreenState
+import io.challenge_workshop.mal_ui.screen.ShownError
 import io.challenge_workshop.mal_ui.screen.explain
 import io.challenge_workshop.mal_ui.session.SessionDiagnostics
 import io.challenge_workshop.mal_ui.session.SignedOutReason
@@ -71,18 +72,21 @@ internal fun signedOut(
     signInRelayHint: Boolean = false,
 ) = ScreenState.SignedOut(
     explanation = explain(reason),
-    error = error,
+    error = error?.let { ShownError(it, errorRelayHint) },
     signIn = signIn,
     routing = TEST_ROUTING,
-    errorRelayHint = errorRelayHint,
-    signInRelayHint = signInRelayHint,
+    signInError = signIn.error?.let { ShownError(it, signInRelayHint) },
 )
 
 internal fun authorizing(
     authorizationUrl: String = TEST_AUTHORIZATION_URL,
     signIn: SignInState = SignInState(clientId = "a-client-id"),
     relayHint: Boolean = false,
-) = ScreenState.Authorizing(authorizationUrl = authorizationUrl, signIn = signIn, relayHint = relayHint)
+) = ScreenState.Authorizing(
+    authorizationUrl = authorizationUrl,
+    signIn = signIn,
+    signInError = signIn.error?.let { ShownError(it, relayHint) },
+)
 
 internal fun signedIn(
     user: MalUser? = MalUser(1, "someone"),
@@ -99,10 +103,9 @@ internal fun signedIn(
     list = list,
     layout = layout,
     busy = busy,
-    error = error,
+    error = error?.let { ShownError(it, relayHint) },
     diagnostics = diagnostics,
     routing = TEST_ROUTING,
-    relayHint = relayHint,
 )
 
 /**

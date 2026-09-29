@@ -31,8 +31,8 @@
             android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <!--
           singleTop, not standard: under `standard` the redirect Intent starts a *second*
-          MainActivity with its own ViewModelStore, and the redirect then reaches an instance that is
-          not holding the Pending Authorization — see CLAUDE.md. singleTask/singleInstance would also
+          MainActivity instance, and the redirect then reaches an instance that is not the one the
+          sign-in is attached to — see CLAUDE.md. singleTask/singleInstance would also
           avoid the second instance, at the price of task-management grief they are a documented
           source of.
         -->

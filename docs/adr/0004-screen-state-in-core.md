@@ -70,10 +70,10 @@ the same one-implementation seam that kept a `(PendingAuthorization) -> String` 
 
 ## Consequences
 
-- Screens take a `ScreenState` variant plus an actions record, never a ViewModel. `App()` resolves both ViewModels
-  (*Superseded in part:* there are no ViewModels any more; `App()` resolves `MalSessionRepository`, `SignIn` and
-  `SessionControls`, see [ADR-0005](0005-no-viewmodels.md). The six-input count is unchanged); `AppScreen` wires them
-  to the value and binds the `AuthRedirectChannel`; `SessionRoute` switches.
+- Screens take a `ScreenState` variant plus an actions record, never a ViewModel. `App()` resolves both ViewModels;
+  `AppScreen` wires them to the value and binds the `AuthRedirectChannel`; `SessionRoute` switches.
+  *Superseded in part (2026-09-29):* there are no ViewModels any more — `App()` resolves `MalSessionRepository`,
+  `SignIn` and `SessionControls` directly, see [ADR-0005](0005-no-viewmodels.md). The six-input count is unchanged.
 - The rendering tests build their state as a literal. The one exception is
   `SignInScreenTest.signing_in_arms_this_targets_capture_and_still_offers_paste_the_code`, which binds 18040 on purpose
   because the stack is what it asserts.

@@ -6,7 +6,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * The signed-in screen's one-shot operations — sign-out, reloading the profile, the debug panel's
@@ -59,14 +58,7 @@ class SessionControls(
         }
         if (!claimed) return
         scope.launch {
-            val outcome = try {
-                block()
-                SessionOperation.Idle
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                SessionOperation.Failed(e.message ?: e.toString())
-            }
+            val outcome = failureOf(block)?.let(SessionOperation::Failed) ?: SessionOperation.Idle
             _state.update { it.copy(operation = outcome) }
         }
     }

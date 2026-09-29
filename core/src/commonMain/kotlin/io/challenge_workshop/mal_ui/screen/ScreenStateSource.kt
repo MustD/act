@@ -105,17 +105,16 @@ class ScreenStateSource(
 
             is SessionState.SignedOut -> ScreenState.SignedOut(
                 explanation = explain(session.reason),
-                error = session.error,
+                error = routing.shown(session.error),
                 signIn = signIn,
                 routing = routing,
-                errorRelayHint = routing.suggestsDeadRelay(session.error),
-                signInRelayHint = routing.suggestsDeadRelay(signIn.error),
+                signInError = routing.shown(signIn.error),
             )
 
             is SessionState.Authorizing -> ScreenState.Authorizing(
                 authorizationUrl = authorizationUrlFor(config, session.pending),
                 signIn = signIn,
-                relayHint = routing.suggestsDeadRelay(signIn.error),
+                signInError = routing.shown(signIn.error),
             )
 
             is SessionState.SignedIn -> ScreenState.SignedIn(
@@ -124,10 +123,9 @@ class ScreenStateSource(
                 list = animeList,
                 layout = layout,
                 busy = controls.busy,
-                error = controls.error,
+                error = routing.shown(controls.error),
                 diagnostics = controls.diagnostics,
                 routing = routing,
-                relayHint = routing.suggestsDeadRelay(controls.error),
             )
         }
     }

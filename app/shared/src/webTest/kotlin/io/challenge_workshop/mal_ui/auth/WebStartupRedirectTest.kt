@@ -42,7 +42,7 @@ class WebStartupRedirectTest {
         replaceUrl("${currentPath()}?code=a-code&state=a-state")
         val href = currentHref()
 
-        assertEquals(StartupRedirectValue(href, reportIfStale = true), WebStartupRedirect().consume())
+        assertEquals(LaunchRedirect(href, reportIfStale = true), WebStartupRedirect().consume())
     }
 
     @Test
@@ -66,7 +66,7 @@ class WebStartupRedirectTest {
 
         // It has to reach the app as the same failure a pasted denial would, instead of leaving the
         // user on a sign-in screen with no explanation.
-        assertEquals(StartupRedirectValue(href, reportIfStale = true), WebStartupRedirect().consume())
+        assertEquals(LaunchRedirect(href, reportIfStale = true), WebStartupRedirect().consume())
         assertTrue(currentSearch().isEmpty())
     }
 }

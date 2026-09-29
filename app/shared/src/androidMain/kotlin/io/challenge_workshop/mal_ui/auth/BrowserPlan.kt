@@ -85,12 +85,17 @@ internal class BrowserLaunchers(
  *
  * Every arrangement keeps [IntentRedirectChannel] in it. Even the Auth Tab needs it: Auth Tab
  * degrades to a plain Custom Tab silently, and the redirect then arrives as an `Intent` instead.
+ *
+ * @param results defaults to the process's inbox, and production takes the default: the Activity can
+ * be recreated mid-Sign-in, and an inbox chosen by a composition would leave the channel a Sign-in is
+ * awaiting deaf to the new composition's launcher (ticket 08). A parameter only so a test can use a
+ * fresh one; `BrowserPlanTest` pins the default.
  */
 internal fun BrowserPlan.redirectChannel(
     inbox: AuthRedirectInbox,
     lifecycleStates: Flow<Lifecycle.State>,
-    results: AuthTabResultInbox,
     launchers: BrowserLaunchers,
+    results: AuthTabResultInbox = AuthTabResultInbox.Shared,
 ): AuthRedirectChannel {
     val intentFilter = IntentRedirectChannel(
         inbox = inbox,

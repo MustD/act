@@ -48,6 +48,7 @@ import io.challenge_workshop.mal_ui.animelist.animeListItems
 import io.challenge_workshop.mal_ui.animelist.contentMaxWidth
 import io.challenge_workshop.mal_ui.animelist.gridCells
 import io.challenge_workshop.mal_ui.screen.ScreenState
+import io.challenge_workshop.mal_ui.screen.ShownError
 
 /**
  * Shown while the store is being read.
@@ -122,8 +123,8 @@ fun SignInScreen(
             if (state.signIn.busy) CircularProgressIndicator(Modifier.padding(4.dp))
         }
 
-        state.error?.let { ErrorCard("Sign-in failed", it.withRelayAdvice(state.errorRelayHint)) }
-        state.signIn.error?.let { ErrorCard("Sign-in failed", it.withRelayAdvice(state.signInRelayHint)) }
+        state.error?.let { ErrorCard("Sign-in failed", it.withRelayAdvice()) }
+        state.signInError?.let { ErrorCard("Sign-in failed", it.withRelayAdvice()) }
     }
 }
 
@@ -193,7 +194,7 @@ fun AuthorizingScreen(
             if (state.signIn.busy) CircularProgressIndicator(Modifier.padding(4.dp))
         }
 
-        state.signIn.error?.let { ErrorCard("Could not complete the sign-in", it.withRelayAdvice(state.relayHint)) }
+        state.signInError?.let { ErrorCard("Could not complete the sign-in", it.withRelayAdvice()) }
     }
 }
 
@@ -296,7 +297,7 @@ fun SignedInScreen(
             // top app bar: the Sort Order button names its direction in words ("Last updated
             // (newest first)"), which is wider than a narrow phone, and a `FlowRow` is what lets it
             // take the line it needs rather than being clipped off the edge — with no size class
-            // and nothing to keep in step with the three Targets.
+            // and nothing to keep in step with every Target.
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -313,7 +314,7 @@ fun SignedInScreen(
             // profile reload is visible from where the user actually is — and outside the grid, so
             // it does not scroll away from the controls that caused it. Under the `FlowRow` rather
             // than in it: it is a card the width of the pane, not a control to lay out beside one.
-            state.error?.let { ErrorCard("Something went wrong", it.withRelayAdvice(state.relayHint)) }
+            state.error?.let { ErrorCard("Something went wrong", it.withRelayAdvice()) }
         }
         LazyVerticalGrid(
             // The Layout is entirely this: how many columns the entries get, and how wide the whole
@@ -388,15 +389,14 @@ internal val PANE_MAX_WIDTH = 560.dp
 
 /**
  * On web a dead relay surfaces as a bare "Failed to fetch"; when `:core` says that is the likely
- * cause ([ScreenState.SignedOut.errorRelayHint] and its siblings), name it. The predicate is
- * `:core`'s, the wording is here.
+ * cause ([ShownError.relayHint]), name it. The predicate is `:core`'s, the wording is here.
  */
-internal fun String.withRelayAdvice(relayHint: Boolean): String =
+internal fun ShownError.withRelayAdvice(): String =
     if (relayHint) {
-        "$this\n\nThe web target routes MAL calls through the relay because MAL sends no CORS " +
+        "$message\n\nThe web target routes MAL calls through the relay because MAL sends no CORS " +
             "headers. Start it with `./gradlew :server:run`."
     } else {
-        this
+        message
     }
 
 /** Internal, not private: the Anime List reuses it rather than growing an error card of its own. */

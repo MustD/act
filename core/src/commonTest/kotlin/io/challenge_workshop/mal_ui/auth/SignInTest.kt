@@ -5,12 +5,15 @@ import io.challenge_workshop.mal_ui.session.FakeMal
 import io.challenge_workshop.mal_ui.session.JsonTokenStore
 import io.challenge_workshop.mal_ui.session.MalSessionRepository
 import io.challenge_workshop.mal_ui.session.PendingAuthorization
+import io.challenge_workshop.mal_ui.session.RefreshResponse
+import io.challenge_workshop.mal_ui.session.SessionControls
 import io.challenge_workshop.mal_ui.session.SessionState
 import io.challenge_workshop.mal_ui.session.SignedOutReason
 import io.challenge_workshop.mal_ui.session.TEST_CONFIG
 import io.challenge_workshop.mal_ui.session.TEST_USER
 import io.challenge_workshop.mal_ui.session.VALID_TOKENS
 import io.challenge_workshop.mal_ui.session.authorizationUrlFor
+import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -226,6 +229,54 @@ class SignInTest {
         awaitSignedIn()
     }
 
+    /**
+     * The capture delivers while a paste is still being exchanged. A code is single-use, so the two
+     * cannot both go to MAL — but dropping the capture outright would lose the one good redirect if the
+     * paste then fails.
+     */
+    @Test
+    fun a_capture_that_lands_during_a_failing_paste_still_finishes_the_sign_in() = signInTest(
+        holdExchange = true,
+        malConnectionDrops = 1,
+    ) {
+        val channel = RecordingAuthRedirectChannel()
+        signIn.start(channel, openUri = {})
+        val pending = assertNotNull(store.readPending())
+
+        // The paste reaches the token endpoint and the connection drops — which keeps the Pending
+        // Authorization, so the captured redirect is still good.
+        signIn.setPastedRedirect("$REDIRECT_URI?code=the-code&state=${pending.state}")
+        signIn.completePasted()
+        assertEquals(SignInPhase.Exchanging, signIn.state.value.phase)
+        channel.deliver(AuthRedirectResult.Received("$REDIRECT_URI?code=the-code&state=${pending.state}"))
+
+        releaseExchange.complete(Unit)
+
+        awaitSignedIn()
+        assertNull(signIn.state.value.error, "the capture's success replaces the paste's failure")
+    }
+
+    /** MAL rejecting the paste spends the Pending Authorization, so the capture has nothing to finish. */
+    @Test
+    fun a_capture_that_lands_during_a_rejected_paste_adds_no_second_error() = signInTest(
+        holdExchange = true,
+        tokenResponse = RefreshResponse.Rejected(HttpStatusCode.BadRequest, "invalid_grant"),
+    ) {
+        val channel = RecordingAuthRedirectChannel()
+        signIn.start(channel, openUri = {})
+        val pending = assertNotNull(store.readPending())
+        signIn.setPastedRedirect("$REDIRECT_URI?code=the-code&state=${pending.state}")
+        signIn.completePasted()
+        channel.deliver(AuthRedirectResult.Received("$REDIRECT_URI?code=the-code&state=${pending.state}"))
+
+        releaseExchange.complete(Unit)
+
+        val failed = signIn.state.first { it.phase is SignInPhase.Failed }
+        assertTrue("invalid_grant" in failed.error.orEmpty(), "${failed.error}")
+        assertEquals(SignedOutReason.AuthorizationFailed, (repository.state.value as SessionState.SignedOut).reason)
+        assertEquals(SignInPhase.Failed(failed.error!!), signIn.state.value.phase, "one failure, reported once")
+    }
+
     // ---- what ends a Sign-in ----
 
     @Test
@@ -279,6 +330,32 @@ class SignInTest {
         // asserted is that it is still waiting when nothing has happened to it.
         assertFalse(channel.isReleased)
         assertEquals(SignInPhase.AwaitingRedirect, signIn.state.value.phase)
+    }
+
+    // ---- what the UI can see ----
+
+    /**
+     * `docs/errors.md`: never log the code or the verifier, nor a token — and what the UI holds is what
+     * ends up in a screenshot or a bug report. The authorization URL is the one deliberate exception,
+     * because Paste-the-code has to offer it, and it is `ScreenStateSource`'s, not this class's.
+     */
+    @Test
+    fun nothing_the_ui_can_see_carries_a_token_a_code_or_a_verifier() = signInTest {
+        val controls = SessionControls(repository, scope)
+        val channel = RecordingAuthRedirectChannel()
+        signIn.start(channel, openUri = {})
+        val pending = assertNotNull(store.readPending())
+        channel.deliver(AuthRedirectResult.Received("$REDIRECT_URI?code=the-code&state=${pending.state}"))
+        awaitSignedIn()
+        controls.reloadDiagnostics()
+        controls.state.first { it.diagnostics != null && !it.busy }
+        val tokens = assertNotNull(store.readSession()).tokens
+
+        val exposed = listOf(signIn.state.value, controls.state.value, repository.config.value).joinToString(" ")
+
+        for (secret in listOf(tokens.accessToken, tokens.refreshToken, "the-code", pending.codeVerifier)) {
+            assertFalse(secret in exposed, "'$secret' is visible in: $exposed")
+        }
     }
 
     // ---- the form ----
@@ -434,10 +511,15 @@ class SignInTest {
     private fun redirect(
         raw: String = "$REDIRECT_URI?code=a-code&state=a-state",
         reportIfStale: Boolean = true,
-    ) = StartupRedirectValue(raw, reportIfStale)
+    ) = LaunchRedirect(raw, reportIfStale)
 
     /** One app's worth of graph, with a [SignIn] built over it on the test's own scope. */
-    private class Fixture(private val testScope: TestScope, holdExchange: Boolean) {
+    private class Fixture(
+        private val testScope: TestScope,
+        holdExchange: Boolean,
+        malConnectionDrops: Int = 0,
+        tokenResponse: RefreshResponse = RefreshResponse.Rotated("fresh-access", "fresh-refresh"),
+    ) {
         val store = JsonTokenStore(FakeKeyValueStore())
 
         /** Completed by a test to let the token exchange finish, so the `Exchanging` phase is visible. */
@@ -445,9 +527,18 @@ class SignInTest {
         val repository = MalSessionRepository(
             store = store,
             initialConfig = TEST_CONFIG,
-            clientFactory = FakeMal(releaseRefresh = releaseExchange).clientFactory,
+            clientFactory = FakeMal(
+                refreshResponse = tokenResponse,
+                releaseRefresh = releaseExchange,
+                transportFailuresFirst = malConnectionDrops,
+            ).clientFactory,
         )
         lateinit var signIn: SignIn
+
+        /** Where [signIn] runs; anything else a test builds over the same repository runs here too. */
+        val scope = CoroutineScope(
+            testScope.backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScope.testScheduler),
+        )
 
         /** What the repository had settled on by the time the startup redirect was asked for. */
         var stateWhenConsumed: SessionState? = null
@@ -460,16 +551,14 @@ class SignInTest {
         )
 
         /** Constructs the [SignIn] — which restores and takes the startup redirect — after seeding. */
-        fun launch(startup: (Fixture.() -> StartupRedirectValue?)?) {
+        fun launch(startup: (Fixture.() -> LaunchRedirect?)?) {
             signIn = SignIn(
                 repository = repository,
                 startupRedirect = StartupRedirect {
                     stateWhenConsumed = repository.state.value
                     startup?.invoke(this)
                 },
-                scope = CoroutineScope(
-                    testScope.backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScope.testScheduler),
-                ),
+                scope = scope,
             )
         }
 
@@ -489,11 +578,13 @@ class SignInTest {
 
     private fun signInTest(
         seed: suspend Fixture.() -> Unit = {},
-        startup: (Fixture.() -> StartupRedirectValue?)? = null,
+        startup: (Fixture.() -> LaunchRedirect?)? = null,
         holdExchange: Boolean = false,
+        malConnectionDrops: Int = 0,
+        tokenResponse: RefreshResponse = RefreshResponse.Rotated("fresh-access", "fresh-refresh"),
         block: suspend Fixture.() -> Unit,
     ) = runTest {
-        val fixture = Fixture(this, holdExchange)
+        val fixture = Fixture(this, holdExchange, malConnectionDrops, tokenResponse)
         try {
             fixture.seed()
             fixture.launch(startup)

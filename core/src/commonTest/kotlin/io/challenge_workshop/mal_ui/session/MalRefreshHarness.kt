@@ -94,6 +94,11 @@ class FakeMal(
      * in-flight page to be asked about twice.
      */
     private val holdAnimeList: suspend (Int) -> Unit = {},
+    /**
+     * How many token-endpoint requests fail in transport before [refreshResponse] applies: a blip,
+     * after which the same Pending Authorization is still good.
+     */
+    private val transportFailuresFirst: Int = 0,
 ) {
     var tokenEndpointHits: Int = 0
         private set
@@ -120,6 +125,7 @@ class FakeMal(
             request.url.toString().startsWith(TEST_TOKEN_ENDPOINT) -> {
                 tokenEndpointHits++
                 releaseRefresh?.await()
+                if (tokenEndpointHits <= transportFailuresFirst) throw IOException("connection reset")
                 when (val r = refreshResponse) {
                     is RefreshResponse.Rotated -> {
                         acceptedAccessTokens += r.accessToken
