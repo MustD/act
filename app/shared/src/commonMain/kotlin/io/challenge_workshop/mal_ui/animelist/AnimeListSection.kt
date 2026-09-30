@@ -22,14 +22,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_EMPTY_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_ERROR_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_MORE_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_SKELETON_TAG
 import io.challenge_workshop.mal_ui.auth.ErrorCard
-import io.challenge_workshop.mal_ui.auth.PANE_MAX_WIDTH
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
@@ -316,27 +314,11 @@ private const val SKELETON_ITEMS: Int = 8
  *
  * [AnimeListLayout.List] is the same grid at one column, which is what makes the dense Layout a
  * Layout rather than a second lazy container. See [animeListItems].
+ *
+ * Neither is capped in width: both fill the window, and a wide dense row spends the extra room on
+ * columns instead — see [AnimeListRow].
  */
 internal fun AnimeListLayout.gridCells(): GridCells = when (this) {
     AnimeListLayout.Cards -> GridCells.Adaptive(ANIME_CARD_MIN_WIDTH)
     AnimeListLayout.List -> GridCells.Fixed(1)
 }
-
-/**
- * How wide the Anime List is allowed to get, which is not the same answer for the two Layouts.
- *
- * A dense row is a line of text and stops being readable much past [LIST_MAX_WIDTH] — the same cap
- * the rest of the app's panes use. A grid of cards is not text: capping it there would leave a
- * maximised desktop window three columns of cover art in the middle and two feet of empty surface
- * around them, which is the responsive behaviour ticket 07 asks for the opposite of.
- */
-internal fun AnimeListLayout.contentMaxWidth(): Dp = when (this) {
-    AnimeListLayout.Cards -> CARDS_MAX_WIDTH
-    AnimeListLayout.List -> LIST_MAX_WIDTH
-}
-
-/** The same cap the rest of the app's panes use — see `Modifier.paneItem()`. */
-private val LIST_MAX_WIDTH = PANE_MAX_WIDTH
-
-/** Seven columns of cover art. Past that a grid stops reading as a grid and starts as wallpaper. */
-private val CARDS_MAX_WIDTH = 1160.dp

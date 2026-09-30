@@ -3,6 +3,7 @@ package io.challenge_workshop.mal_ui.animelist
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -22,9 +23,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import io.challenge_workshop.mal_ui.auth.ANIME_LIST_ROW_COLUMN_TAG
 
 /** The proportions MyAnimeList's cover art is drawn at, and close enough to what the CDN serves. */
 private const val COVER_ASPECT_RATIO: Float = 2f / 3f
@@ -90,31 +94,61 @@ internal fun AnimeListCard(entry: AnimeListEntry, modifier: Modifier = Modifier)
  */
 @Composable
 internal fun AnimeListRow(entry: AnimeListEntry, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.fillMaxWidth().padding(vertical = ROW_PADDING),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(ROW_SPACING),
-    ) {
-        AnimeCover(
-            entry = entry,
-            preferLarge = false,
-            modifier = Modifier.width(ROW_COVER_WIDTH).aspectRatio(COVER_ASPECT_RATIO),
-        )
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                entry.title,
-                style = MaterialTheme.typography.bodyLarge,
-                overflow = TextOverflow.Ellipsis,
-                maxLines = 2,
+    // Measured, not a size class: the row is a grid cell, so what matters is the width it was given,
+    // which is not the window's once a panel sits beside the list.
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val wide = maxWidth >= ROW_COLUMNS_MIN_WIDTH
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = ROW_PADDING),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(ROW_SPACING),
+        ) {
+            AnimeCover(
+                entry = entry,
+                preferLarge = false,
+                modifier = Modifier.width(ROW_COVER_WIDTH).aspectRatio(COVER_ASPECT_RATIO),
             )
-            EntrySubtitle(entry.metadataLabel())
-        }
-        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            EntrySubtitle(entry.progress())
-            EntrySubtitle(entry.scoreLabel())
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    entry.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    overflow = TextOverflow.Ellipsis,
+                    maxLines = 2,
+                )
+                // The Watch Status has a column of its own when there is one, so it is not said twice.
+                EntrySubtitle(if (wide) entry.detailLabel() else entry.metadataLabel())
+            }
+            if (wide) {
+                RowColumn(entry.watchStatus.filterLabel(), ROW_STATUS_WIDTH)
+                RowColumn(entry.progress(), ROW_PROGRESS_WIDTH)
+                RowColumn(entry.scoreLabel(), ROW_SCORE_WIDTH)
+            } else {
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    EntrySubtitle(entry.progress())
+                    EntrySubtitle(entry.scoreLabel())
+                }
+            }
         }
     }
 }
+
+/** One fixed-width cell of a wide dense row, so the same fact lines up down the whole list. */
+@Composable
+private fun RowColumn(text: String, width: Dp) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodyMedium,
+        overflow = TextOverflow.Ellipsis,
+        maxLines = 1,
+        modifier = Modifier.width(width).testTag(ANIME_LIST_ROW_COLUMN_TAG),
+    )
+}
+
+/** Below this a row is stacked as on a phone; from here it has room for its three columns. */
+private val ROW_COLUMNS_MIN_WIDTH = 600.dp
+private val ROW_STATUS_WIDTH = 120.dp
+private val ROW_PROGRESS_WIDTH = 88.dp
+private val ROW_SCORE_WIDTH = 88.dp
 
 /**
  * The cover art, over a placeholder that is always there.
@@ -268,6 +302,10 @@ internal fun AnimeListEntry.scoreLabel(): String = if (score in 1..10) "Score $s
 internal fun AnimeListEntry.metadataLabel(): String =
     listOfNotNull(watchStatus.filterLabel(), mediaTypeLabel(), airingStatus.airingLabel())
         .joinToString(PART_SEPARATOR)
+
+/** [metadataLabel] without the Watch Status, for a row that shows that in a column of its own. */
+internal fun AnimeListEntry.detailLabel(): String =
+    listOfNotNull(mediaTypeLabel(), airingStatus.airingLabel()).joinToString(PART_SEPARATOR)
 
 private const val PART_SEPARATOR: String = " · "
 

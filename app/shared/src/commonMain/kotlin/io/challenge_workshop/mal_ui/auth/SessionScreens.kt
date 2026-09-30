@@ -45,7 +45,6 @@ import io.challenge_workshop.mal_ui.animelist.AnimeListFilters
 import io.challenge_workshop.mal_ui.animelist.AnimeListSortMenu
 import io.challenge_workshop.mal_ui.animelist.LoadMoreWhenNearEnd
 import io.challenge_workshop.mal_ui.animelist.animeListItems
-import io.challenge_workshop.mal_ui.animelist.contentMaxWidth
 import io.challenge_workshop.mal_ui.animelist.gridCells
 import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.screen.ShownError
@@ -240,7 +239,6 @@ fun SignedInScreen(
     var diagnosticsOpen by remember { mutableStateOf(false) }
     val list = state.list
     val layout = state.layout
-    val contentWidth = Modifier.widthIn(max = layout.contentMaxWidth()).fillMaxWidth()
 
     // Whether to arm it is `:core`'s decision, not this screen's — see `AnimeListState.pagingArmed`.
     LoadMoreWhenNearEnd(
@@ -279,13 +277,9 @@ fun SignedInScreen(
             modifier = Modifier.fillMaxWidth(),
         )
         // Outside the lazy grid, so both controls stay put while the list scrolls under them.
-        // `contentWidth` is the grid's own cap, so they line up with the entries they act on
-        // rather than running the full width of a desktop window — and so the dense Layout's
-        // narrower list does not leave its filter row floating out over empty surface.
-        // The padding goes *outside* the width cap, not inside it: padding applied after it would
-        // spend 32dp of that cap and leave these controls inset from the very entries they act on —
-        // the grid pads its own with `contentPadding`, which is outside their cap.
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).then(contentWidth)) {
+        // Both are as wide as the window, so the controls line up with the entries they act on:
+        // the grid pads its own entries with `contentPadding`, and this carries the same 16dp.
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth()) {
             AnimeListFilters(
                 selected = list.watchStatus,
                 // Both read the same decision, because both go through the same reset — see
@@ -317,15 +311,14 @@ fun SignedInScreen(
             state.error?.let { ErrorCard("Something went wrong", it.withRelayAdvice()) }
         }
         LazyVerticalGrid(
-            // The Layout is entirely this: how many columns the entries get, and how wide the whole
-            // thing is allowed to be. Everything inside `animeListItems` is written once.
+            // The Layout is entirely this: how many columns the entries get. Everything inside `animeListItems` is written once.
             columns = layout.gridCells(),
             // `weight`, not `fillMaxSize`: a child that fills the height inside a `Column` takes
             // the whole window and hangs the last entries of the list below the bottom of it,
             // because the filter row above has already taken its share.
             modifier = Modifier
                 .weight(1f)
-                .then(contentWidth)
+                .fillMaxWidth()
                 .testTag(ANIME_LIST_TAG),
             state = gridState,
             contentPadding = PaddingValues(16.dp),
@@ -380,11 +373,7 @@ private fun ScreenColumn(modifier: Modifier = Modifier, content: @Composable () 
  */
 internal fun Modifier.paneItem(): Modifier = widthIn(max = PANE_MAX_WIDTH).fillMaxWidth()
 
-/**
- * One line length, in one place. The Anime List's dense Layout caps itself at the same value — a
- * pane and a list of one-line rows are the same reading problem — and its card grid deliberately
- * does not. See `AnimeListLayout.contentMaxWidth`.
- */
+/** One line length, in one place: the sign-in panes. The Anime List is not capped — it fills the window. */
 internal val PANE_MAX_WIDTH = 560.dp
 
 /**

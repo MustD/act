@@ -169,3 +169,6 @@ val SESSION_MENU_TAG: String = "$SESSION_TOP_BAR_TAG.menu"
  * screen underneath it.
  */
 val SESSION_DIAGNOSTICS_TAG: String = "${SessionScreenTag.SignedIn.tag}.diagnostics"
+
+/** Each of Watch Status, progress and score on a wide List row. A stacked row has none. */
+val ANIME_LIST_ROW_COLUMN_TAG: String = "$ANIME_LIST_TAG.rowColumn"

@@ -2,11 +2,14 @@
 
 package io.challenge_workshop.mal_ui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -38,10 +41,12 @@ import io.challenge_workshop.mal_ui.auth.ANIME_LIST_ERROR_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_FILTERS_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_LAYOUT_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_MORE_TAG
+import io.challenge_workshop.mal_ui.auth.ANIME_LIST_ROW_COLUMN_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_SKELETON_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_SORT_MENU_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_SORT_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_TAG
+import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -86,6 +91,27 @@ class SignedInScreenTest {
     }
 
     /**
+     * A wide List row draws Watch Status, progress and score as columns; a narrow one stays stacked.
+     *
+     * Three cells per entry, told apart from the stacked shape by their tag — the texts are the same
+     * either way, so a text assertion could not tell a table from a phone.
+     */
+    @Test
+    fun a_list_row_draws_columns_only_when_it_has_room() {
+        for ((width, columns) in listOf(1000.dp to FIXTURE_TITLES.size * 3, 400.dp to 0)) {
+            runComposeUiTest {
+                setContent {
+                    Box(Modifier.width(width)) {
+                        SessionRoute(signedIn(layout = AnimeListLayout.List), RecordedActions().actions)
+                    }
+                }
+                onAllNodesWithTag(ANIME_LIST_ROW_COLUMN_TAG).assertCountEquals(columns)
+                for (title in FIXTURE_TITLES) onNodeWithText(title).assertIsDisplayed()
+            }
+        }
+    }
+
+    /**
      * Toggling to the dense Layout re-draws the List Entries that are already loaded.
      *
      * Driven by the control rather than by a parameter, because the toggle is the only thing a user
@@ -123,7 +149,10 @@ class SignedInScreenTest {
             // `onAllNodes` wherever both fixture entries share the value.
             onNodeWithText("3 / 26").assertIsDisplayed()
             onAllNodesWithText("Score 8")[0].assertIsDisplayed()
-            onAllNodesWithText("Watching · TV · Finished")[0].assertIsDisplayed()
+            // The test window is wide, so the Watch Status has its own column and is not repeated in
+            // the metadata line.
+            onAllNodesWithText("Watching")[0].assertIsDisplayed()
+            onAllNodesWithText("TV · Finished")[0].assertIsDisplayed()
         }
     }
 
