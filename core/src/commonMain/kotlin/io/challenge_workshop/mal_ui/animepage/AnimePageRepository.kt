@@ -16,7 +16,11 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Clock
 
 /**
  * The open Anime Pages, for as long as there is a Session — the same rule, kept the same way, as
@@ -33,12 +37,17 @@ import kotlin.coroutines.cancellation.CancellationException
  * The operations do not suspend: each acts on the state synchronously and launches the fetch into
  * the current Session's scope. Outside a Session there is no scope and they do nothing.
  *
+ * **An edit is worked out with MAL's automatic rules** ([applyAutomaticRules]) before it becomes the
+ * target, so what they add is pending with the edit and goes back with it on failure.
+ *
  * @param scope `Dispatchers.Main.immediate` in the app, like [AnimeListRepository].
  */
 class AnimePageRepository(
     private val session: MalSessionRepository,
     private val animeList: AnimeListRepository,
     private val scope: CoroutineScope,
+    /** The device's local date, for the automatic rules. A parameter so tests do not depend on the clock. */
+    private val today: () -> LocalDate = { Clock.System.todayIn(TimeZone.currentSystemDefault()) },
 ) {
     private val _state = MutableStateFlow(AnimePageHistory())
 
@@ -127,7 +136,7 @@ class AnimePageRepository(
         val id = page.animeId
         val save = saves[id] ?: PageSave()
         val shown = page.shownListStatus!!
-        val target = edit.applyTo(shown, page.totalEpisodes)
+        val target = applyAutomaticRules(shown, edit.applyTo(shown, page.totalEpisodes), today(), page.totalEpisodes)
         if (target == shown) return
         saves[id] = save.copy(target = target, error = null)
         publish(id)

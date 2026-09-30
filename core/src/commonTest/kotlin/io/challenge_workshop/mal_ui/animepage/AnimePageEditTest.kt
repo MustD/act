@@ -337,5 +337,38 @@ class AnimePageEditTest {
         mal.gate!!.complete(Unit)
         h.awaitPage { !it.isSaving && it.load == AnimePageLoad.Loaded }
     }
-}
 
+    @Test
+    fun logging_the_last_episode_sends_completed_and_todays_date_in_the_same_patch_and_shows_it_pending() = runTest {
+        val mal = Mal(total = 4).apply { gate = CompletableDeferred() }
+        val h = loadedHarness(mal)
+
+        h.pages.edit(ListEdit.SetEpisodes(4))
+
+        val pending = h.history.current!!
+        assertEquals(WatchStatus.Completed, pending.shown.watchStatus)
+        assertEquals("2026-09-30", pending.shown.finishDate)
+        assertEquals(WatchStatus.Watching, pending.listStatus!!.watchStatus, "MAL has not confirmed it yet")
+        mal.gate!!.complete(Unit)
+        h.awaitPage { !it.isSaving }
+
+        assertEquals(1, h.mal.listStatusPatches.size)
+        val form = h.mal.listStatusPatches.single().form
+        assertEquals("completed", form["status"])
+        assertEquals("4", form["num_watched_episodes"])
+        assertEquals("2026-09-30", form["finish_date"])
+    }
+
+    @Test
+    fun what_a_rule_added_goes_back_with_the_edit_that_triggered_it() = runTest {
+        val mal = Mal(total = 4).apply { failNext = true }
+        val h = loadedHarness(mal)
+
+        h.pages.edit(ListEdit.SetEpisodes(4))
+        val back = h.awaitPage { !it.isSaving && it.save.error != null }
+
+        assertEquals(WatchStatus.Watching, back.shown.watchStatus)
+        assertEquals(3, back.shown.episodesWatched)
+        assertNull(back.shown.finishDate)
+    }
+}

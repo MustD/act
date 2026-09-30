@@ -18,6 +18,7 @@ import io.challenge_workshop.mal_ui.session.VALID_TOKENS
 import io.ktor.http.Parameters
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
+import kotlinx.datetime.LocalDate
 
 /**
  * The Anime Page history over a **real** [MalSessionRepository] and [AnimeListRepository] and the
@@ -58,6 +59,7 @@ internal suspend fun TestScope.harness(
     holdAnimeDetails: suspend (Long) -> Unit = {},
     updateListStatus: (Long, Parameters) -> ListStatusResponse = { _, _ -> ListStatusResponse.Failure() },
     holdListStatusUpdate: suspend (Long) -> Unit = {},
+    today: LocalDate = LocalDate(2026, 9, 30),
 ): Harness {
     val mal = FakeMal(
         acceptedAccessToken = VALID_TOKENS.accessToken,
@@ -76,7 +78,7 @@ internal suspend fun TestScope.harness(
         clientFactory = mal.clientFactory,
     )
     val list = AnimeListRepository(session, backgroundScope)
-    val pages = AnimePageRepository(session, list, backgroundScope)
+    val pages = AnimePageRepository(session, list, backgroundScope, today = { today })
     session.restore()
     val h = Harness(mal, session, list, pages)
     h.awaitedEntries = h.awaitEntries()
