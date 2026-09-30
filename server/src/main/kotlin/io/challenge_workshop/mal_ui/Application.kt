@@ -1,5 +1,7 @@
 package io.challenge_workshop.mal_ui
 
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.server.application.Application
@@ -19,13 +21,16 @@ fun main() {
         .start(wait = true)
 }
 
-fun Application.module() {
+fun Application.module(
+    relayClient: HttpClient = HttpClient(CIO) { expectSuccess = false },
+) {
     // Not load-bearing in normal use: both the reverse proxy and the webpack dev server
     // route `/mal` to this server on the page's own origin, so relay calls are same-origin.
     // Kept as a fallback for hitting the relay directly from another origin.
     install(CORS) {
         allowMethod(HttpMethod.Get)
         allowMethod(HttpMethod.Post)
+        allowMethod(HttpMethod.Patch)
         allowHeader(HttpHeaders.ContentType)
         allowHeader(HttpHeaders.Authorization)
         allowHost("mal-ui.localhost", schemes = listOf("https"))
@@ -41,6 +46,6 @@ fun Application.module() {
         get("/") {
             call.respondText("mal_ui relay")
         }
-        malRelay(this)
+        malRelay(this, relayClient)
     }
 }

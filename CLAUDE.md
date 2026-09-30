@@ -110,7 +110,8 @@ set of error messages.
 
 **Web needs the relay, on the same origin.** MAL sends no CORS headers on its token or API endpoints and answers
 preflight `OPTIONS` with 405, so a browser cannot call them at all.
-`:server` relays them (`MalRelay.kt`) under the `/mal` prefix, and `:core`'s
+`:server` relays them (`MalRelay.kt`) under the `/mal` prefix — the token endpoint, `GET`s under `/v2`, and one write,
+`PATCH /mal/v2/anime/{id}/my_list_status` with a numeric `{id}`; no other `PATCH` path is routed — and `:core`'s
 `expect fun platformMalEndpoints()` routes the browser targets there while jvm/android call MAL directly.
 
 The browser actuals derive the relay URL from `window.location.origin`, so the same build works behind the reverse proxy

@@ -19,5 +19,6 @@ dependencies {
     implementation(libs.ktor.clientCore)
     implementation(libs.ktor.clientCio)
     testImplementation(libs.ktor.serverTestHost)
+    testImplementation(libs.ktor.clientMock)
     testImplementation(libs.kotlin.testJunit)
 }
