@@ -73,4 +73,19 @@ class AutomaticRulesTest {
             assertEquals(c.expected, applyAutomaticRules(c.before, c.requested, today, c.total), c.name)
         }
     }
+
+    @Test
+    fun adding_fills_in_what_the_chosen_status_implies() {
+        fun added(status: WatchStatus, total: Int) = newListEntry(status, today, total)
+        assertEquals(entry(PlanToWatch, 0), added(PlanToWatch, 12))
+        assertEquals(entry(Watching, 0, start = "2026-09-30"), added(Watching, 12))
+        assertEquals(entry(Completed, 12, finish = "2026-09-30"), added(Completed, 12))
+        assertEquals(entry(WatchStatus.OnHold, 0), added(WatchStatus.OnHold, 12))
+        assertEquals(entry(Dropped, 0), added(Dropped, 12))
+    }
+
+    @Test
+    fun adding_as_completed_with_an_unknown_total_sets_only_the_finish_date() {
+        assertEquals(entry(Completed, 0, finish = "2026-09-30"), newListEntry(Completed, today, 0))
+    }
 }

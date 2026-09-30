@@ -34,6 +34,7 @@ import io.challenge_workshop.mal_ui.animepage.AnimePageLoad
 import io.challenge_workshop.mal_ui.animepage.ListEdit
 import io.challenge_workshop.mal_ui.animepage.MyListStatus
 import io.challenge_workshop.mal_ui.animepage.PageSave
+import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_ADD_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_EPISODES_MINUS_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_EPISODES_PLUS_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_EPISODES_TAG
@@ -214,9 +215,57 @@ class AnimePageScreenTest {
     @Test
     fun an_anime_not_on_the_list_says_so() {
         runComposeUiTest {
-            setContent { SessionRoute(stateWith(page(listStatus = null)), RecordedActions().actions) }
+            setContent { SessionRoute(stateWith(page(load = AnimePageLoad.Loaded, listStatus = null)), RecordedActions().actions) }
 
             onNodeWithText("Not on your list.").assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun an_anime_not_on_the_list_offers_to_add_it_and_nothing_else() {
+        runComposeUiTest {
+            val recorded = RecordedActions()
+            setContent { SessionRoute(stateWith(page(load = AnimePageLoad.Loaded, listStatus = null)), recorded.actions) }
+
+            onAllNodesWithTag(ANIME_PAGE_EPISODES_TAG).assertCountEquals(0)
+            onAllNodesWithTag(ANIME_PAGE_SCORE_TAG).assertCountEquals(0)
+            onNodeWithTag(ANIME_PAGE_ADD_TAG).performScrollTo().performClick()
+            onAllNodesWithText("Plan to watch").onLast().performClick()
+
+            assertEquals(listOf(WatchStatus.PlanToWatch), recorded.added)
+        }
+    }
+
+    @Test
+    fun adding_is_not_offered_before_the_fetch_and_is_disabled_while_the_add_is_pending() {
+        runComposeUiTest {
+            setContent { SessionRoute(stateWith(page(load = AnimePageLoad.Loading, listStatus = null)), RecordedActions().actions) }
+            onAllNodesWithTag(ANIME_PAGE_ADD_TAG).assertCountEquals(0)
+            onAllNodesWithText("Not on your list.").assertCountEquals(0)
+        }
+        runComposeUiTest {
+            val pending = PageSave(target = MyListStatus(WatchStatus.Watching, 0, 0, null, null, null))
+            setContent {
+                SessionRoute(stateWith(page(load = AnimePageLoad.Loaded, listStatus = null, save = pending)), RecordedActions().actions)
+            }
+            onNodeWithTag(ANIME_PAGE_ADD_TAG).performScrollTo().assertIsNotEnabled().assertTextContains("Watching")
+            onAllNodesWithTag(ANIME_PAGE_EPISODES_TAG).assertCountEquals(0)
+        }
+    }
+
+    @Test
+    fun a_refused_add_shows_the_error_on_the_not_on_your_list_state() {
+        runComposeUiTest {
+            setContent {
+                SessionRoute(
+                    stateWith(page(load = AnimePageLoad.Loaded, listStatus = null, save = PageSave(error = "MAL said no"))),
+                    RecordedActions().actions,
+                )
+            }
+
+            onNodeWithTag(ANIME_PAGE_SAVE_ERROR_TAG).performScrollTo().assertIsDisplayed()
+            onNodeWithText("Not on your list.").assertExists()
+            onNodeWithTag(ANIME_PAGE_ADD_TAG).assertIsEnabled()
         }
     }
 

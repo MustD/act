@@ -2,6 +2,7 @@ package io.challenge_workshop.mal_ui.animepage
 
 import io.challenge_workshop.mal_ui.animelist.AnimeListEntry
 import io.challenge_workshop.mal_ui.animelist.AnimeListRepository
+import io.challenge_workshop.mal_ui.animelist.WatchStatus
 import io.challenge_workshop.mal_ui.session.MalSessionRepository
 import io.challenge_workshop.mal_ui.session.SessionState
 import kotlinx.coroutines.CoroutineScope
@@ -154,12 +155,41 @@ class AnimePageRepository(
         if (target == shown) return
         saves[id] = save.copy(target = target, error = null)
         publish(id)
-        // Undispatched, so the first tap is at MAL before the second can be made, whatever the
-        // dispatcher: the loop below is what makes the later ones wait, and it must already be there.
+        startSaving(id, sessionScope, page.listStatus!!)
+    }
+
+    /**
+     * Adds the current page's anime to the user's list with [watchStatus], worked out with what
+     * myanimelist.net fills in for that status ([newListEntry]). It is the same PATCH as an edit, which
+     * creates the entry.
+     *
+     * The page stays "not on your list" while it is pending, and **goes back to it with the error**
+     * if MAL refuses, because [AnimePage.listStatus] only becomes non-null with MAL's answer. The
+     * Anime List is not touched: its pager has no entry to update, and the new one appears on the
+     * next Reload. Does nothing until the fetch has succeeded, for an anime already on the list, or
+     * while an add is pending.
+     */
+    fun add(watchStatus: WatchStatus) {
+        val sessionScope = sessionScope ?: return
+        val page = _state.value.current ?: return
+        if (page.load != AnimePageLoad.Loaded || page.listStatus != null) return
+        val id = page.animeId
+        if (saves.containsKey(id)) return
+        saves[id] = PageSave(target = newListEntry(watchStatus, today(), page.totalEpisodes))
+        publish(id)
+        startSaving(id, sessionScope, NOT_ON_LIST)
+    }
+
+    /**
+     * Starts [id]'s save loop unless one is running, against [confirmed] as the last value MAL held.
+     * Undispatched, so the first tap is at MAL before the second can be made, whatever the
+     * dispatcher: the loop is what makes the later ones wait, and it must already be there.
+     */
+    private fun startSaving(id: Long, sessionScope: CoroutineScope, confirmed: MyListStatus) {
         if (draining.add(id)) {
             sessionScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 try {
-                    drain(id, page.listStatus!!)
+                    drain(id, confirmed)
                 } finally {
                     // A loop cancelled by the Session ending must not release a later Session's guard.
                     if (sessionScope === this@AnimePageRepository.sessionScope) draining.remove(id)
@@ -247,3 +277,16 @@ class AnimePageRepository(
         }
     }
 }
+
+/**
+ * What MAL holds for an anime that is not on the list, as a baseline for the PATCH that creates the
+ * entry: its status is one nobody can choose, so the chosen one always differs and is always sent.
+ */
+private val NOT_ON_LIST = MyListStatus(
+    watchStatus = WatchStatus.Unknown,
+    score = 0,
+    episodesWatched = 0,
+    startDate = null,
+    finishDate = null,
+    updatedAt = null,
+)

@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import io.challenge_workshop.mal_ui.animelist.ANIME_LIST_FILTERS
 import io.challenge_workshop.mal_ui.animelist.WatchStatus
 import io.challenge_workshop.mal_ui.animelist.filterLabel
+import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_ADD_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_EPISODES_MINUS_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_EPISODES_PLUS_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_EPISODES_TAG
@@ -61,10 +62,11 @@ import kotlinx.datetime.toLocalDateTime
  * It draws [AnimePage.shownListStatus] — the pending target while a save is under way — so a change
  * shows the moment it is made, and says "Saving…" for as long as MAL has not confirmed it. Before
  * the fetch has succeeded the same fields are drawn, disabled: the row the page opened from may be
- * stale and has no dates. Absent for an anime that is not on the list; adding one is not here yet.
+ * stale and has no dates. For an anime that is not on the list it is an "Add to list as…" picker and nothing else,
+ * until MAL confirms the add; before the fetch has landed it is neither.
  */
 @Composable
-internal fun ListEntrySection(page: AnimePage, onEdit: (ListEdit) -> Unit) {
+internal fun ListEntrySection(page: AnimePage, onEdit: (ListEdit) -> Unit, onAdd: (WatchStatus) -> Unit) {
     Column(
         Modifier.fillMaxWidth().testTag(ANIME_PAGE_LIST_STATUS_TAG),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -80,18 +82,30 @@ internal fun ListEntrySection(page: AnimePage, onEdit: (ListEdit) -> Unit) {
                 )
             }
         }
-        val status = page.shownListStatus
-        if (status == null) {
+        page.save.error?.let { message ->
+            Column(Modifier.testTag(ANIME_PAGE_SAVE_ERROR_TAG)) { ErrorCard("Could not save that change", message) }
+        }
+        // Keyed on what MAL has confirmed, not on the pending target: an add is not on the list, and
+        // the editor stays away, until MAL says it is.
+        if (page.listStatus == null) {
+            // Until the fetch lands it is not known that the anime is off the list (a Related Anime
+            // opens with no entry however it stands), so neither the claim nor the picker is shown.
+            if (page.load != AnimePageLoad.Loaded) return@Column
             Text(
                 "Not on your list.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Field("Add to list as…") {
+                AddToListPicker(
+                    pending = page.save.target?.watchStatus,
+                    enabled = !page.isSaving,
+                    onPick = onAdd,
+                )
+            }
             return@Column
         }
-        page.save.error?.let { message ->
-            Column(Modifier.testTag(ANIME_PAGE_SAVE_ERROR_TAG)) { ErrorCard("Could not save that change", message) }
-        }
+        val status = page.shownListStatus!!
         val enabled = page.canEdit
         Field("Status") { WatchStatusPicker(status.watchStatus, enabled) { onEdit(ListEdit.SetWatchStatus(it)) } }
         Field("Episodes") { EpisodesField(status.episodesWatched, page.totalEpisodes, enabled, onEdit) }
@@ -165,6 +179,19 @@ private val WATCH_STATUS_CHOICES: List<WatchStatus> = ANIME_LIST_FILTERS.filterN
 @Composable
 private fun WatchStatusPicker(current: WatchStatus, enabled: Boolean, onPick: (WatchStatus) -> Unit) {
     MenuPicker(current.filterLabel(), WATCH_STATUS_CHOICES, { it.filterLabel() }, enabled, ANIME_PAGE_STATUS_TAG, onPick)
+}
+
+/** "Add to list as…": the five Watch Statuses, the button saying which one is being added while it saves. */
+@Composable
+private fun AddToListPicker(pending: WatchStatus?, enabled: Boolean, onPick: (WatchStatus) -> Unit) {
+    MenuPicker(
+        current = pending?.filterLabel() ?: "Choose…",
+        choices = WATCH_STATUS_CHOICES,
+        label = { it.filterLabel() },
+        enabled = enabled,
+        tag = ANIME_PAGE_ADD_TAG,
+        onPick = onPick,
+    )
 }
 
 @Composable

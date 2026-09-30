@@ -194,7 +194,7 @@ val ANIME_PAGE_ERROR_TAG: String = "$ANIME_PAGE_TAG.error"
 /** The synopsis text, which is the one thing only the fetch can supply. */
 val ANIME_PAGE_SYNOPSIS_TAG: String = "$ANIME_PAGE_TAG.synopsis"
 
-/** The user's List Entry section — absent for an anime that is not on their list. */
+/** The user's List Entry section: the fields, or "Add to list as…" for an anime that is not on their list. */
 val ANIME_PAGE_LIST_STATUS_TAG: String = "$ANIME_PAGE_TAG.listStatus"
 
 /** The Anime Page when it sits beside the list. Absent below the side-panel width, where the page is the screen. */
@@ -205,6 +205,9 @@ val ANIME_PAGE_SAVING_TAG: String = "$ANIME_PAGE_TAG.saving"
 
 /** Why the last save was refused. The fields have already gone back to what MAL holds. */
 val ANIME_PAGE_SAVE_ERROR_TAG: String = "$ANIME_PAGE_TAG.saveError"
+
+/** The "Add to list as…" button, shown instead of the List Entry's fields for an anime that is not on the list. */
+val ANIME_PAGE_ADD_TAG: String = "$ANIME_PAGE_TAG.add"
 
 /** The Watch Status button, which opens the picker. */
 val ANIME_PAGE_STATUS_TAG: String = "$ANIME_PAGE_TAG.status"

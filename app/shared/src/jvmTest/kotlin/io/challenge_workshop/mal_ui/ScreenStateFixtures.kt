@@ -191,6 +191,7 @@ internal class RecordedActions {
     val layouts: MutableList<AnimeListLayout> = mutableListOf()
     val opened: MutableList<AnimeListEntry> = mutableListOf()
     val edits: MutableList<ListEdit> = mutableListOf()
+    val added: MutableList<WatchStatus> = mutableListOf()
     val openedRelated: MutableList<RelatedAnime> = mutableListOf()
 
     val actions: ScreenActions = ScreenActions(
@@ -217,6 +218,7 @@ internal class RecordedActions {
                 onClose = { calls += "animePageClose" },
                 onRetry = { calls += "animePageRetry" },
                 onEdit = { edits += it; calls += "animePageEdit" },
+                onAdd = { added += it; calls += "animePageAdd" },
                 onOpenRelated = { openedRelated += it; calls += "animePageOpenRelated" },
             ),
             diagnostics = DiagnosticsActions(

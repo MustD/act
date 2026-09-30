@@ -42,3 +42,22 @@ internal fun applyAutomaticRules(
     }
     return status
 }
+
+/**
+ * The List Entry an anime gets when the user adds it by choosing [watchStatus], so the first PATCH
+ * carries what myanimelist.net would have filled in (the spec's table):
+ *
+ * - Watching → start date [today].
+ * - Completed → progress set to the total (when known) and finish date [today].
+ * - Plan to Watch, On Hold, Dropped → nothing.
+ */
+internal fun newListEntry(watchStatus: WatchStatus, today: LocalDate, totalEpisodes: Int): MyListStatus {
+    val entry = MyListStatus(watchStatus, score = 0, episodesWatched = 0, startDate = null, finishDate = null, updatedAt = null)
+    val todayText = today.toString()
+    return when (watchStatus) {
+        WatchStatus.Watching -> entry.copy(startDate = todayText)
+        WatchStatus.Completed ->
+            entry.copy(episodesWatched = totalEpisodes.coerceAtLeast(0), finishDate = todayText)
+        else -> entry
+    }
+}

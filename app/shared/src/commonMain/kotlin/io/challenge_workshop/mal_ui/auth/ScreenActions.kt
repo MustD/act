@@ -93,6 +93,8 @@ data class AnimePageActions(
     val onRetry: () -> Unit,
     /** A change to the List Entry on the current page. Saved as soon as it is made. */
     val onEdit: (ListEdit) -> Unit,
+    /** "Add to list as…" on an anime that is not on the list: the chosen Watch Status. */
+    val onAdd: (WatchStatus) -> Unit,
     /** Tapping a Related Anime: adds its page to the history. */
     val onOpenRelated: (RelatedAnime) -> Unit,
 )
@@ -157,6 +159,7 @@ internal fun screenActions(
             onClose = animePages::close,
             onRetry = animePages::retry,
             onEdit = animePages::edit,
+            onAdd = animePages::add,
             onOpenRelated = { animePages.open(it) },
         ),
         diagnostics = DiagnosticsActions(

@@ -126,7 +126,7 @@ private fun PageContent(page: AnimePage, canGoBack: Boolean, actions: AnimePageA
         ) {
             Header(page)
             HorizontalDivider()
-            ListEntrySection(page, actions.onEdit)
+            ListEntrySection(page, actions.onEdit, actions.onAdd)
             HorizontalDivider()
             SynopsisSection(page, actions.onRetry)
             RelatedSection(page.related, actions.onOpenRelated)
