@@ -49,6 +49,25 @@ sealed interface AnimePageLoad {
 }
 
 /**
+ * Where saving the user's edits to one Anime Page has got to.
+ *
+ * [target] is what the user wants the entry to be, and **is what the page shows** while it is set.
+ * [inFlight] is the target as it stood when the PATCH now at MAL was sent: at most one exists per
+ * anime, so saves cannot arrive out of order, and edits made meanwhile only move [target]. When the
+ * PATCH is answered, another is sent if [target] has moved on from [inFlight]. It is **not**
+ * compared with MAL's answer, which can legitimately differ (progress is clamped, a score rounded)
+ * and would otherwise be chased for ever.
+ *
+ * [error] is why the last save was refused. The page has by then gone back to MAL's last confirmed
+ * values, and the next edit clears it.
+ */
+data class PageSave(
+    val target: MyListStatus? = null,
+    val inFlight: MyListStatus? = null,
+    val error: String? = null,
+)
+
+/**
  * One open Anime Page.
  *
  * It **opens drawn from what the caller already had** — the list row — so opening one never looks
@@ -67,7 +86,21 @@ data class AnimePage(
     val listStatus: MyListStatus?,
     val synopsis: String?,
     val load: AnimePageLoad,
+    val save: PageSave = PageSave(),
 ) {
+    /** What to draw: the pending target if there is one, otherwise what MAL last confirmed. */
+    val shownListStatus: MyListStatus? get() = save.target ?: listStatus
+
+    /** Whether a change of the user's is not yet confirmed by MAL. */
+    val isSaving: Boolean get() = save.target != null || save.inFlight != null
+
+    /**
+     * Whether the List Entry may be edited: only once the fetch has succeeded, because its dates
+     * decide whether an automatic rule may fill them and the list row it opened from may be stale.
+     * An anime that is not on the list has no entry to edit.
+     */
+    val canEdit: Boolean get() = load == AnimePageLoad.Loaded && listStatus != null
+
     /** This page with the fetch's answer in place of what it opened with. */
     internal fun loadedWith(details: AnimeDetails): AnimePage = copy(
         title = details.title,

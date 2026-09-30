@@ -199,3 +199,26 @@ val ANIME_PAGE_LIST_STATUS_TAG: String = "$ANIME_PAGE_TAG.listStatus"
 
 /** The Anime Page when it sits beside the list. Absent below the side-panel width, where the page is the screen. */
 val ANIME_PAGE_PANEL_TAG: String = "$ANIME_PAGE_TAG.panel"
+
+/** "Saving…" beside the List Entry: present while any change of the user's is not yet confirmed by MAL. */
+val ANIME_PAGE_SAVING_TAG: String = "$ANIME_PAGE_TAG.saving"
+
+/** Why the last save was refused. The fields have already gone back to what MAL holds. */
+val ANIME_PAGE_SAVE_ERROR_TAG: String = "$ANIME_PAGE_TAG.saveError"
+
+/** The Watch Status button, which opens the picker. */
+val ANIME_PAGE_STATUS_TAG: String = "$ANIME_PAGE_TAG.status"
+
+/** The progress number field, and the − and + beside it. */
+val ANIME_PAGE_EPISODES_TAG: String = "$ANIME_PAGE_TAG.episodes"
+val ANIME_PAGE_EPISODES_MINUS_TAG: String = "$ANIME_PAGE_TAG.episodesMinus"
+val ANIME_PAGE_EPISODES_PLUS_TAG: String = "$ANIME_PAGE_TAG.episodesPlus"
+
+/** The score button, which opens the picker of MAL's labels. */
+val ANIME_PAGE_SCORE_TAG: String = "$ANIME_PAGE_TAG.score"
+
+/** Each date's button, which opens the DatePicker, and its clear action. */
+val ANIME_PAGE_START_DATE_TAG: String = "$ANIME_PAGE_TAG.startDate"
+val ANIME_PAGE_START_DATE_CLEAR_TAG: String = "$ANIME_PAGE_TAG.startDateClear"
+val ANIME_PAGE_FINISH_DATE_TAG: String = "$ANIME_PAGE_TAG.finishDate"
+val ANIME_PAGE_FINISH_DATE_CLEAR_TAG: String = "$ANIME_PAGE_TAG.finishDateClear"

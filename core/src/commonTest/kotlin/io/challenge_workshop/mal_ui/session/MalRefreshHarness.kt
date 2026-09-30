@@ -2,6 +2,7 @@ package io.challenge_workshop.mal_ui.session
 
 import io.challenge_workshop.mal_ui.animelist.AnimeListResponse
 import io.challenge_workshop.mal_ui.animepage.AnimeDetailsResponse
+import io.challenge_workshop.mal_ui.animepage.ListStatusResponse
 import io.challenge_workshop.mal_ui.mal.HttpClientFactory
 import io.challenge_workshop.mal_ui.mal.MalAuthConfig
 import io.challenge_workshop.mal_ui.mal.MalTokens
@@ -11,6 +12,10 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
 import io.ktor.client.request.HttpRequestData
+import io.ktor.http.HttpMethod
+import io.ktor.http.Parameters
+import io.ktor.http.content.OutgoingContent
+import io.ktor.http.parseUrlEncodedParameters
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
@@ -50,6 +55,11 @@ val STALE_TOKENS: MalTokens = MalTokens(
 val TEST_USER: MalUser = MalUser(id = 42, name = "someone")
 
 private val ANIME_DETAILS_PATH = Regex(""".*/anime/\d+""")
+
+private val LIST_STATUS_PATH = Regex(""".*/anime/\d+/my_list_status""")
+
+/** One `PATCH /anime/{id}/my_list_status` the fake MAL received: what was sent, not what it made of it. */
+data class ListStatusPatch(val method: HttpMethod, val url: Url, val contentType: String?, val form: Parameters)
 
 private const val USER_JSON = """{"id":42,"name":"someone"}"""
 
@@ -101,6 +111,12 @@ class FakeMal(
     private val animeDetails: (Long) -> AnimeDetailsResponse = { AnimeDetailsResponse.NotFound },
     /** Called with the id of each `GET /anime/{id}` before it is answered, to hold one in flight. */
     private val holdAnimeDetails: suspend (Long) -> Unit = {},
+    /** How the fake answers `PATCH /anime/{id}/my_list_status`, given the id and the form fields sent. */
+    private val updateListStatus: (Long, Parameters) -> ListStatusResponse = { _, _ ->
+        ListStatusResponse.Failure()
+    },
+    /** Called with the id of each list-status PATCH before it is answered, to hold one in flight. */
+    private val holdListStatusUpdate: suspend (Long) -> Unit = {},
     /**
      * How many token-endpoint requests fail in transport before [refreshResponse] applies: a blip,
      * after which the same Pending Authorization is still good.
@@ -129,6 +145,9 @@ class FakeMal(
 
     /** Every `GET /anime/{id}` the fake was asked, in order. */
     val animeDetailsRequests: MutableList<Url> = mutableListOf()
+
+    /** Every list-status PATCH the fake was asked, in order. */
+    val listStatusPatches: MutableList<ListStatusPatch> = mutableListOf()
 
     val engine: MockEngine = MockEngine { request ->
         when {
@@ -184,6 +203,43 @@ class FakeMal(
                         )
 
                         AnimeListResponse.TransportFailure -> throw IOException("connection reset")
+                    }
+                }
+            }
+
+            LIST_STATUS_PATH.matches(request.url.encodedPath) -> {
+                val id = request.url.encodedPath.removeSuffix("/my_list_status").substringAfterLast('/').toLong()
+                val body = (request.body as? OutgoingContent.ByteArrayContent)?.bytes()?.decodeToString().orEmpty()
+                val patch = ListStatusPatch(
+                    method = request.method,
+                    url = request.url,
+                    contentType = request.body.contentType?.toString(),
+                    form = body.parseUrlEncodedParameters(),
+                )
+                listStatusPatches += patch
+                holdListStatusUpdate(id)
+                val presented = request.headers[HttpHeaders.Authorization]?.removePrefix("Bearer ")
+                if (presented == null || presented !in acceptedAccessTokens) {
+                    respond(
+                        content = """{"error":"invalid_token","message":"expired"}""",
+                        status = HttpStatusCode.Unauthorized,
+                        headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                    )
+                } else {
+                    when (val r = updateListStatus(id, patch.form)) {
+                        is ListStatusResponse.Saved -> respond(
+                            content = r.status.json(),
+                            status = HttpStatusCode.OK,
+                            headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                        )
+
+                        is ListStatusResponse.Failure -> respond(
+                            content = """{"message":"invalid score","error":"bad_request"}""",
+                            status = r.status,
+                            headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                        )
+
+                        ListStatusResponse.TransportFailure -> throw IOException("connection reset")
                     }
                 }
             }

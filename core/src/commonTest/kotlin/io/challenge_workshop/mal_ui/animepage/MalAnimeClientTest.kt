@@ -9,6 +9,9 @@ import io.challenge_workshop.mal_ui.session.TEST_API_BASE_URL
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.DefaultRequest
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
+import io.ktor.http.Parameters
+import kotlinx.datetime.LocalDate
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -31,6 +34,9 @@ class MalAnimeClientTest {
 
     private fun mal(response: (Long) -> AnimeDetailsResponse) =
         FakeMal(acceptedAccessToken = "good-access", animeDetails = response)
+
+    private fun malSaving(response: (Long, Parameters) -> ListStatusResponse) =
+        FakeMal(acceptedAccessToken = "good-access", updateListStatus = response)
 
     @Test
     fun the_request_asks_for_the_agreed_fields_on_the_anime_path() = runTest {
@@ -102,6 +108,83 @@ class MalAnimeClientTest {
 
         val offline = mal { AnimeDetailsResponse.TransportFailure }
         val e = assertFailsWith<MalAuthException> { clientOver(offline).anime(6) }
+        assertEquals(true, e.message!!.contains("Could not reach the MAL API"))
+    }
+
+    @Test
+    fun an_update_is_a_form_encoded_patch_on_the_my_list_status_path() = runTest {
+        val mal = malSaving { _, _ -> ListStatusResponse.Saved(FakeListStatus()) }
+
+        clientOver(mal).updateListStatus(
+            6,
+            ListStatusUpdate(
+                watchStatus = WatchStatus.OnHold,
+                score = 7,
+                episodesWatched = 12,
+                startDate = DateUpdate.Set(LocalDate(2024, 3, 5)),
+            ),
+        )
+
+        val patch = mal.listStatusPatches.single()
+        assertEquals(HttpMethod.Patch, patch.method)
+        assertEquals("/v2/anime/6/my_list_status", patch.url.encodedPath)
+        assertEquals("application/x-www-form-urlencoded", patch.contentType?.substringBefore(";"))
+        // `num_watched_episodes` in the request, `num_episodes_watched` in every response: a client
+        // written by symmetry sends a field MAL ignores and still gets a 200.
+        assertEquals(
+            mapOf(
+                "status" to listOf("on_hold"),
+                "score" to listOf("7"),
+                "num_watched_episodes" to listOf("12"),
+                "start_date" to listOf("2024-03-05"),
+            ),
+            patch.form.entries().associate { it.key to it.value },
+        )
+    }
+
+    @Test
+    fun a_field_left_out_of_the_update_is_left_out_of_the_request() = runTest {
+        val mal = malSaving { _, _ -> ListStatusResponse.Saved(FakeListStatus()) }
+
+        clientOver(mal).updateListStatus(6, ListStatusUpdate(score = 0))
+
+        assertEquals(mapOf("score" to listOf("0")), mal.listStatusPatches.single().form.entries().associate { it.key to it.value })
+    }
+
+    @Test
+    fun clearing_a_date_sends_the_field_empty() = runTest {
+        val mal = malSaving { _, _ -> ListStatusResponse.Saved(FakeListStatus()) }
+
+        clientOver(mal).updateListStatus(6, ListStatusUpdate(finishDate = DateUpdate.Clear))
+
+        val form = mal.listStatusPatches.single().form
+        assertEquals(listOf(""), form.getAll("finish_date"), "present but empty is what clears")
+        assertEquals(setOf("finish_date"), form.names())
+    }
+
+    @Test
+    fun the_response_is_the_new_confirmed_entry_including_what_mal_changed() = runTest {
+        val mal = malSaving { _, form ->
+            ListStatusResponse.Saved(FakeListStatus(watched = 26, startDate = "2024-03").applying(form, 26))
+        }
+
+        val status = clientOver(mal).updateListStatus(6, ListStatusUpdate(episodesWatched = 27))
+
+        assertEquals(26, status.episodesWatched, "MAL clamped it, and that is the value to believe")
+        assertEquals("2024-03", status.startDate)
+        assertNull(status.finishDate)
+    }
+
+    @Test
+    fun a_refused_update_and_a_transport_failure_surface_as_mal_exceptions() = runTest {
+        val refused = malSaving { _, _ -> ListStatusResponse.Failure() }
+        assertEquals(
+            400,
+            assertFailsWith<MalAuthException> { clientOver(refused).updateListStatus(6, ListStatusUpdate(score = 3)) }.status,
+        )
+
+        val offline = malSaving { _, _ -> ListStatusResponse.TransportFailure }
+        val e = assertFailsWith<MalAuthException> { clientOver(offline).updateListStatus(6, ListStatusUpdate(score = 3)) }
         assertEquals(true, e.message!!.contains("Could not reach the MAL API"))
     }
 }

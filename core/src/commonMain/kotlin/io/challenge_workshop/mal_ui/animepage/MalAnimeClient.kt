@@ -8,11 +8,15 @@ import io.challenge_workshop.mal_ui.mal.decodeOrThrow
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
+import io.ktor.client.request.patch
+import io.ktor.client.request.setBody
+import io.ktor.http.parameters
+import io.ktor.client.request.forms.FormDataContent
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * `GET /anime/{id}`, and nothing else so far. HTTP and parsing only, handed the caller's
+ * `GET /anime/{id}` and `PATCH /anime/{id}/my_list_status`. HTTP and parsing only, handed the caller's
  * **authenticated** client for the reason [io.challenge_workshop.mal_ui.animelist.MalAnimeListClient]
  * is.
  */
@@ -31,6 +35,38 @@ class MalAnimeClient(
             throw MalAuthException("Could not reach the MAL API: ${e.message}", cause = e)
         }
         return response.decodeOrThrow<AnimeDetailsBody>().toDetails()
+    }
+
+    /**
+     * Changes the user's List Entry for [animeId] and returns MAL's **whole entry after the write**.
+     *
+     * That answer, not the request, is the new confirmed value: MAL clamps progress and rounds a
+     * score without any error. The same call creates the entry when the anime is not on the list.
+     */
+    suspend fun updateListStatus(animeId: Long, update: ListStatusUpdate): MyListStatus {
+        val form = parameters {
+            update.watchStatus?.wireValue?.let { append("status", it) }
+            update.score?.let { append("score", it.toString()) }
+            // Named `num_watched_episodes` here and `num_episodes_watched` in every response.
+            update.episodesWatched?.let { append("num_watched_episodes", it.toString()) }
+            update.startDate?.let { append("start_date", it.wire()) }
+            update.finishDate?.let { append("finish_date", it.wire()) }
+        }
+        val response = try {
+            http.patch("${apiBaseUrl.trimEnd('/')}/anime/$animeId/my_list_status") {
+                setBody(FormDataContent(form))
+            }
+        } catch (e: MalAuthException) {
+            throw e
+        } catch (e: Exception) {
+            throw MalAuthException("Could not reach the MAL API: ${e.message}", cause = e)
+        }
+        return response.decodeOrThrow<ListStatusBody>().toMyListStatus()
+    }
+
+    private fun DateUpdate.wire(): String = when (this) {
+        DateUpdate.Clear -> ""
+        is DateUpdate.Set -> date.toString()
     }
 
     companion object {
@@ -70,15 +106,15 @@ internal data class AnimeDetailsBody(
         mediaType = mediaType,
         airingStatus = status,
         synopsis = synopsis,
-        listStatus = myListStatus?.let {
-            MyListStatus(
-                watchStatus = it.status,
-                score = it.score,
-                episodesWatched = it.numEpisodesWatched,
-                startDate = it.startDate,
-                finishDate = it.finishDate,
-                updatedAt = it.updatedAt,
-            )
-        },
+        listStatus = myListStatus?.toMyListStatus(),
     )
 }
+
+internal fun ListStatusBody.toMyListStatus(): MyListStatus = MyListStatus(
+    watchStatus = status,
+    score = score,
+    episodesWatched = numEpisodesWatched,
+    startDate = startDate,
+    finishDate = finishDate,
+    updatedAt = updatedAt,
+)

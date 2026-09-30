@@ -42,28 +42,25 @@ import androidx.compose.ui.unit.dp
 import io.challenge_workshop.mal_ui.animelist.AnimeCoverBox
 import io.challenge_workshop.mal_ui.animelist.airingLabel
 import io.challenge_workshop.mal_ui.animelist.coverUrl
-import io.challenge_workshop.mal_ui.animelist.filterLabel
 import io.challenge_workshop.mal_ui.animelist.mediaTypeLabel
 import io.challenge_workshop.mal_ui.animelist.placeholderColor
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_BACK_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_CLOSE_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_ERROR_TAG
-import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_LIST_STATUS_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_LOADING_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_SYNOPSIS_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_TAG
 import io.challenge_workshop.mal_ui.auth.AnimePageActions
 import io.challenge_workshop.mal_ui.auth.ErrorCard
-import io.challenge_workshop.mal_ui.auth.LabelledValue
 
 /**
- * One Anime Page, read-only.
+ * One Anime Page.
  *
  * Takes the [AnimePage] as a value and its actions as a record, like every screen here. What it *is*
  * — loading, loaded, failed — is [AnimePage.load], decided in `:core`; this is a `when` over it.
  * The List Entry fields are shown either way, from whatever the page opened with until the fetch
- * replaces them, and **nothing is editable yet**: editing waits for a fetch that has succeeded
- * (spec, "No editing until that fetch has succeeded").
+ * replaces them, and **nothing is editable until the fetch has succeeded** ([AnimePage.canEdit]): its dates decide
+ * whether an automatic rule may fill them, and the row may be stale.
  *
  * **Back is handled by hand**, per ADR-0006: [BackHandler] for the Android back gesture, and Esc for
  * a keyboard, which no back dispatcher maps on desktop. Both go one page back; ✕ closes them all.
@@ -129,7 +126,7 @@ private fun PageContent(page: AnimePage, canGoBack: Boolean, actions: AnimePageA
         ) {
             Header(page)
             HorizontalDivider()
-            ListStatusSection(page)
+            ListEntrySection(page, actions.onEdit)
             HorizontalDivider()
             SynopsisSection(page, actions.onRetry)
         }
@@ -158,40 +155,6 @@ private fun Header(page: AnimePage) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-        }
-    }
-}
-
-/**
- * The user's List Entry, read-only. Absent for an anime that is not on their list: the section says
- * so, and that is all it says.
- *
- * A date MAL sent partial (`2024`, `2024-03`) is shown as it is. One that is unset — or not fetched
- * yet, which the row it opened from never carries — is a dash.
- */
-@Composable
-private fun ListStatusSection(page: AnimePage) {
-    Column(
-        Modifier.fillMaxWidth().testTag(ANIME_PAGE_LIST_STATUS_TAG),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text("Your list entry", style = MaterialTheme.typography.titleMedium)
-        val status = page.listStatus
-        if (status == null) {
-            Text(
-                "Not on your list.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            LabelledValue("Status", status.watchStatus.filterLabel())
-            LabelledValue(
-                "Episodes",
-                "${status.episodesWatched} / ${if (page.totalEpisodes > 0) page.totalEpisodes.toString() else "?"}",
-            )
-            LabelledValue("Score", if (status.score in 1..10) status.score.toString() else "No score")
-            LabelledValue("Started", status.startDate ?: NO_DATE)
-            LabelledValue("Finished", status.finishDate ?: NO_DATE)
         }
     }
 }
@@ -228,4 +191,3 @@ private fun SynopsisSection(page: AnimePage, onRetry: () -> Unit) {
 }
 
 private val COVER_WIDTH = 120.dp
-private const val NO_DATE = "—"

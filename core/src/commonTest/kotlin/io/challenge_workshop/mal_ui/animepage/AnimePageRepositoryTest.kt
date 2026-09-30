@@ -42,61 +42,6 @@ import kotlin.test.assertTrue
  */
 class AnimePageRepositoryTest {
 
-    private class Harness(
-        val mal: FakeMal,
-        val session: MalSessionRepository,
-        val list: AnimeListRepository,
-        val pages: AnimePageRepository,
-    ) {
-        val history: AnimePageHistory get() = pages.state.value
-
-        suspend fun awaitPage(predicate: (AnimePage) -> Boolean): AnimePage =
-            pages.state.first { it.current?.let(predicate) == true }.current!!
-
-        suspend fun awaitLoaded(): AnimePage = awaitPage { it.load == AnimePageLoad.Loaded }
-
-        suspend fun awaitEntries(): List<AnimeListEntry> =
-            (list.state.first { s -> s.content.let { it is AnimeListContent.Entries && !it.replacing } }.content
-                as AnimeListContent.Entries).entries
-
-        fun entry(id: Long): AnimeListEntry = awaitedEntries.first { it.animeId == id }
-
-        var awaitedEntries: List<AnimeListEntry> = emptyList()
-    }
-
-    private suspend fun TestScope.harness(
-        listEntries: List<FakeEntry> = listOf(
-            FakeEntry(1, "One", watchStatus = "watching", score = 5, watched = 3),
-            FakeEntry(2, "Two"),
-            FakeEntry(3, "Three"),
-        ),
-        animeDetails: (Long) -> AnimeDetailsResponse = {
-            AnimeDetailsResponse.Found(FakeAnimeDetails(it, "Anime $it"))
-        },
-        holdAnimeDetails: suspend (Long) -> Unit = {},
-    ): Harness {
-        val mal = FakeMal(
-            acceptedAccessToken = VALID_TOKENS.accessToken,
-            animeList = { AnimeListResponse.Page(listEntries, hasMore = false) },
-            animeDetails = animeDetails,
-            holdAnimeDetails = holdAnimeDetails,
-        )
-        val store = JsonTokenStore(FakeKeyValueStore(), clock = FakeClock())
-        store.writeSession(VALID_TOKENS, TEST_USER)
-        val session = MalSessionRepository(
-            store = store,
-            clock = FakeClock(),
-            initialConfig = TEST_CONFIG,
-            clientFactory = mal.clientFactory,
-        )
-        val list = AnimeListRepository(session, backgroundScope)
-        val pages = AnimePageRepository(session, list, backgroundScope)
-        session.restore()
-        val h = Harness(mal, session, list, pages)
-        h.awaitedEntries = h.awaitEntries()
-        return h
-    }
-
     @Test
     fun opening_an_entry_draws_the_page_from_the_row_before_the_fetch_lands() = runTest {
         val gate = CompletableDeferred<Unit>()

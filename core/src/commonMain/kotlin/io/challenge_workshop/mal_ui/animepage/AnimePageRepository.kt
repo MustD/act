@@ -5,6 +5,7 @@ import io.challenge_workshop.mal_ui.animelist.AnimeListRepository
 import io.challenge_workshop.mal_ui.session.MalSessionRepository
 import io.challenge_workshop.mal_ui.session.SessionState
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -49,6 +50,16 @@ class AnimePageRepository(
     /** The fetches in flight, by anime, so leaving a page or opening another can cancel them. */
     private val fetches = mutableMapOf<Long, Job>()
 
+    /**
+     * Each anime's unfinished save, whether or not its page is still open — **the one copy the save
+     * loop reads**, with the page's [AnimePage.save] a projection of it. That is what lets leaving a
+     * page mid-save not lose the save: the loop never asks the history whether anyone is looking.
+     */
+    private val saves = mutableMapOf<Long, PageSave>()
+
+    /** The anime with a save loop running: the "at most one PATCH in flight per anime" guard. */
+    private val draining = mutableSetOf<Long>()
+
     init {
         scope.launch {
             session.state
@@ -66,6 +77,8 @@ class AnimePageRepository(
         sessionScope?.cancel()
         sessionScope = null
         fetches.clear()
+        saves.clear()
+        draining.clear()
         _state.value = AnimePageHistory()
     }
 
@@ -76,7 +89,7 @@ class AnimePageRepository(
     fun open(entry: AnimeListEntry) {
         if (sessionScope == null) return
         cancelFetches()
-        _state.value = AnimePageHistory(listOf(AnimePage.from(entry)))
+        _state.value = AnimePageHistory(listOf(AnimePage.from(entry).copy(save = saves[entry.animeId] ?: PageSave())))
         fetch(entry.animeId)
     }
 
@@ -102,6 +115,78 @@ class AnimePageRepository(
         fetch(page.animeId)
     }
 
+    /**
+     * Applies [edit] to the current page's List Entry and saves it, immediately if nothing is in
+     * flight for that anime and as the next PATCH if something is. Does nothing until the page's
+     * fetch has succeeded ([AnimePage.canEdit]), and nothing for an edit that changes nothing.
+     */
+    fun edit(edit: ListEdit) {
+        val sessionScope = sessionScope ?: return
+        val page = _state.value.current ?: return
+        if (!page.canEdit) return
+        val id = page.animeId
+        val save = saves[id] ?: PageSave()
+        val shown = page.shownListStatus!!
+        val target = edit.applyTo(shown, page.totalEpisodes)
+        if (target == shown) return
+        saves[id] = save.copy(target = target, error = null)
+        publish(id)
+        // Undispatched, so the first tap is at MAL before the second can be made, whatever the
+        // dispatcher: the loop below is what makes the later ones wait, and it must already be there.
+        if (draining.add(id)) {
+            sessionScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                try {
+                    drain(id, page.listStatus!!)
+                } finally {
+                    // A loop cancelled by the Session ending must not release a later Session's guard.
+                    if (sessionScope === this@AnimePageRepository.sessionScope) draining.remove(id)
+                }
+            }
+        }
+    }
+
+    /**
+     * Sends [id]'s target, and again for as long as it has moved on since the last send.
+     *
+     * Each send is only the fields that differ from the one before, so a later edit of another field
+     * does not repeat an earlier one. MAL's answer becomes the confirmed value; a refusal ends the
+     * loop and puts the page back on the last one.
+     */
+    private suspend fun drain(id: Long, confirmed: MyListStatus) {
+        var baseline = confirmed
+        while (true) {
+            val target = saves[id]?.target ?: return
+            val update = target.diffFrom(baseline)
+            if (update.isEmpty) {
+                saves.remove(id)
+                publish(id)
+                return
+            }
+            saves[id] = saves.getValue(id).copy(inFlight = target)
+            publish(id)
+            val answer = try {
+                session.animeClient().updateListStatus(id, update)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                saves.remove(id)
+                publish(id, error = e.message ?: e.toString())
+                return
+            }
+            baseline = target
+            animeList.applyListStatus(id, answer)
+            val now = saves.getValue(id)
+            if (now.target == target) saves.remove(id) else saves[id] = now.copy(inFlight = null)
+            publish(id, confirmed = answer)
+        }
+    }
+
+    /** Puts [saves]' word for [animeId] on every open page of it, and MAL's [confirmed] answer if there is one. */
+    private fun publish(animeId: Long, confirmed: MyListStatus? = null, error: String? = null) {
+        val save = saves[animeId] ?: PageSave(error = error)
+        replace(animeId) { it.copy(save = save, listStatus = confirmed ?: it.listStatus) }
+    }
+
     private fun cancelFetches() {
         fetches.values.forEach { it.cancel() }
         fetches.clear()
@@ -120,8 +205,15 @@ class AnimePageRepository(
             try {
                 val details = session.animeClient().anime(animeId)
                 // The list first, so it is never behind a page that already shows the newer status.
-                details.listStatus?.let { animeList.applyListStatus(animeId, it) }
-                replace(animeId) { it.loadedWith(details) }
+                // A save under way is newer than this answer, which may predate it: keep the page's
+                // confirmed value and the list's, and let the PATCH's own answer replace them.
+                val saving = saves.containsKey(animeId)
+                if (!saving) details.listStatus?.let { animeList.applyListStatus(animeId, it) }
+                replace(animeId) {
+                    it.loadedWith(details).let { loaded ->
+                        if (saving) loaded.copy(listStatus = it.listStatus) else loaded
+                    }
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
