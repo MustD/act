@@ -1,6 +1,7 @@
 package io.challenge_workshop.mal_ui.animelist
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -24,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -58,8 +60,8 @@ private val COVER_CORNER = RoundedCornerShape(6.dp)
  * without reading it — so this is the default and [AnimeListRow] is the dense alternative.
  */
 @Composable
-internal fun AnimeListCard(entry: AnimeListEntry, modifier: Modifier = Modifier) {
-    Card(modifier.fillMaxWidth()) {
+internal fun AnimeListCard(entry: AnimeListEntry, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+    Card(onClick = onOpen, modifier = modifier.fillMaxWidth()) {
         AnimeCover(
             entry = entry,
             preferLarge = true,
@@ -93,10 +95,10 @@ internal fun AnimeListCard(entry: AnimeListEntry, modifier: Modifier = Modifier)
  * scanning four hundred completed shows, and the Layout toggle is what lets a person pick.
  */
 @Composable
-internal fun AnimeListRow(entry: AnimeListEntry, modifier: Modifier = Modifier) {
+internal fun AnimeListRow(entry: AnimeListEntry, onOpen: () -> Unit, modifier: Modifier = Modifier) {
     // Measured, not a size class: the row is a grid cell, so what matters is the width it was given,
     // which is not the window's once a panel sits beside the list.
-    BoxWithConstraints(modifier.fillMaxWidth()) {
+    BoxWithConstraints(modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOpen)) {
         val wide = maxWidth >= ROW_COLUMNS_MIN_WIDTH
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = ROW_PADDING),
@@ -168,7 +170,12 @@ private val ROW_SCORE_WIDTH = 88.dp
  * cover is decorative and a screen reader announcing it would read the title twice.
  */
 @Composable
-private fun AnimeCover(entry: AnimeListEntry, preferLarge: Boolean, modifier: Modifier = Modifier) {
+private fun AnimeCover(entry: AnimeListEntry, preferLarge: Boolean, modifier: Modifier = Modifier) =
+    AnimeCoverBox(entry.title, entry.coverUrl(preferLarge), modifier)
+
+/** [AnimeCover] for anything with a title and a picture URL — a List Entry, or an Anime Page. */
+@Composable
+internal fun AnimeCoverBox(title: String, url: String?, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .clip(COVER_CORNER)
@@ -177,16 +184,16 @@ private fun AnimeCover(entry: AnimeListEntry, preferLarge: Boolean, modifier: Mo
     ) {
         // A mark rather than an empty box, so a cover that never arrives still identifies its entry
         // — and so a grid of them does not read as a grid of failures.
-        entry.title.firstOrNull()?.let {
+        title.firstOrNull()?.let {
             Text(
                 it.uppercase(),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        entry.coverUrl(preferLarge)?.let { url ->
+        url?.let {
             AsyncImage(
-                model = url,
+                model = it,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
@@ -266,8 +273,10 @@ private fun SkeletonBar(modifier: Modifier = Modifier) {
  * only one size, or — on an entry whose art was never uploaded — present with an empty string in it.
  * All three arrive here as null and render the placeholder.
  */
-internal fun AnimeListEntry.coverUrl(preferLarge: Boolean): String? {
-    val picture = picture ?: return null
+internal fun AnimeListEntry.coverUrl(preferLarge: Boolean): String? = picture.coverUrl(preferLarge)
+
+internal fun AnimePicture?.coverUrl(preferLarge: Boolean): String? {
+    val picture = this ?: return null
     val preferred = if (preferLarge) picture.large else picture.medium
     val fallback = if (preferLarge) picture.medium else picture.large
     return (preferred ?: fallback)?.takeIf { it.isNotBlank() }
@@ -316,7 +325,9 @@ private const val PART_SEPARATOR: String = " · "
  * left a string in `:core` on purpose: MAL adds types, and an entry whose type is one this build has
  * never heard of should read as "Music Video", not vanish and not crash.
  */
-internal fun AnimeListEntry.mediaTypeLabel(): String? = when (val type = mediaType?.lowercase()) {
+internal fun AnimeListEntry.mediaTypeLabel(): String? = mediaTypeLabel(mediaType)
+
+internal fun mediaTypeLabel(mediaType: String?): String? = when (val type = mediaType?.lowercase()) {
     null, "" -> null
     "tv" -> "TV"
     "ova" -> "OVA"

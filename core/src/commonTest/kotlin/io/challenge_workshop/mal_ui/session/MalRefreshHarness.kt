@@ -1,6 +1,7 @@
 package io.challenge_workshop.mal_ui.session
 
 import io.challenge_workshop.mal_ui.animelist.AnimeListResponse
+import io.challenge_workshop.mal_ui.animepage.AnimeDetailsResponse
 import io.challenge_workshop.mal_ui.mal.HttpClientFactory
 import io.challenge_workshop.mal_ui.mal.MalAuthConfig
 import io.challenge_workshop.mal_ui.mal.MalTokens
@@ -48,6 +49,8 @@ val STALE_TOKENS: MalTokens = MalTokens(
 
 val TEST_USER: MalUser = MalUser(id = 42, name = "someone")
 
+private val ANIME_DETAILS_PATH = Regex(""".*/anime/\d+""")
+
 private const val USER_JSON = """{"id":42,"name":"someone"}"""
 
 /** How the fake MAL answers a refresh. */
@@ -94,6 +97,10 @@ class FakeMal(
      * in-flight page to be asked about twice.
      */
     private val holdAnimeList: suspend (Int) -> Unit = {},
+    /** How the fake answers `GET /anime/{id}`, given the id that was asked for. */
+    private val animeDetails: (Long) -> AnimeDetailsResponse = { AnimeDetailsResponse.NotFound },
+    /** Called with the id of each `GET /anime/{id}` before it is answered, to hold one in flight. */
+    private val holdAnimeDetails: suspend (Long) -> Unit = {},
     /**
      * How many token-endpoint requests fail in transport before [refreshResponse] applies: a blip,
      * after which the same Pending Authorization is still good.
@@ -119,6 +126,9 @@ class FakeMal(
 
     /** The `Authorization` header of each of [animeListRequests], so a retry's token is visible. */
     val animeListAuthorizations: MutableList<String> = mutableListOf()
+
+    /** Every `GET /anime/{id}` the fake was asked, in order. */
+    val animeDetailsRequests: MutableList<Url> = mutableListOf()
 
     val engine: MockEngine = MockEngine { request ->
         when {
@@ -174,6 +184,42 @@ class FakeMal(
                         )
 
                         AnimeListResponse.TransportFailure -> throw IOException("connection reset")
+                    }
+                }
+            }
+
+            ANIME_DETAILS_PATH.matches(request.url.encodedPath) -> {
+                animeDetailsRequests += request.url
+                val id = request.url.encodedPath.substringAfterLast('/').toLong()
+                holdAnimeDetails(id)
+                val presented = request.headers[HttpHeaders.Authorization]?.removePrefix("Bearer ")
+                if (presented == null || presented !in acceptedAccessTokens) {
+                    respond(
+                        content = """{"error":"invalid_token","message":"expired"}""",
+                        status = HttpStatusCode.Unauthorized,
+                        headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                    )
+                } else {
+                    when (val r = animeDetails(id)) {
+                        is AnimeDetailsResponse.Found -> respond(
+                            content = r.anime.json(),
+                            status = HttpStatusCode.OK,
+                            headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                        )
+
+                        AnimeDetailsResponse.NotFound -> respond(
+                            content = """{"message":"","error":"not_found"}""",
+                            status = HttpStatusCode.NotFound,
+                            headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                        )
+
+                        is AnimeDetailsResponse.Failure -> respond(
+                            content = """{"error":"server_error","message":"boom"}""",
+                            status = r.status,
+                            headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                        )
+
+                        AnimeDetailsResponse.TransportFailure -> throw IOException("connection reset")
                     }
                 }
             }

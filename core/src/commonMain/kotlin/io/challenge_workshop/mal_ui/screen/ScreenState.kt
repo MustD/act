@@ -2,6 +2,7 @@ package io.challenge_workshop.mal_ui.screen
 
 import io.challenge_workshop.mal_ui.animelist.AnimeListLayout
 import io.challenge_workshop.mal_ui.animelist.AnimeListState
+import io.challenge_workshop.mal_ui.animepage.AnimePageHistory
 import io.challenge_workshop.mal_ui.auth.SignInState
 import io.challenge_workshop.mal_ui.mal.MalEndpoints
 import io.challenge_workshop.mal_ui.mal.MalUser
@@ -14,7 +15,7 @@ import io.challenge_workshop.mal_ui.session.SignedOutReason
  * resolved into a value.
  *
  * **Not a synonym for [SessionState].** That is the *Session's* own state — whether there are tokens
- * and what happened to them — and it is one of this value's six inputs. This is the whole screen,
+ * and what happened to them — and it is one of this value's seven inputs. This is the whole screen,
  * including a list the Session has never heard of and a Layout that reaches MAL never. The two are as
  * easy to confuse as Watch Status and Airing Status, and for the same reason: one variant per
  * `SessionState` subtype makes them look like the same thing renamed.
@@ -90,6 +91,11 @@ sealed interface ScreenState {
         val refreshing: Boolean,
         val list: AnimeListState,
         val layout: AnimeListLayout,
+        /**
+         * The open Anime Pages, held here rather than in a navigation library or in the composable
+         * — see `docs/adr/0006-anime-page-history-in-screen-state.md`. Empty when none is open.
+         */
+        val animePages: AnimePageHistory,
         val busy: Boolean,
         val error: ShownError?,
         /** Null until the diagnostics dialog asks for it, which is the only thing that reads it. */

@@ -2,6 +2,7 @@ package io.challenge_workshop.mal_ui.screen
 
 import io.challenge_workshop.mal_ui.animelist.AnimeListLayout
 import io.challenge_workshop.mal_ui.animelist.AnimeListState
+import io.challenge_workshop.mal_ui.animepage.AnimePageHistory
 import io.challenge_workshop.mal_ui.auth.SignInState
 import io.challenge_workshop.mal_ui.mal.MalAuthConfig
 import io.challenge_workshop.mal_ui.mal.MalEndpoints
@@ -16,13 +17,13 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
 /**
- * The one place a [ScreenState] is decided: six flows in, one flow out.
+ * The one place a [ScreenState] is decided: seven flows in, one flow out.
  *
  * No Compose and no Koin, so `./gradlew :core:allTests` covers the mapping on every Target and
  * the alternative — the same `when` written inside a composable — cannot be tested at all without a
  * rendering harness per Target.
  *
- * **Six inputs is the known cost.** The *caller* sees one flow; this constructor is wide. It is
+ * **Seven inputs is the known cost.** The *caller* sees one flow; this constructor is wide. It is
  * defensible because each input has exactly one owner and the combine is total, but it is the thing a
  * review will push on, and the answer is not "it is fine" — it is that the alternative puts the
  * mapping back in a composable. See `docs/adr/0004-screen-state-in-core.md`.
@@ -33,8 +34,10 @@ import kotlinx.coroutines.flow.stateIn
  *    outliving a Session is the repository's rule, not this source's.
  *  - `layout` is `LayoutPreference.value`, and a Layout change issues no request, so the list has
  *    never heard of it.
+ *  - `animePages` is `AnimePageRepository.state`, and only the signed-in variant carries it: the
+ *    history ends with the Session, so no other variant has anything to show.
  *
- * The six flows are the whole constructor. Where this build sends MAL traffic is *not* a seventh
+ * The seven flows are the whole constructor. Where this build sends MAL traffic is *not* a seventh
  * parameter: [platformMalEndpoints] is an `expect fun` and therefore already this Target's answer, and
  * injecting it would be a seam with one production implementation — the same objection that kept a
  * `(PendingAuthorization) -> String` adapter out. A test asserts it against `platformMalEndpoints()`
@@ -43,13 +46,14 @@ import kotlinx.coroutines.flow.stateIn
  * @param scope where the combine runs. `SharingStarted.Eagerly`, because [state] is read by a
  * composable that must have an answer before it first draws — and [state]`.value` is right even
  * before that scope has dispatched anything, since the initial value is the same mapping applied to
- * the six current values.
+ * the seven current values.
  */
 class ScreenStateSource(
     session: StateFlow<SessionState>,
     config: StateFlow<MalAuthConfig>,
     animeList: StateFlow<AnimeListState>,
     layout: StateFlow<AnimeListLayout>,
+    animePages: StateFlow<AnimePageHistory>,
     signIn: StateFlow<SignInState>,
     controls: StateFlow<SessionControlsState>,
     scope: CoroutineScope,
@@ -57,8 +61,8 @@ class ScreenStateSource(
     private val endpoints: MalEndpoints = platformMalEndpoints()
 
     val state: StateFlow<ScreenState> =
-        // Six flows through the *five*-argument overload, with the two that are not the Session's own paired
-        // first. `combine` is only typed up to five: the six-argument form hands the lambda an
+        // Seven flows through the *five*-argument overload, with the three that are not the Session's own
+        // grouped first. `combine` is only typed up to five: the seven-argument form hands the lambda an
         // `Array<Any?>` to index and cast, which compiles just as happily when two inputs of the
         // same type are swapped. This keeps every input checked by the compiler.
         combine(
@@ -66,9 +70,11 @@ class ScreenStateSource(
             config,
             animeList,
             layout,
-            combine(signIn, controls) { signIn, controls -> signIn to controls },
-        ) { session, config, animeList, layout, (signIn, controls) ->
-            screenState(session, config, animeList, layout, signIn, controls)
+            combine(signIn, controls, animePages) { signIn, controls, animePages ->
+                Triple(signIn, controls, animePages)
+            },
+        ) { session, config, animeList, layout, (signIn, controls, animePages) ->
+            screenState(session, config, animeList, layout, animePages, signIn, controls)
         }.stateIn(
             scope = scope,
             started = SharingStarted.Eagerly,
@@ -77,6 +83,7 @@ class ScreenStateSource(
                 config = config.value,
                 animeList = animeList.value,
                 layout = layout.value,
+                animePages = animePages.value,
                 signIn = signIn.value,
                 controls = controls.value,
             ),
@@ -96,6 +103,7 @@ class ScreenStateSource(
         config: MalAuthConfig,
         animeList: AnimeListState,
         layout: AnimeListLayout,
+        animePages: AnimePageHistory,
         signIn: SignInState,
         controls: SessionControlsState,
     ): ScreenState {
@@ -122,6 +130,7 @@ class ScreenStateSource(
                 refreshing = session.refreshing,
                 list = animeList,
                 layout = layout,
+                animePages = animePages,
                 busy = controls.busy,
                 error = routing.shown(controls.error),
                 diagnostics = controls.diagnostics,

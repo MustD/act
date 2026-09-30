@@ -136,4 +136,10 @@ internal data class ListStatusBody(
     val score: Int = 0,
     @SerialName("num_episodes_watched") val numEpisodesWatched: Int = 0,
     @SerialName("updated_at") val updatedAt: String? = null,
+    /**
+     * Only `GET /anime/{id}` and a PATCH response carry these. A date that is not set is an **absent
+     * key**, never `null` or `""`, and a partial one is `yyyy` or `yyyy-MM` — hence a string.
+     */
+    @SerialName("start_date") val startDate: String? = null,
+    @SerialName("finish_date") val finishDate: String? = null,
 )

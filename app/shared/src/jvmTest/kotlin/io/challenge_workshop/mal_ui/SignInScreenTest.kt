@@ -16,6 +16,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.v2.runComposeUiTest
 import io.challenge_workshop.mal_ui.animelist.AnimeListRepository
+import io.challenge_workshop.mal_ui.animepage.AnimePageRepository
 import io.challenge_workshop.mal_ui.animelist.LayoutPreference
 import io.challenge_workshop.mal_ui.auth.LoopbackRedirectListener
 import io.challenge_workshop.mal_ui.auth.LoopbackRedirectListenerTest
@@ -99,6 +100,7 @@ class SignInScreenTest {
         // Session, or a page request still in flight when the repository underneath is closed.
         val listScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val animeList = AnimeListRepository(repository, listScope)
+        val animePages = AnimePageRepository(repository, animeList, listScope)
         val layout = LayoutPreference(store, listScope)
         val opened = Collections.synchronizedList(mutableListOf<String>())
         try {
@@ -107,7 +109,7 @@ class SignInScreenTest {
                     // Otherwise the desktop `UriHandler` really does launch a browser from a unit
                     // test.
                     CompositionLocalProvider(LocalUriHandler provides RecordingUriHandler(opened)) {
-                        AppScreen(repository, signIn, controls, animeList, layout)
+                        AppScreen(repository, signIn, controls, animeList, animePages, layout)
                     }
                 }
 

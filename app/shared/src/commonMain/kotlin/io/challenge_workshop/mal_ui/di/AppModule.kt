@@ -2,6 +2,7 @@ package io.challenge_workshop.mal_ui.di
 
 import io.challenge_workshop.mal_ui.animelist.AnimeListRepository
 import io.challenge_workshop.mal_ui.animelist.LayoutPreference
+import io.challenge_workshop.mal_ui.animepage.AnimePageRepository
 import io.challenge_workshop.mal_ui.auth.SignIn
 import io.challenge_workshop.mal_ui.auth.StartupRedirect
 import io.challenge_workshop.mal_ui.mal.HttpClientFactory
@@ -99,6 +100,17 @@ val appModule: Module = module {
     single {
         AnimeListRepository(
             session = get(),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+        )
+    }
+
+    // A `single` for the same reason as the Anime List beside it: the open Anime Pages last one
+    // Session, by the repository's own rule, and the Anime List is the other half of what a fetched
+    // page writes to.
+    single {
+        AnimePageRepository(
+            session = get(),
+            animeList = get(),
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
         )
     }

@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import io.challenge_workshop.mal_ui.animelist.AnimeListFilters
 import io.challenge_workshop.mal_ui.animelist.AnimeListSortMenu
 import io.challenge_workshop.mal_ui.animelist.LoadMoreWhenNearEnd
+import io.challenge_workshop.mal_ui.animepage.AnimePageScreen
 import io.challenge_workshop.mal_ui.animelist.animeListItems
 import io.challenge_workshop.mal_ui.animelist.gridCells
 import io.challenge_workshop.mal_ui.screen.ScreenState
@@ -264,6 +265,18 @@ fun SignedInScreen(
         if (list.revision > 0) gridState.requestScrollToItem(0)
     }
 
+    // An open Anime Page is the whole screen, at every width for now. The list's own state — its
+    // scroll position included — is hoisted above this, so closing the page lands where it was left.
+    state.animePages.current?.let { page ->
+        AnimePageScreen(
+            page = page,
+            canGoBack = state.animePages.pages.size > 1,
+            actions = actions.animePage,
+            modifier = modifier.fillMaxSize().safeContentPadding(),
+        )
+        return
+    }
+
     // The screen tag is on this wrapper rather than on the list, because the list carries its own
     // and a second `testTag` would replace it.
     Column(
@@ -332,6 +345,7 @@ fun SignedInScreen(
                 // "Show all" is the same gesture as tapping the All chip, and goes through the same
                 // reset — an empty slice's way out must not become a second way of changing filter.
                 onShowAll = { actions.onSelectWatchStatus(null) },
+                onOpen = actions.onOpenAnime,
             )
         }
 

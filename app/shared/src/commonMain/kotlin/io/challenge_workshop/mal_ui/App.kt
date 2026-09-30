@@ -13,6 +13,7 @@ import coil3.compose.setSingletonImageLoaderFactory
 import io.challenge_workshop.mal_ui.animelist.AnimeListRepository
 import io.challenge_workshop.mal_ui.animelist.LayoutPreference
 import io.challenge_workshop.mal_ui.animelist.malImageLoader
+import io.challenge_workshop.mal_ui.animepage.AnimePageRepository
 import io.challenge_workshop.mal_ui.auth.AuthorizingScreen
 import io.challenge_workshop.mal_ui.auth.SignIn
 import io.challenge_workshop.mal_ui.auth.RestoringScreen
@@ -45,6 +46,7 @@ fun App(
     signIn: SignIn = koinInject(),
     controls: SessionControls = koinInject(),
     animeList: AnimeListRepository = koinInject(),
+    animePages: AnimePageRepository = koinInject(),
     layout: LayoutPreference = koinInject(),
 ) {
     // Coil's singleton, replaced here at the root because its default cannot fetch over the network
@@ -57,13 +59,13 @@ fun App(
 
     MaterialTheme {
         Surface(modifier = Modifier) {
-            AppScreen(repository, signIn, controls, animeList, layout)
+            AppScreen(repository, signIn, controls, animeList, animePages, layout)
         }
     }
 }
 
 /**
- * The adapter between the Session, the Sign-in, the Session Controls, the Anime List, the Layout and
+ * The adapter between the Session, the Sign-in, the Session Controls, the Anime List, the Anime Pages, the Layout and
  * the one value the screens take.
  *
  * Split from [App] so it can be rendered without replacing Coil's singleton or re-theming, and split
@@ -89,26 +91,28 @@ internal fun AppScreen(
     signIn: SignIn,
     controls: SessionControls,
     animeList: AnimeListRepository,
+    animePages: AnimePageRepository,
     layout: LayoutPreference,
 ) {
     val channel = rememberAuthRedirectChannel()
     val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
 
-    val source = remember(repository, signIn, controls, animeList, layout, scope) {
+    val source = remember(repository, signIn, controls, animeList, animePages, layout, scope) {
         ScreenStateSource(
             session = repository.state,
             config = repository.config,
             animeList = animeList.state,
             layout = layout.value,
+            animePages = animePages.state,
             signIn = signIn.state,
             controls = controls.state,
             scope = scope,
         )
     }
 
-    val actions = remember(signIn, controls, animeList, layout, channel, uriHandler) {
-        screenActions(signIn, controls, animeList, layout, channel, uriHandler::openUri)
+    val actions = remember(signIn, controls, animeList, animePages, layout, channel, uriHandler) {
+        screenActions(signIn, controls, animeList, animePages, layout, channel, uriHandler::openUri)
     }
 
     SessionRoute(source.state.collectAsStateWithLifecycle().value, actions)

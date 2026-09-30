@@ -1,6 +1,7 @@
 package io.challenge_workshop.mal_ui.session
 
 import io.challenge_workshop.mal_ui.animelist.MalAnimeListClient
+import io.challenge_workshop.mal_ui.animepage.MalAnimeClient
 import io.challenge_workshop.mal_ui.mal.HttpClientFactory
 import io.challenge_workshop.mal_ui.mal.MalAuthClient
 import io.challenge_workshop.mal_ui.mal.MalAuthConfig
@@ -90,6 +91,10 @@ class MalSessionRepository(
      */
     fun animeListClient(): MalAnimeListClient =
         MalAnimeListClient(apiBaseUrl = _config.value.apiBaseUrl, http = authenticatedHttp)
+
+    /** `GET /anime/{id}` over the same authenticated client, for the same reason as [animeListClient]. */
+    fun animeClient(): MalAnimeClient =
+        MalAnimeClient(apiBaseUrl = _config.value.apiBaseUrl, http = authenticatedHttp)
 
     private fun tokenApi() = MalAuthClient(_config.value, tokenHttp, ownsHttpClient = false)
 

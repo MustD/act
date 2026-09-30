@@ -172,3 +172,27 @@ val SESSION_DIAGNOSTICS_TAG: String = "${SessionScreenTag.SignedIn.tag}.diagnost
 
 /** Each of Watch Status, progress and score on a wide List row. A stacked row has none. */
 val ANIME_LIST_ROW_COLUMN_TAG: String = "$ANIME_LIST_TAG.rowColumn"
+
+/**
+ * The Anime Page, on the signed-in screen. Derived from [SessionScreenTag.SignedIn] like the list's
+ * own tags: an open page replaces the list, so the two are answers to the same question.
+ */
+val ANIME_PAGE_TAG: String = "${SessionScreenTag.SignedIn.tag}.animePage"
+
+/** The page's ← button, shown only when there is a page to go back to. */
+val ANIME_PAGE_BACK_TAG: String = "$ANIME_PAGE_TAG.back"
+
+/** The page's ✕ button, which closes the whole history. */
+val ANIME_PAGE_CLOSE_TAG: String = "$ANIME_PAGE_TAG.close"
+
+/** The placeholder shown while `GET /anime/{id}` is in flight, over what the page opened with. */
+val ANIME_PAGE_LOADING_TAG: String = "$ANIME_PAGE_TAG.loading"
+
+/** The failed-fetch card and its retry. Nothing becomes editable behind it. */
+val ANIME_PAGE_ERROR_TAG: String = "$ANIME_PAGE_TAG.error"
+
+/** The synopsis text, which is the one thing only the fetch can supply. */
+val ANIME_PAGE_SYNOPSIS_TAG: String = "$ANIME_PAGE_TAG.synopsis"
+
+/** The user's List Entry section — absent for an anime that is not on their list. */
+val ANIME_PAGE_LIST_STATUS_TAG: String = "$ANIME_PAGE_TAG.listStatus"

@@ -21,6 +21,8 @@ import io.challenge_workshop.mal_ui.animelist.AnimeListContent
 import io.challenge_workshop.mal_ui.animelist.AnimeListState
 import io.challenge_workshop.mal_ui.animelist.AnimeListTail
 import io.challenge_workshop.mal_ui.animelist.WatchStatus
+import io.challenge_workshop.mal_ui.animepage.AnimePageHistory
+import io.challenge_workshop.mal_ui.auth.AnimePageActions
 import io.challenge_workshop.mal_ui.auth.AuthorizingActions
 import io.challenge_workshop.mal_ui.auth.DiagnosticsActions
 import io.challenge_workshop.mal_ui.auth.SESSION_MENU_BUTTON_TAG
@@ -93,6 +95,7 @@ internal fun signedIn(
     refreshing: Boolean = false,
     list: AnimeListState = loadedList(),
     layout: AnimeListLayout = AnimeListLayout.Cards,
+    animePages: AnimePageHistory = AnimePageHistory(),
     busy: Boolean = false,
     error: String? = null,
     diagnostics: SessionDiagnostics? = null,
@@ -102,6 +105,7 @@ internal fun signedIn(
     refreshing = refreshing,
     list = list,
     layout = layout,
+    animePages = animePages,
     busy = busy,
     error = error?.let { ShownError(it, relayHint) },
     diagnostics = diagnostics,
@@ -183,6 +187,7 @@ internal class RecordedActions {
     val watchStatuses: MutableList<WatchStatus?> = mutableListOf()
     val sortOrders: MutableList<AnimeListSortOrder> = mutableListOf()
     val layouts: MutableList<AnimeListLayout> = mutableListOf()
+    val opened: MutableList<AnimeListEntry> = mutableListOf()
 
     val actions: ScreenActions = ScreenActions(
         signIn = SignInActions(
@@ -202,6 +207,12 @@ internal class RecordedActions {
             onSelectSortOrder = { sortOrders += it; calls += "selectSortOrder" },
             onSelectLayout = { layouts += it; calls += "selectLayout" },
             onSignOut = { calls += "signOut" },
+            onOpenAnime = { opened += it; calls += "openAnime" },
+            animePage = AnimePageActions(
+                onBack = { calls += "animePageBack" },
+                onClose = { calls += "animePageClose" },
+                onRetry = { calls += "animePageRetry" },
+            ),
             diagnostics = DiagnosticsActions(
                 onReloadDiagnostics = { calls += "reloadDiagnostics" },
                 onRefreshUser = { calls += "refreshUser" },

@@ -62,6 +62,8 @@ kotlin {
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
+            // `BackHandler`: the Android back gesture that closes an Anime Page.
+            implementation(libs.compose.uiBackhandler)
             implementation(libs.compose.components.resources)
             // Cover art. Coil 3 is the only image loader with all of this project's targets;
             // `coil-network-ktor3` is what makes it fetch over Ktor rather than over a

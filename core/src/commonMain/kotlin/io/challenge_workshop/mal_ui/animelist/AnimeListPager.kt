@@ -116,6 +116,26 @@ internal class AnimeListPager(
     }
 
     /**
+     * Writes MAL's current word on one entry into the loaded pages, where it sits.
+     *
+     * **No re-filtering and no re-sorting** (ADR-0003): an entry that no longer matches the filter,
+     * or would now sort first, stays put until the next Reload. Not a replacement either, so the
+     * revision does not move — the screen must not scroll to the top under an edit. Nothing happens
+     * for an anime that is not loaded.
+     */
+    fun applyListStatus(animeId: Long, status: WatchStatus, score: Int, episodesWatched: Int, updatedAt: String?) {
+        update { paging ->
+            if (paging.entries.none { it.animeId == animeId }) return@update paging
+            paging.copy(
+                entries = paging.entries.map {
+                    if (it.animeId != animeId) it
+                    else it.copy(watchStatus = status, score = score, episodesWatched = episodesWatched, updatedAt = updatedAt)
+                },
+            )
+        }
+    }
+
+    /**
      * The offset the *next* request uses. Advanced only on success, so a retry re-requests the page
      * that failed rather than skipping it — and by [pageSize] rather than by however many entries
      * came back, because MAL pages by position and a short page is not the end of the list.

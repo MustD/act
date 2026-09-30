@@ -105,7 +105,9 @@ class SignedInScreenTest {
                         SessionRoute(signedIn(layout = AnimeListLayout.List), RecordedActions().actions)
                     }
                 }
-                onAllNodesWithTag(ANIME_LIST_ROW_COLUMN_TAG).assertCountEquals(columns)
+                // Unmerged: a tappable row merges its descendants into one node, and the columns are
+                // what is being counted.
+                onAllNodesWithTag(ANIME_LIST_ROW_COLUMN_TAG, useUnmergedTree = true).assertCountEquals(columns)
                 for (title in FIXTURE_TITLES) onNodeWithText(title).assertIsDisplayed()
             }
         }

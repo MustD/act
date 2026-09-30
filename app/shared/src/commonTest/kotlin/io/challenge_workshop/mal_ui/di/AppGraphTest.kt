@@ -3,6 +3,7 @@
 package io.challenge_workshop.mal_ui.di
 
 import io.challenge_workshop.mal_ui.animelist.AnimeListRepository
+import io.challenge_workshop.mal_ui.animepage.AnimePageRepository
 import io.challenge_workshop.mal_ui.animelist.LayoutPreference
 import io.challenge_workshop.mal_ui.auth.SignIn
 import io.challenge_workshop.mal_ui.auth.StartupRedirect
@@ -80,6 +81,7 @@ class AppGraphTest {
         assertNotNull(koin.get<MalSessionRepository>())
         assertNotNull(koin.get<LayoutPreference>())
         assertNotNull(koin.get<AnimeListRepository>())
+        assertNotNull(koin.get<AnimePageRepository>())
         assertNotNull(koin.get<SignIn>())
         assertNotNull(koin.get<SessionControls>())
 
@@ -139,6 +141,7 @@ class AppGraphTest {
         val koin = koin()
 
         assertSame(koin.get<AnimeListRepository>(), koin.get<AnimeListRepository>())
+        assertSame(koin.get<AnimePageRepository>(), koin.get<AnimePageRepository>())
 
         koin.get<MalSessionRepository>().close()
     }

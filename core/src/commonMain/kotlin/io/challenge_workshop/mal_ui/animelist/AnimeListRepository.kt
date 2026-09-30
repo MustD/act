@@ -1,5 +1,6 @@
 package io.challenge_workshop.mal_ui.animelist
 
+import io.challenge_workshop.mal_ui.animepage.MyListStatus
 import io.challenge_workshop.mal_ui.session.MalSessionRepository
 import io.challenge_workshop.mal_ui.session.SessionState
 import kotlinx.coroutines.CoroutineScope
@@ -101,6 +102,20 @@ class AnimeListRepository(
         sortOrder: AnimeListSortOrder = this.sortOrder,
     ): Boolean = this.watchStatus == watchStatus && this.sortOrder == sortOrder &&
         content !is AnimeListContent.FirstPageFailed
+
+    /**
+     * Writes a List Entry MAL has just reported into the loaded list, in place — see
+     * [AnimeListPager.applyListStatus]. Synchronous, so a caller on the same thread sees it land.
+     */
+    fun applyListStatus(animeId: Long, status: MyListStatus) {
+        current?.pager?.applyListStatus(
+            animeId = animeId,
+            status = status.watchStatus,
+            score = status.score,
+            episodesWatched = status.episodesWatched,
+            updatedAt = status.updatedAt,
+        )
+    }
 
     /** Runs [block] against the current Session's pager, in its scope. Nothing outside a Session. */
     private fun inSession(block: suspend (AnimeListPager) -> Unit) {

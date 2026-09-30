@@ -1,10 +1,14 @@
 package io.challenge_workshop.mal_ui.screen
 
+import io.challenge_workshop.mal_ui.animelist.AiringStatus
 import io.challenge_workshop.mal_ui.animelist.AnimeListContent
 import io.challenge_workshop.mal_ui.animelist.AnimeListLayout
 import io.challenge_workshop.mal_ui.animelist.AnimeListState
 import io.challenge_workshop.mal_ui.animelist.AnimeListTail
 import io.challenge_workshop.mal_ui.animelist.WatchStatus
+import io.challenge_workshop.mal_ui.animepage.AnimePage
+import io.challenge_workshop.mal_ui.animepage.AnimePageHistory
+import io.challenge_workshop.mal_ui.animepage.AnimePageLoad
 import io.challenge_workshop.mal_ui.auth.SignInPhase
 import io.challenge_workshop.mal_ui.auth.SignInState
 import io.challenge_workshop.mal_ui.mal.MalAuthConfig
@@ -26,13 +30,13 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
- * The mapping from six flows to one [ScreenState], on every Target.
+ * The mapping from seven flows to one [ScreenState], on every Target.
  *
- * Driven by six [MutableStateFlow]s and no fakes at all: there is no repository here, no store, no
+ * Driven by seven [MutableStateFlow]s and no fakes at all: there is no repository here, no store, no
  * HTTP engine and no port to bind, which is the entire point of the seam. Everything a screen can be
  * is a literal, and every assertion below used to need a rendered Compose tree on jvm.
  *
- * [Dispatchers.Unconfined] rather than a test dispatcher, so an assignment to one of the six inputs
+ * [Dispatchers.Unconfined] rather than a test dispatcher, so an assignment to one of the seven inputs
  * has reached [ScreenStateSource.state] by the time the next line runs. The combine is pure, so
  * running it inline on the caller's thread is exactly what it does in the app on
  * `Dispatchers.Main.immediate`.
@@ -43,6 +47,7 @@ class ScreenStateSourceTest {
     private val config = MutableStateFlow(MalAuthConfig(clientId = "a-client-id", redirectUri = REDIRECT_URI))
     private val animeList = MutableStateFlow(AnimeListState())
     private val layout = MutableStateFlow(AnimeListLayout.Cards)
+    private val animePages = MutableStateFlow(AnimePageHistory())
     private val signIn = MutableStateFlow(SignInState())
     private val controls = MutableStateFlow(SessionControlsState())
 
@@ -51,6 +56,7 @@ class ScreenStateSourceTest {
         config = config,
         animeList = animeList,
         layout = layout,
+        animePages = animePages,
         signIn = signIn,
         controls = controls,
         scope = CoroutineScope(Dispatchers.Unconfined),
@@ -146,6 +152,54 @@ class ScreenStateSourceTest {
         assertTrue(
             "client_id=a-client-id&" in assertIs<ScreenState.Authorizing>(state).authorizationUrl,
         )
+    }
+
+    /**
+     * The history reaches the signed-in screen as it is — open, deeper, and closed again — and
+     * *deciding* when it closes is `AnimePageRepository`'s. Nothing here re-decides it.
+     */
+    @Test
+    fun the_anime_page_history_reaches_the_signed_in_screen_as_it_is() {
+        session.value = SessionState.SignedIn(MalUser(1, "someone"))
+        assertEquals(AnimePageHistory(), signedIn().animePages, "nothing is open to begin with")
+
+        val first = animePage(1)
+        animePages.value = AnimePageHistory(listOf(first))
+        assertEquals(listOf(first), signedIn().animePages.pages)
+        assertEquals(first, signedIn().animePages.current)
+
+        val second = animePage(2).copy(load = AnimePageLoad.Failed("boom"))
+        animePages.value = AnimePageHistory(listOf(first, second))
+        assertEquals(second, signedIn().animePages.current, "the newest page is the one on screen")
+
+        animePages.value = AnimePageHistory()
+        assertEquals(false, signedIn().animePages.isOpen)
+    }
+
+    /** A Reload is the list's, so the list changing under an open page leaves the history alone. */
+    @Test
+    fun the_history_stays_open_while_the_list_reloads() {
+        session.value = SessionState.SignedIn(MalUser(1, "someone"))
+        animePages.value = AnimePageHistory(listOf(animePage(1)))
+
+        animeList.value = AnimeListState(content = AnimeListContent.FirstPageLoading)
+        animeList.value = AnimeListState(content = AnimeListContent.Empty, revision = 1)
+
+        assertEquals(1L, signedIn().animePages.current?.animeId)
+    }
+
+    /**
+     * The other three variants have no history to carry: a Session that ended has none, and the
+     * repository has by then cleared it. What matters is that a stale one cannot leak onto them.
+     */
+    @Test
+    fun only_the_signed_in_screen_carries_a_history() {
+        animePages.value = AnimePageHistory(listOf(animePage(1)))
+
+        for (given in SESSION_STATE_CASES.filter { it !is SessionState.SignedIn }) {
+            session.value = given
+            assertEquals(false, state is ScreenState.SignedIn, "for $given")
+        }
     }
 
     /**
@@ -368,6 +422,18 @@ class ScreenStateSourceTest {
         assertEquals(relayed, swapped.error?.relayHint)
         assertEquals(false, swapped.signInError?.relayHint)
     }
+
+    private fun animePage(id: Long) = AnimePage(
+        animeId = id,
+        title = "Anime $id",
+        picture = null,
+        totalEpisodes = 12,
+        mediaType = "tv",
+        airingStatus = AiringStatus.FinishedAiring,
+        listStatus = null,
+        synopsis = null,
+        load = AnimePageLoad.Loading,
+    )
 
     private fun signedIn(): ScreenState.SignedIn = assertIs<ScreenState.SignedIn>(state)
 }

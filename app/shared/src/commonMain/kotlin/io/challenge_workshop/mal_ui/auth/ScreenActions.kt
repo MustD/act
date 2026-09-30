@@ -1,11 +1,13 @@
 package io.challenge_workshop.mal_ui.auth
 
 import androidx.compose.runtime.Immutable
+import io.challenge_workshop.mal_ui.animelist.AnimeListEntry
 import io.challenge_workshop.mal_ui.animelist.AnimeListLayout
 import io.challenge_workshop.mal_ui.animelist.AnimeListRepository
 import io.challenge_workshop.mal_ui.animelist.AnimeListSortOrder
 import io.challenge_workshop.mal_ui.animelist.LayoutPreference
 import io.challenge_workshop.mal_ui.animelist.WatchStatus
+import io.challenge_workshop.mal_ui.animepage.AnimePageRepository
 import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.session.SessionControls
 
@@ -72,7 +74,21 @@ data class SignedInActions(
     val onSelectSortOrder: (AnimeListSortOrder) -> Unit,
     val onSelectLayout: (AnimeListLayout) -> Unit,
     val onSignOut: () -> Unit,
+    /** Tapping a List Entry: opens its Anime Page as a new history. */
+    val onOpenAnime: (AnimeListEntry) -> Unit,
+    val animePage: AnimePageActions,
     val diagnostics: DiagnosticsActions,
+)
+
+/**
+ * The Anime Page, which is the signed-in screen's other half: [onBack] goes one page back in the
+ * history (the panel's ←, the Android back gesture, desktop Esc), [onClose] closes all of it (✕).
+ */
+@Immutable
+data class AnimePageActions(
+    val onBack: () -> Unit,
+    val onClose: () -> Unit,
+    val onRetry: () -> Unit,
 )
 
 /**
@@ -90,7 +106,7 @@ data class DiagnosticsActions(
 )
 
 /**
- * Wires the Sign-in, the Session Controls, the Anime List and the Layout to the three actions
+ * Wires the Sign-in, the Session Controls, the Anime List, the Anime Pages and the Layout to the three actions
  * records, in one place so `App()` and the rendering tests cannot drift about what a control does.
  *
  * Not a `@Composable` and not remembered here: the caller is what has to `remember` the result, since
@@ -103,6 +119,7 @@ internal fun screenActions(
     signIn: SignIn,
     controls: SessionControls,
     animeList: AnimeListRepository,
+    animePages: AnimePageRepository,
     layout: LayoutPreference,
     channel: AuthRedirectChannel,
     openUri: (String) -> Unit,
@@ -128,6 +145,12 @@ internal fun screenActions(
         // is a presentation choice, costs no request, and needs no coroutine of this caller's.
         onSelectLayout = layout::choose,
         onSignOut = controls::signOut,
+        onOpenAnime = animePages::open,
+        animePage = AnimePageActions(
+            onBack = animePages::back,
+            onClose = animePages::close,
+            onRetry = animePages::retry,
+        ),
         diagnostics = DiagnosticsActions(
             onReloadDiagnostics = { controls.reloadDiagnostics() },
             onRefreshUser = { controls.refreshUser() },
