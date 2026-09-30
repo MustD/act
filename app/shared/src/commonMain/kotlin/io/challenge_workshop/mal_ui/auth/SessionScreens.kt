@@ -207,7 +207,7 @@ fun AuthorizingScreen(
  * index off, which is the one signal that means the same thing on every Target.
  *
  * **One `LazyVerticalGrid` for both Layouts.** The dense Layout is the same grid at one column, so
- * the Layout changes the column count and the width cap and nothing else — no second scroll state,
+ * the Layout changes the column count and nothing else — no second scroll state,
  * no second paging trigger, and no second copy of the five screen states.
  *
  * The Layout arrives on [state] like everything else. It is a remembered choice — read from the
