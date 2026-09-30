@@ -23,6 +23,7 @@ import io.challenge_workshop.mal_ui.animelist.AnimeListTail
 import io.challenge_workshop.mal_ui.animelist.WatchStatus
 import io.challenge_workshop.mal_ui.animepage.AnimePageHistory
 import io.challenge_workshop.mal_ui.animepage.ListEdit
+import io.challenge_workshop.mal_ui.animepage.RelatedAnime
 import io.challenge_workshop.mal_ui.auth.AnimePageActions
 import io.challenge_workshop.mal_ui.auth.AuthorizingActions
 import io.challenge_workshop.mal_ui.auth.DiagnosticsActions
@@ -190,6 +191,7 @@ internal class RecordedActions {
     val layouts: MutableList<AnimeListLayout> = mutableListOf()
     val opened: MutableList<AnimeListEntry> = mutableListOf()
     val edits: MutableList<ListEdit> = mutableListOf()
+    val openedRelated: MutableList<RelatedAnime> = mutableListOf()
 
     val actions: ScreenActions = ScreenActions(
         signIn = SignInActions(
@@ -215,6 +217,7 @@ internal class RecordedActions {
                 onClose = { calls += "animePageClose" },
                 onRetry = { calls += "animePageRetry" },
                 onEdit = { edits += it; calls += "animePageEdit" },
+                onOpenRelated = { openedRelated += it; calls += "animePageOpenRelated" },
             ),
             diagnostics = DiagnosticsActions(
                 onReloadDiagnostics = { calls += "reloadDiagnostics" },

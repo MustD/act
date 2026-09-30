@@ -129,6 +129,7 @@ private fun PageContent(page: AnimePage, canGoBack: Boolean, actions: AnimePageA
             ListEntrySection(page, actions.onEdit)
             HorizontalDivider()
             SynopsisSection(page, actions.onRetry)
+            RelatedSection(page.related, actions.onOpenRelated)
         }
     }
 }

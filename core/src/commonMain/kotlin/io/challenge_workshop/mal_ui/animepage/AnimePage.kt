@@ -23,6 +23,21 @@ data class MyListStatus(
     val updatedAt: String?,
 )
 
+/**
+ * One of an anime's Related Anime: enough to draw a row, and to open its Anime Page drawn at once.
+ *
+ * [onList] is whether the user already has a List Entry for it, from the same fetch as the page
+ * itself (`related_anime{my_list_status}`), so no follow-up request is made for the mark.
+ */
+data class RelatedAnime(
+    val animeId: Long,
+    val title: String,
+    val picture: AnimePicture?,
+    /** MAL's `relation_type_formatted`: "Sequel", "Side Story", ... */
+    val relation: String,
+    val onList: Boolean,
+)
+
 /** What `GET /anime/{id}` returned: the anime, and the user's entry for it if there is one. */
 data class AnimeDetails(
     val animeId: Long,
@@ -34,6 +49,8 @@ data class AnimeDetails(
     val synopsis: String?,
     /** Null when the anime is not on the user's list. */
     val listStatus: MyListStatus?,
+    /** In MAL's order. */
+    val related: List<RelatedAnime> = emptyList(),
 )
 
 /** Whether an [AnimePage] has what `GET /anime/{id}` has to say yet. */
@@ -87,6 +104,8 @@ data class AnimePage(
     val synopsis: String?,
     val load: AnimePageLoad,
     val save: PageSave = PageSave(),
+    /** Empty until the fetch lands. */
+    val related: List<RelatedAnime> = emptyList(),
 ) {
     /** What to draw: the pending target if there is one, otherwise what MAL last confirmed. */
     val shownListStatus: MyListStatus? get() = save.target ?: listStatus
@@ -110,6 +129,7 @@ data class AnimePage(
         airingStatus = details.airingStatus,
         listStatus = details.listStatus,
         synopsis = details.synopsis,
+        related = details.related,
         load = AnimePageLoad.Loaded,
     )
 
@@ -130,6 +150,22 @@ data class AnimePage(
                 finishDate = null,
                 updatedAt = entry.updatedAt,
             ),
+            synopsis = null,
+            load = AnimePageLoad.Loading,
+        )
+
+        /**
+         * A page opened from a Related Anime: only its cover and title are known, and whether it is
+         * on the list is left to the fetch, so there is no List Entry to show until it lands.
+         */
+        internal fun from(related: RelatedAnime): AnimePage = AnimePage(
+            animeId = related.animeId,
+            title = related.title,
+            picture = related.picture,
+            totalEpisodes = 0,
+            mediaType = null,
+            airingStatus = AiringStatus.Unknown,
+            listStatus = null,
             synopsis = null,
             load = AnimePageLoad.Loading,
         )

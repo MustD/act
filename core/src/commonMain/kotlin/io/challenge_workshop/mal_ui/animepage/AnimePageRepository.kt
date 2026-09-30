@@ -102,6 +102,20 @@ class AnimePageRepository(
         fetch(entry.animeId)
     }
 
+    /**
+     * Opens [related]'s Anime Page **on top of** the history, drawn from its cover and title at
+     * once. The page it came from stays where it is, fetch and saves untouched, for [back].
+     */
+    fun open(related: RelatedAnime) {
+        if (sessionScope == null) return
+        val history = _state.value
+        if (!history.isOpen) return
+        _state.value = AnimePageHistory(
+            history.pages + AnimePage.from(related).copy(save = saves[related.animeId] ?: PageSave()),
+        )
+        fetch(related.animeId)
+    }
+
     /** One page back; from the only page, closes. The fetch of the page left is abandoned. */
     fun back() {
         val history = _state.value

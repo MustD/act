@@ -9,6 +9,7 @@ import io.challenge_workshop.mal_ui.animelist.LayoutPreference
 import io.challenge_workshop.mal_ui.animelist.WatchStatus
 import io.challenge_workshop.mal_ui.animepage.ListEdit
 import io.challenge_workshop.mal_ui.animepage.AnimePageRepository
+import io.challenge_workshop.mal_ui.animepage.RelatedAnime
 import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.session.SessionControls
 
@@ -92,6 +93,8 @@ data class AnimePageActions(
     val onRetry: () -> Unit,
     /** A change to the List Entry on the current page. Saved as soon as it is made. */
     val onEdit: (ListEdit) -> Unit,
+    /** Tapping a Related Anime: adds its page to the history. */
+    val onOpenRelated: (RelatedAnime) -> Unit,
 )
 
 /**
@@ -154,6 +157,7 @@ internal fun screenActions(
             onClose = animePages::close,
             onRetry = animePages::retry,
             onEdit = animePages::edit,
+            onOpenRelated = { animePages.open(it) },
         ),
         diagnostics = DiagnosticsActions(
             onReloadDiagnostics = { controls.reloadDiagnostics() },

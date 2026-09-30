@@ -59,7 +59,11 @@ import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_CLOSE_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_ERROR_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_LOADING_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_SYNOPSIS_TAG
+import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_RELATED_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_TAG
+import io.challenge_workshop.mal_ui.auth.animePageRelatedOnListTag
+import io.challenge_workshop.mal_ui.auth.animePageRelatedTag
+import io.challenge_workshop.mal_ui.animepage.RelatedAnime
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -75,6 +79,7 @@ class AnimePageScreenTest {
         synopsis: String? = null,
         listStatus: MyListStatus? = MyListStatus(WatchStatus.Watching, 8, 3, null, null, null),
         save: PageSave = PageSave(),
+        related: List<RelatedAnime> = emptyList(),
     ) = AnimePage(
         animeId = id,
         title = "Cowboy Bebop",
@@ -86,6 +91,7 @@ class AnimePageScreenTest {
         synopsis = synopsis,
         load = load,
         save = save,
+        related = related,
     )
 
     private fun stateWith(vararg pages: AnimePage) = signedIn(animePages = AnimePageHistory(pages.toList()))
@@ -257,6 +263,53 @@ class AnimePageScreenTest {
             onNodeWithText("Mushishi").performClick()
 
             assertEquals(listOf("Mushishi"), recorded.opened.map { it.title })
+        }
+    }
+
+    private val relatedAnime = listOf(
+        RelatedAnime(10, "Cowboy Bebop: The Movie", null, "Side Story", onList = false),
+        RelatedAnime(11, "Trigun", null, "Alternative Version", onList = true),
+    )
+
+    @Test
+    fun related_anime_show_title_relation_and_the_on_list_mark_only_where_it_applies() {
+        runComposeUiTest {
+            setContent {
+                SessionRoute(
+                    stateWith(page(load = AnimePageLoad.Loaded, related = relatedAnime)),
+                    RecordedActions().actions,
+                )
+            }
+
+            onNodeWithTag(animePageRelatedTag(11)).performScrollTo()
+            onNodeWithText("Cowboy Bebop: The Movie").assertIsDisplayed()
+            onNodeWithText("Side Story").assertIsDisplayed()
+            onNodeWithText("Alternative Version").assertIsDisplayed()
+            onNodeWithTag(animePageRelatedOnListTag(11), useUnmergedTree = true).assertIsDisplayed()
+            onNodeWithTag(animePageRelatedOnListTag(10), useUnmergedTree = true).assertDoesNotExist()
+        }
+    }
+
+    @Test
+    fun a_page_without_related_anime_has_no_section() {
+        runComposeUiTest {
+            setContent { SessionRoute(stateWith(page(load = AnimePageLoad.Loaded)), RecordedActions().actions) }
+
+            onNodeWithTag(ANIME_PAGE_RELATED_TAG).assertDoesNotExist()
+        }
+    }
+
+    @Test
+    fun tapping_a_related_anime_asks_to_open_it() {
+        runComposeUiTest {
+            val recorded = RecordedActions()
+            setContent {
+                SessionRoute(stateWith(page(load = AnimePageLoad.Loaded, related = relatedAnime)), recorded.actions)
+            }
+
+            onNodeWithTag(animePageRelatedTag(11)).performScrollTo().performClick()
+
+            assertEquals(listOf(11L), recorded.openedRelated.map { it.animeId })
         }
     }
 

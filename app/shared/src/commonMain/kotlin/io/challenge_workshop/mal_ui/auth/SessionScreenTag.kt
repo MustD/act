@@ -222,3 +222,12 @@ val ANIME_PAGE_START_DATE_TAG: String = "$ANIME_PAGE_TAG.startDate"
 val ANIME_PAGE_START_DATE_CLEAR_TAG: String = "$ANIME_PAGE_TAG.startDateClear"
 val ANIME_PAGE_FINISH_DATE_TAG: String = "$ANIME_PAGE_TAG.finishDate"
 val ANIME_PAGE_FINISH_DATE_CLEAR_TAG: String = "$ANIME_PAGE_TAG.finishDateClear"
+
+/** The Related Anime section, absent until the fetch has landed and when the anime has none. */
+val ANIME_PAGE_RELATED_TAG: String = "$ANIME_PAGE_TAG.related"
+
+/** One Related Anime row, which opens its own Anime Page. */
+fun animePageRelatedTag(animeId: Long): String = "$ANIME_PAGE_TAG.related.$animeId"
+
+/** The "On your list" mark on a Related Anime row. */
+fun animePageRelatedOnListTag(animeId: Long): String = "$ANIME_PAGE_TAG.related.$animeId.onList"

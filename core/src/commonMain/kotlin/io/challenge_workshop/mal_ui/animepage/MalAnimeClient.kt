@@ -97,6 +97,7 @@ internal data class AnimeDetailsBody(
     /** The **Airing** Status; the Watch Status is inside `my_list_status`. */
     val status: AiringStatus = AiringStatus.Unknown,
     @SerialName("my_list_status") val myListStatus: ListStatusBody? = null,
+    @SerialName("related_anime") val relatedAnime: List<RelatedAnimeBody> = emptyList(),
 ) {
     fun toDetails(): AnimeDetails = AnimeDetails(
         animeId = id,
@@ -107,8 +108,33 @@ internal data class AnimeDetailsBody(
         airingStatus = status,
         synopsis = synopsis,
         listStatus = myListStatus?.toMyListStatus(),
+        related = relatedAnime.map { it.toRelated() },
     )
 }
+
+/** One element of `related_anime`: the anime is under `node`, the relation beside it. */
+@Serializable
+internal data class RelatedAnimeBody(
+    val node: RelatedNodeBody = RelatedNodeBody(),
+    @SerialName("relation_type_formatted") val relationTypeFormatted: String = "",
+) {
+    fun toRelated(): RelatedAnime = RelatedAnime(
+        animeId = node.id,
+        title = node.title,
+        picture = node.mainPicture,
+        relation = relationTypeFormatted,
+        // The key is absent for an anime that is not on the list.
+        onList = node.myListStatus != null,
+    )
+}
+
+@Serializable
+internal data class RelatedNodeBody(
+    val id: Long = 0,
+    val title: String = "",
+    @SerialName("main_picture") val mainPicture: AnimePicture? = null,
+    @SerialName("my_list_status") val myListStatus: ListStatusBody? = null,
+)
 
 internal fun ListStatusBody.toMyListStatus(): MyListStatus = MyListStatus(
     watchStatus = status,

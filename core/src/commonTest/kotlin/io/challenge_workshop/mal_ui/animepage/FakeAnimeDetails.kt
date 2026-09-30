@@ -33,6 +33,7 @@ data class FakeAnimeDetails(
     val startDate: String? = null,
     val finishDate: String? = null,
     val updatedAt: String = "2026-09-01T12:00:00+00:00",
+    val related: List<FakeRelated> = emptyList(),
 ) {
     fun json(): String = buildString {
         append("""{"id":$id,"title":"$title",""")
@@ -46,6 +47,27 @@ data class FakeAnimeDetails(
             finishDate?.let { append(""","finish_date":"$it"""") }
             append(""","is_rewatching":false,"updated_at":"$updatedAt"}""")
         }
-        append("}")
+        append(""","related_anime":[${related.joinToString(",") { it.json() }}]}""")
+    }
+}
+
+/**
+ * One `related_anime` element. [onListAs] is the node's `my_list_status.status`; null leaves the key
+ * off, which is what MAL does for an anime that is not on the list.
+ */
+data class FakeRelated(
+    val id: Long,
+    val title: String,
+    val relation: String = "Sequel",
+    val onListAs: String? = null,
+    val withPicture: Boolean = true,
+) {
+    fun json(): String = buildString {
+        append("""{"node":{"id":$id,"title":"$title"""")
+        if (withPicture) append(""","main_picture":{"medium":"https://cdn.myanimelist.net/images/anime/9/$id.jpg"}""")
+        if (onListAs != null) {
+            append(""","my_list_status":{"status":"$onListAs","score":0,"num_episodes_watched":0,"is_rewatching":false}""")
+        }
+        append("""},"relation_type":"sequel","relation_type_formatted":"$relation"}""")
     }
 }
