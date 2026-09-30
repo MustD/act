@@ -21,6 +21,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.material3.CardDefaults
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -60,8 +63,21 @@ private val COVER_CORNER = RoundedCornerShape(6.dp)
  * without reading it — so this is the default and [AnimeListRow] is the dense alternative.
  */
 @Composable
-internal fun AnimeListCard(entry: AnimeListEntry, onOpen: () -> Unit, modifier: Modifier = Modifier) {
-    Card(onClick = onOpen, modifier = modifier.fillMaxWidth()) {
+internal fun AnimeListCard(
+    entry: AnimeListEntry,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+) {
+    Card(
+        onClick = onOpen,
+        modifier = modifier.fillMaxWidth().semantics { this.selected = selected },
+        colors = if (selected) {
+            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+        } else {
+            CardDefaults.cardColors()
+        },
+    ) {
         AnimeCover(
             entry = entry,
             preferLarge = true,
@@ -95,10 +111,21 @@ internal fun AnimeListCard(entry: AnimeListEntry, onOpen: () -> Unit, modifier: 
  * scanning four hundred completed shows, and the Layout toggle is what lets a person pick.
  */
 @Composable
-internal fun AnimeListRow(entry: AnimeListEntry, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+internal fun AnimeListRow(
+    entry: AnimeListEntry,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+) {
     // Measured, not a size class: the row is a grid cell, so what matters is the width it was given,
     // which is not the window's once a panel sits beside the list.
-    BoxWithConstraints(modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOpen)) {
+    BoxWithConstraints(
+        modifier
+            .fillMaxWidth()
+            .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
+            .clickable(role = Role.Button, onClick = onOpen)
+            .semantics { this.selected = selected },
+    ) {
         val wide = maxWidth >= ROW_COLUMNS_MIN_WIDTH
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = ROW_PADDING),

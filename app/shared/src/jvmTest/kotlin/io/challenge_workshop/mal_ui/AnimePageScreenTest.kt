@@ -2,7 +2,20 @@
 
 package io.challenge_workshop.mal_ui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.assertWidthIsEqualTo
+import androidx.compose.ui.test.isSelected
+import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.unit.dp
+import io.challenge_workshop.mal_ui.animelist.AnimeListLayout
+import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_PANEL_TAG
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -55,19 +68,78 @@ class AnimePageScreenTest {
     private fun stateWith(vararg pages: AnimePage) = signedIn(animePages = AnimePageHistory(pages.toList()))
 
     @Test
-    fun an_open_page_replaces_the_list() {
+    fun below_840dp_an_open_page_replaces_the_list() {
         runComposeUiTest {
-            setContent { SessionRoute(stateWith(page()), RecordedActions().actions) }
+            setContent { Box(Modifier.width(839.dp)) { SessionRoute(stateWith(page()), RecordedActions().actions) } }
 
             onNodeWithTag(ANIME_PAGE_TAG).assertIsDisplayed()
             onAllNodesWithTag(ANIME_LIST_TAG).assertCountEquals(0)
+            onAllNodesWithTag(ANIME_PAGE_PANEL_TAG).assertCountEquals(0)
+        }
+    }
+
+    @Test
+    fun from_840dp_an_open_page_sits_beside_the_list_at_480dp() {
+        runComposeUiTest {
+            setContent { Box(Modifier.width(840.dp)) { SessionRoute(stateWith(page()), RecordedActions().actions) } }
+
+            onNodeWithTag(ANIME_PAGE_TAG).assertIsDisplayed()
+            onNodeWithTag(ANIME_LIST_TAG).assertIsDisplayed()
+            onNodeWithTag(ANIME_PAGE_PANEL_TAG).assertWidthIsEqualTo(480.dp)
+        }
+    }
+
+    @Test
+    fun the_open_entry_is_highlighted_in_both_layouts_and_only_it() {
+        for (layout in AnimeListLayout.entries) {
+            runComposeUiTest {
+                setContent {
+                    Box(Modifier.width(1000.dp)) {
+                        SessionRoute(
+                            signedIn(layout = layout, animePages = AnimePageHistory(listOf(page(id = 2)))),
+                            RecordedActions().actions,
+                        )
+                    }
+                }
+
+                onNode(isSelected() and hasText("Mushishi")).assertExists()
+                onNode(isSelected() and hasText("Cowboy Bebop")).assertDoesNotExist()
+            }
+        }
+    }
+
+    @Test
+    fun narrowing_the_window_keeps_the_history_and_the_list_keeps_its_place() {
+        runComposeUiTest {
+            var width by mutableStateOf(1000.dp)
+            val many = List(60) { "Title $it" }
+            setContent {
+                Box(Modifier.width(width)) {
+                    SessionRoute(
+                        signedIn(list = loadedList(titles = many), animePages = AnimePageHistory(listOf(page(id = 1), page(id = 2)))),
+                        RecordedActions().actions,
+                    )
+                }
+            }
+            onNodeWithTag(ANIME_LIST_TAG).performScrollToIndex(30)
+            onNodeWithTag(ANIME_PAGE_BACK_TAG).assertIsDisplayed()
+
+            width = 500.dp
+            waitForIdle()
+            onAllNodesWithTag(ANIME_LIST_TAG).assertCountEquals(0)
+            onNodeWithTag(ANIME_PAGE_BACK_TAG).assertIsDisplayed()
+
+            width = 1000.dp
+            waitForIdle()
+            onNodeWithTag(ANIME_LIST_TAG).assertIsDisplayed()
+            onNodeWithText("Title 30").assertIsDisplayed()
         }
     }
 
     @Test
     fun a_loading_page_shows_what_it_opened_with_and_a_placeholder_for_the_rest() {
         runComposeUiTest {
-            setContent { SessionRoute(stateWith(page()), RecordedActions().actions) }
+            setContent { Box(Modifier.width(500.dp)) { SessionRoute(stateWith(page()), RecordedActions().actions) } }
 
             onNodeWithText("Cowboy Bebop").assertIsDisplayed()
             onNodeWithText("3 / 26").assertIsDisplayed()

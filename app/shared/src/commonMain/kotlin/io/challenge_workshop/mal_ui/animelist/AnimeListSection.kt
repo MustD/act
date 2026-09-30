@@ -57,6 +57,8 @@ fun LazyGridScope.animeListItems(
     onRetry: () -> Unit,
     onShowAll: () -> Unit,
     onOpen: (AnimeListEntry) -> Unit,
+    /** The anime whose page is open, drawn highlighted; null when none is. */
+    openAnimeId: Long? = null,
 ) {
     item(span = fullLineSpan) {
         Text("Your Anime List", style = MaterialTheme.typography.titleMedium)
@@ -116,11 +118,11 @@ fun LazyGridScope.animeListItems(
             items(entries.size) { index ->
                 val entry = entries[index]
                 when (layout) {
-                    AnimeListLayout.Cards -> AnimeListCard(entry, onOpen = { onOpen(entry) })
+                    AnimeListLayout.Cards -> AnimeListCard(entry, onOpen = { onOpen(entry) }, selected = entry.animeId == openAnimeId)
                     // No divider under a dense row. The rows are grid cells and the grid spaces them
                     // itself, so a rule drawn at the bottom of each one lands 8dp above the next row
                     // rather than between the two — a line that belongs to nothing.
-                    AnimeListLayout.List -> AnimeListRow(entry, onOpen = { onOpen(entry) })
+                    AnimeListLayout.List -> AnimeListRow(entry, onOpen = { onOpen(entry) }, selected = entry.animeId == openAnimeId)
                 }
             }
             animeListTail(content.tail, onRetry)

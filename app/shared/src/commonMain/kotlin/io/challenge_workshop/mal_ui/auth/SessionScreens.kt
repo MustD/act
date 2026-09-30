@@ -2,16 +2,20 @@ package io.challenge_workshop.mal_ui.auth
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
@@ -26,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -265,30 +270,83 @@ fun SignedInScreen(
         if (list.revision > 0) gridState.requestScrollToItem(0)
     }
 
-    // An open Anime Page is the whole screen, at every width for now. The list's own state — its
-    // scroll position included — is hoisted above this, so closing the page lands where it was left.
-    state.animePages.current?.let { page ->
-        AnimePageScreen(
-            page = page,
-            canGoBack = state.animePages.pages.size > 1,
-            actions = actions.animePage,
-            modifier = modifier.fillMaxSize().safeContentPadding(),
-        )
-        return
+    val page = state.animePages.current
+    val pageActions = actions.animePage
+    val canGoBack = state.animePages.pages.size > 1
+
+    // Measured rather than a window size class: the same decision the list's rows make about their
+    // own width, and no dependency. The list's own state — its scroll position included — is hoisted
+    // above this, so it survives the panel opening and closing and a resize across the line.
+    BoxWithConstraints(modifier.fillMaxSize().safeContentPadding()) {
+        val sideBySide = maxWidth >= SIDE_PANEL_MIN_WIDTH
+        when {
+            // Narrow: an open page is the whole screen, and closing it lands where the list was left.
+            page != null && !sideBySide -> AnimePageScreen(
+                page = page,
+                canGoBack = canGoBack,
+                actions = pageActions,
+                modifier = Modifier.fillMaxSize(),
+            )
+            // The screen tag is on this wrapper rather than on the list, because the list carries its
+            // own and a second `testTag` would replace it.
+            page != null -> Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+                SignedInTopBar(
+                    state = state,
+                    actions = actions,
+                    onShowDiagnostics = { diagnosticsOpen = true },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(Modifier.weight(1f).fillMaxWidth()) {
+                    AnimeListPane(state, actions, gridState, Modifier.weight(1f).fillMaxHeight())
+                    VerticalDivider()
+                    AnimePageScreen(
+                        page = page,
+                        canGoBack = canGoBack,
+                        actions = pageActions,
+                        modifier = Modifier.width(SIDE_PANEL_WIDTH).fillMaxHeight()
+                            .testTag(ANIME_PAGE_PANEL_TAG).padding(16.dp),
+                    )
+                }
+            }
+            else -> Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+                SignedInTopBar(
+                    state = state,
+                    actions = actions,
+                    onShowDiagnostics = { diagnosticsOpen = true },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                AnimeListPane(state, actions, gridState, Modifier.weight(1f).fillMaxWidth())
+            }
+        }
     }
 
-    // The screen tag is on this wrapper rather than on the list, because the list carries its own
-    // and a second `testTag` would replace it.
-    Column(
-        modifier = modifier.fillMaxSize().safeContentPadding(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        SignedInTopBar(
+    if (diagnosticsOpen) {
+        SessionDiagnosticsDialog(
             state = state,
-            actions = actions,
-            onShowDiagnostics = { diagnosticsOpen = true },
-            modifier = Modifier.fillMaxWidth(),
+            actions = actions.diagnostics,
+            onDismiss = { diagnosticsOpen = false },
         )
+    }
+}
+
+/** The window width from which the Anime Page sits beside the list instead of replacing it. */
+internal val SIDE_PANEL_MIN_WIDTH = 840.dp
+
+/** The Anime Page's width as a side panel; the list takes the rest. */
+internal val SIDE_PANEL_WIDTH = 480.dp
+
+/** The filter row, the Sort Order and the entries: everything that is a query over the Anime List. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AnimeListPane(
+    state: ScreenState.SignedIn,
+    actions: SignedInActions,
+    gridState: LazyGridState,
+    modifier: Modifier = Modifier,
+) {
+    val list = state.list
+    val layout = state.layout
+    Column(modifier) {
         // Outside the lazy grid, so both controls stay put while the list scrolls under them.
         // Both are as wide as the window, so the controls line up with the entries they act on:
         // the grid pads its own entries with `contentPadding`, and this carries the same 16dp.
@@ -346,14 +404,7 @@ fun SignedInScreen(
                 // reset — an empty slice's way out must not become a second way of changing filter.
                 onShowAll = { actions.onSelectWatchStatus(null) },
                 onOpen = actions.onOpenAnime,
-            )
-        }
-
-        if (diagnosticsOpen) {
-            SessionDiagnosticsDialog(
-                state = state,
-                actions = actions.diagnostics,
-                onDismiss = { diagnosticsOpen = false },
+                openAnimeId = state.animePages.current?.animeId,
             )
         }
     }

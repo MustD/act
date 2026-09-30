@@ -175,7 +175,7 @@ val ANIME_LIST_ROW_COLUMN_TAG: String = "$ANIME_LIST_TAG.rowColumn"
 
 /**
  * The Anime Page, on the signed-in screen. Derived from [SessionScreenTag.SignedIn] like the list's
- * own tags: an open page replaces the list, so the two are answers to the same question.
+ * own tags: an open page shares the screen with the list or replaces it, so the two are answers to the same question.
  */
 val ANIME_PAGE_TAG: String = "${SessionScreenTag.SignedIn.tag}.animePage"
 
@@ -196,3 +196,6 @@ val ANIME_PAGE_SYNOPSIS_TAG: String = "$ANIME_PAGE_TAG.synopsis"
 
 /** The user's List Entry section — absent for an anime that is not on their list. */
 val ANIME_PAGE_LIST_STATUS_TAG: String = "$ANIME_PAGE_TAG.listStatus"
+
+/** The Anime Page when it sits beside the list. Absent below the side-panel width, where the page is the screen. */
+val ANIME_PAGE_PANEL_TAG: String = "$ANIME_PAGE_TAG.panel"
