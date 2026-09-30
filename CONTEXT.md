@@ -87,6 +87,18 @@ One anime together with *this user's* relationship to it — Watch Status, score
 it. The unit the Anime List is made of, and the thing filtering and ordering operate on. An anime nobody has added has
 no List Entry. _Avoid_: Item, row, anime (an anime exists independently of anyone's list)
 
+**Anime Page**:
+The page for one anime: what it is, the anime related to it, and — first and foremost — this user's List Entry for it,
+editable: Watch Status, episodes watched, score, start and finish date. The anime need not be on the list; then there is
+no List Entry yet, and choosing a Watch Status is what adds it. Reached from the Anime List and from another Anime
+Page's related anime. Every edit reaches MAL as soon as it is made — there is no draft and no Save — and until MAL has
+confirmed it, the edit is shown as pending and is undone if MAL refuses it. _Avoid_: Entry page, details screen
+
+**Related Anime**:
+The anime MAL links to another by a named relation — sequel, prequel, side story, alternative version and so on — each
+of which opens its own Anime Page, whether or not it is on the list. Manga relations are not included. _Avoid_:
+Recommendations (MAL's separate, user-voted "if you liked this" list, which this is not)
+
 **Watch Status**:
 The user's own disposition towards an anime: watching, completed, on hold, dropped, or plan to watch. Exactly one per
 List Entry. _Avoid_: **Status**, unqualified — MAL's API calls this `status` and calls **Airing Status** `status` too,
