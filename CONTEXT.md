@@ -85,7 +85,9 @@ Plan to Watch slice of one)
 **List Entry**:
 One anime together with *this user's* relationship to it — Watch Status, score, episodes watched, when they last touched
 it. The unit the Anime List is made of, and the thing filtering and ordering operate on. An anime nobody has added has
-no List Entry. _Avoid_: Item, row, anime (an anime exists independently of anyone's list)
+no List Entry. In code, `ListEntry` is the user's half alone (null for an anime not on the list), `Anime` the anime's,
+and a list row, which always has both, is `AnimeListEntry`. MAL's wire name for it is `my_list_status` / `list_status`,
+which is kept to the wire types. _Avoid_: Item, row, anime (an anime exists independently of anyone's list)
 
 **Anime Page**:
 The page for one anime: what it is, the anime related to it, and — first and foremost — this user's List Entry for it,

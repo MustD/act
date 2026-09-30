@@ -12,14 +12,14 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
 import io.ktor.client.request.HttpRequestData
-import io.ktor.http.HttpMethod
-import io.ktor.http.Parameters
-import io.ktor.http.content.OutgoingContent
-import io.ktor.http.parseUrlEncodedParameters
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.Parameters
 import io.ktor.http.Url
+import io.ktor.http.content.OutgoingContent
 import io.ktor.http.headersOf
+import io.ktor.http.parseUrlEncodedParameters
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.io.IOException
 
@@ -112,11 +112,11 @@ class FakeMal(
     /** Called with the id of each `GET /anime/{id}` before it is answered, to hold one in flight. */
     private val holdAnimeDetails: suspend (Long) -> Unit = {},
     /** How the fake answers `PATCH /anime/{id}/my_list_status`, given the id and the form fields sent. */
-    private val updateListStatus: (Long, Parameters) -> ListStatusResponse = { _, _ ->
+    private val updateListEntry: (Long, Parameters) -> ListStatusResponse = { _, _ ->
         ListStatusResponse.Failure()
     },
     /** Called with the id of each list-status PATCH before it is answered, to hold one in flight. */
-    private val holdListStatusUpdate: suspend (Long) -> Unit = {},
+    private val holdListEntryUpdate: suspend (Long) -> Unit = {},
     /**
      * How many token-endpoint requests fail in transport before [refreshResponse] applies: a blip,
      * after which the same Pending Authorization is still good.
@@ -217,7 +217,7 @@ class FakeMal(
                     form = body.parseUrlEncodedParameters(),
                 )
                 listStatusPatches += patch
-                holdListStatusUpdate(id)
+                holdListEntryUpdate(id)
                 val presented = request.headers[HttpHeaders.Authorization]?.removePrefix("Bearer ")
                 if (presented == null || presented !in acceptedAccessTokens) {
                     respond(
@@ -226,7 +226,7 @@ class FakeMal(
                         headers = headersOf(HttpHeaders.ContentType, "application/json"),
                     )
                 } else {
-                    when (val r = updateListStatus(id, patch.form)) {
+                    when (val r = updateListEntry(id, patch.form)) {
                         is ListStatusResponse.Saved -> respond(
                             content = r.status.json(),
                             status = HttpStatusCode.OK,

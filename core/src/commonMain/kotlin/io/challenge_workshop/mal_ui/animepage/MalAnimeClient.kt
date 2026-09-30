@@ -1,17 +1,19 @@
 package io.challenge_workshop.mal_ui.animepage
 
 import io.challenge_workshop.mal_ui.animelist.AiringStatus
+import io.challenge_workshop.mal_ui.animelist.Anime
 import io.challenge_workshop.mal_ui.animelist.AnimePicture
+import io.challenge_workshop.mal_ui.animelist.ListEntry
 import io.challenge_workshop.mal_ui.animelist.ListStatusBody
-import io.challenge_workshop.mal_ui.mal.MalAuthException
 import io.challenge_workshop.mal_ui.mal.decodeOrThrow
+import io.challenge_workshop.mal_ui.mal.reachMalApi
 import io.ktor.client.HttpClient
+import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
 import io.ktor.client.request.setBody
 import io.ktor.http.parameters
-import io.ktor.client.request.forms.FormDataContent
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -25,14 +27,10 @@ class MalAnimeClient(
     private val http: HttpClient,
 ) {
     suspend fun anime(animeId: Long): AnimeDetails {
-        val response = try {
+        val response = reachMalApi {
             http.get("${apiBaseUrl.trimEnd('/')}/anime/$animeId") {
                 parameter("fields", ANIME_PAGE_FIELDS)
             }
-        } catch (e: MalAuthException) {
-            throw e
-        } catch (e: Exception) {
-            throw MalAuthException("Could not reach the MAL API: ${e.message}", cause = e)
         }
         return response.decodeOrThrow<AnimeDetailsBody>().toDetails()
     }
@@ -43,7 +41,7 @@ class MalAnimeClient(
      * That answer, not the request, is the new confirmed value: MAL clamps progress and rounds a
      * score without any error. The same call creates the entry when the anime is not on the list.
      */
-    suspend fun updateListStatus(animeId: Long, update: ListStatusUpdate): MyListStatus {
+    suspend fun updateListEntry(animeId: Long, update: ListEntryUpdate): ListEntry {
         val form = parameters {
             update.watchStatus?.wireValue?.let { append("status", it) }
             update.score?.let { append("score", it.toString()) }
@@ -52,16 +50,12 @@ class MalAnimeClient(
             update.startDate?.let { append("start_date", it.wire()) }
             update.finishDate?.let { append("finish_date", it.wire()) }
         }
-        val response = try {
+        val response = reachMalApi {
             http.patch("${apiBaseUrl.trimEnd('/')}/anime/$animeId/my_list_status") {
                 setBody(FormDataContent(form))
             }
-        } catch (e: MalAuthException) {
-            throw e
-        } catch (e: Exception) {
-            throw MalAuthException("Could not reach the MAL API: ${e.message}", cause = e)
         }
-        return response.decodeOrThrow<ListStatusBody>().toMyListStatus()
+        return response.decodeOrThrow<ListStatusBody>().toListEntry()
     }
 
     private fun DateUpdate.wire(): String = when (this) {
@@ -71,8 +65,8 @@ class MalAnimeClient(
 
     companion object {
         /**
-         * What the Anime Page draws, and what the Related Anime will need: the page's own fetch is
-         * also where "already on your list" comes from, so no follow-up request is made for it.
+         * What the Anime Page draws, its Related Anime included: the page's own fetch is also where
+         * each one's "already on your list" comes from, so no follow-up request is made for it.
          *
          * `my_list_status` takes **no** sub-field selection — `my_list_status{start_date}` puts the
          * field on the anime instead — and already includes both dates when they are set. The braces
@@ -100,14 +94,16 @@ internal data class AnimeDetailsBody(
     @SerialName("related_anime") val relatedAnime: List<RelatedAnimeBody> = emptyList(),
 ) {
     fun toDetails(): AnimeDetails = AnimeDetails(
-        animeId = id,
-        title = title,
-        picture = mainPicture,
-        totalEpisodes = numEpisodes,
-        mediaType = mediaType,
-        airingStatus = status,
+        anime = Anime(
+            animeId = id,
+            title = title,
+            picture = mainPicture,
+            totalEpisodes = numEpisodes,
+            mediaType = mediaType,
+            airingStatus = status,
+        ),
         synopsis = synopsis,
-        listStatus = myListStatus?.toMyListStatus(),
+        listEntry = myListStatus?.toListEntry(),
         related = relatedAnime.map { it.toRelated() },
     )
 }
@@ -136,7 +132,7 @@ internal data class RelatedNodeBody(
     @SerialName("my_list_status") val myListStatus: ListStatusBody? = null,
 )
 
-internal fun ListStatusBody.toMyListStatus(): MyListStatus = MyListStatus(
+internal fun ListStatusBody.toListEntry(): ListEntry = ListEntry(
     watchStatus = status,
     score = score,
     episodesWatched = numEpisodesWatched,

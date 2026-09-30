@@ -1,23 +1,25 @@
 package io.challenge_workshop.mal_ui
 
+import io.challenge_workshop.mal_ui.mal.MAL_RELAY_PATH_PREFIX
 import io.challenge_workshop.mal_ui.mal.MalAuthConfig
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.get
-import io.ktor.client.request.patch
-import io.ktor.client.request.setBody
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
+import io.ktor.client.request.patch
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.ApplicationStopped
-import io.ktor.server.request.receiveText
 import io.ktor.server.request.receiveParameters
+import io.ktor.server.request.receiveText
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
@@ -39,30 +41,23 @@ import io.ktor.server.routing.post
  * localhost but means this should not be exposed publicly without authentication of
  * its own.
  */
-fun Application.malRelay(
-    route: Route,
-    client: HttpClient = HttpClient(CIO) { expectSuccess = false },
-) {
+fun Application.malRelay(route: Route, client: HttpClient) {
     monitor.subscribe(ApplicationStopped) { client.close() }
 
     with(route) {
-        // Mirrors MalAuthConfig.DEFAULT_RELAY_BASE_URL, which the web target points at.
-        post("/mal/oauth2/token") {
+        // The prefix is the one `platformMalEndpoints()` puts on every web request.
+        post("$MAL_RELAY_PATH_PREFIX/oauth2/token") {
             val form = call.receiveParameters()
             val upstream = client.submitForm(
                 url = MalAuthConfig.DEFAULT_TOKEN_ENDPOINT,
                 formParameters = form,
             )
-            call.respondText(
-                text = upstream.bodyAsText(),
-                contentType = upstream.contentType() ?: ContentType.Application.Json,
-                status = upstream.status,
-            )
+            call.respondWith(upstream)
         }
 
         // The only write route, and only this path: `{id}` must be numeric, so nothing else under
         // `/v2` can be reached with a PATCH.
-        patch(Regex("/mal/v2/anime/(?<id>\\d+)/my_list_status")) {
+        patch(Regex("$MAL_RELAY_PATH_PREFIX/v2/anime/(?<id>\\d+)/my_list_status")) {
             val id = call.parameters["id"]
             val upstream = client.patch("${MalAuthConfig.DEFAULT_API_BASE_URL}/anime/$id/my_list_status") {
                 call.request.headers[HttpHeaders.Authorization]?.let {
@@ -71,14 +66,10 @@ fun Application.malRelay(
                 contentType(ContentType.Application.FormUrlEncoded)
                 setBody(call.receiveText())
             }
-            call.respondText(
-                text = upstream.bodyAsText(),
-                contentType = upstream.contentType() ?: ContentType.Application.Json,
-                status = upstream.status,
-            )
+            call.respondWith(upstream)
         }
 
-        get("/mal/v2/{path...}") {
+        get("$MAL_RELAY_PATH_PREFIX/v2/{path...}") {
             val path = call.parameters.getAll("path")?.joinToString("/").orEmpty()
             if (path.isEmpty()) {
                 call.respondText("Missing API path", status = HttpStatusCode.BadRequest)
@@ -93,11 +84,16 @@ fun Application.malRelay(
                     values.forEach { parameter(key, it) }
                 }
             }
-            call.respondText(
-                text = upstream.bodyAsText(),
-                contentType = upstream.contentType() ?: ContentType.Application.Json,
-                status = upstream.status,
-            )
+            call.respondWith(upstream)
         }
     }
+}
+
+/** Hands MAL's answer back as it came: body, content type and status, a 4xx or 5xx included. */
+private suspend fun ApplicationCall.respondWith(upstream: HttpResponse) {
+    respondText(
+        text = upstream.bodyAsText(),
+        contentType = upstream.contentType() ?: ContentType.Application.Json,
+        status = upstream.status,
+    )
 }

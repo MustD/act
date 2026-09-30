@@ -42,14 +42,14 @@ import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_EPISODES_PLUS_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_EPISODES_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_FINISH_DATE_CLEAR_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_FINISH_DATE_TAG
-import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_LIST_STATUS_TAG
+import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_LIST_ENTRY_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_SAVE_ERROR_TAG
-import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_SAVING_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_SCORE_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_START_DATE_CLEAR_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_START_DATE_TAG
-import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_STATUS_TAG
+import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_WATCH_STATUS_TAG
 import io.challenge_workshop.mal_ui.auth.ErrorCard
+import io.challenge_workshop.mal_ui.auth.animePageSavingTag
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -59,44 +59,30 @@ import kotlinx.datetime.toLocalDateTime
 /**
  * The user's List Entry, editable once [AnimePage.canEdit].
  *
- * It draws [AnimePage.shownListStatus] — the pending target while a save is under way — so a change
- * shows the moment it is made, and says "Saving…" for as long as MAL has not confirmed it. Before
- * the fetch has succeeded the same fields are drawn, disabled: the row the page opened from may be
- * stale and has no dates. For an anime that is not on the list it is an "Add to list as…" picker and nothing else,
- * until MAL confirms the add; before the fetch has landed it is neither.
+ * It draws [AnimePage.shownListEntry] — the pending target while a save is under way — so a change
+ * shows the moment it is made, and each field it touched says "Saving…" ([AnimePage.pendingChange])
+ * for as long as MAL has not confirmed it. Before the fetch has succeeded the same fields are drawn,
+ * disabled: the row the page opened from may be stale and has no dates. For an anime that is not on
+ * the list it is an "Add to list as…" picker and nothing else, until MAL confirms the add; before the
+ * fetch has landed it is neither.
  */
 @Composable
 internal fun ListEntrySection(page: AnimePage, onEdit: (ListEdit) -> Unit, onAdd: (WatchStatus) -> Unit) {
     Column(
-        Modifier.fillMaxWidth().testTag(ANIME_PAGE_LIST_STATUS_TAG),
+        Modifier.fillMaxWidth().testTag(ANIME_PAGE_LIST_ENTRY_TAG),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Your list entry", style = MaterialTheme.typography.titleMedium)
-            if (page.isSaving) {
-                Text(
-                    "Saving…",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.testTag(ANIME_PAGE_SAVING_TAG),
-                )
-            }
-        }
+        Text("Your list entry", style = MaterialTheme.typography.titleMedium)
         page.save.error?.let { message ->
             Column(Modifier.testTag(ANIME_PAGE_SAVE_ERROR_TAG)) { ErrorCard("Could not save that change", message) }
         }
         // Keyed on what MAL has confirmed, not on the pending target: an add is not on the list, and
         // the editor stays away, until MAL says it is.
-        if (page.listStatus == null) {
+        if (page.listEntry == null) {
             // Until the fetch lands it is not known that the anime is off the list (a Related Anime
-            // opens with no entry however it stands), so neither the claim nor the picker is shown.
+            // opens with no entry however it stands), so the picker is not offered.
             if (page.load != AnimePageLoad.Loaded) return@Column
-            Text(
-                "Not on your list.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Field("Add to list as…") {
+            Field("Add to list as…", ANIME_PAGE_ADD_TAG, saving = page.isSaving) {
                 AddToListPicker(
                     pending = page.save.target?.watchStatus,
                     enabled = !page.isSaving,
@@ -105,23 +91,30 @@ internal fun ListEntrySection(page: AnimePage, onEdit: (ListEdit) -> Unit, onAdd
             }
             return@Column
         }
-        val status = page.shownListStatus!!
+        val entry = page.shownListEntry!!
+        val pending = page.pendingChange
         val enabled = page.canEdit
-        Field("Status") { WatchStatusPicker(status.watchStatus, enabled) { onEdit(ListEdit.SetWatchStatus(it)) } }
-        Field("Episodes") { EpisodesField(status.episodesWatched, page.totalEpisodes, enabled, onEdit) }
-        Field("Score") { ScorePicker(status.score, enabled) { onEdit(ListEdit.SetScore(it)) } }
-        Field("Started") {
+        Field("Watch status", ANIME_PAGE_WATCH_STATUS_TAG, saving = pending.watchStatus != null) {
+            WatchStatusPicker(entry.watchStatus, enabled) { onEdit(ListEdit.SetWatchStatus(it)) }
+        }
+        Field("Episodes", ANIME_PAGE_EPISODES_TAG, saving = pending.episodesWatched != null) {
+            EpisodesField(entry.episodesWatched, page.anime.totalEpisodes, enabled, onEdit)
+        }
+        Field("Score", ANIME_PAGE_SCORE_TAG, saving = pending.score != null) {
+            ScorePicker(entry.score, enabled) { onEdit(ListEdit.SetScore(it)) }
+        }
+        Field("Started", ANIME_PAGE_START_DATE_TAG, saving = pending.startDate != null) {
             DateField(
-                date = status.startDate,
+                date = entry.startDate,
                 enabled = enabled,
                 tag = ANIME_PAGE_START_DATE_TAG,
                 clearTag = ANIME_PAGE_START_DATE_CLEAR_TAG,
                 onPick = { onEdit(ListEdit.SetStartDate(it)) },
             )
         }
-        Field("Finished") {
+        Field("Finished", ANIME_PAGE_FINISH_DATE_TAG, saving = pending.finishDate != null) {
             DateField(
-                date = status.finishDate,
+                date = entry.finishDate,
                 enabled = enabled,
                 tag = ANIME_PAGE_FINISH_DATE_TAG,
                 clearTag = ANIME_PAGE_FINISH_DATE_CLEAR_TAG,
@@ -131,15 +124,24 @@ internal fun ListEntrySection(page: AnimePage, onEdit: (ListEdit) -> Unit, onAdd
     }
 }
 
+/**
+ * One labelled field, with "Saving…" under its label while a change to it is pending — under rather
+ * than after, so the widest row (the episodes) still fits a phone. [tag] is the field's control's.
+ */
 @Composable
-private fun Field(label: String, content: @Composable () -> Unit) {
+private fun Field(label: String, tag: String, saving: Boolean, content: @Composable () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(72.dp),
-        )
+        Column(Modifier.width(72.dp)) {
+            Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (saving) {
+                Text(
+                    "Saving…",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.testTag(animePageSavingTag(tag)),
+                )
+            }
+        }
         content()
     }
 }
@@ -178,7 +180,14 @@ private val WATCH_STATUS_CHOICES: List<WatchStatus> = ANIME_LIST_FILTERS.filterN
 
 @Composable
 private fun WatchStatusPicker(current: WatchStatus, enabled: Boolean, onPick: (WatchStatus) -> Unit) {
-    MenuPicker(current.filterLabel(), WATCH_STATUS_CHOICES, { it.filterLabel() }, enabled, ANIME_PAGE_STATUS_TAG, onPick)
+    MenuPicker(
+        current.filterLabel(),
+        WATCH_STATUS_CHOICES,
+        { it.filterLabel() },
+        enabled,
+        ANIME_PAGE_WATCH_STATUS_TAG,
+        onPick
+    )
 }
 
 /** "Add to list as…": the five Watch Statuses, the button saying which one is being added while it saves. */

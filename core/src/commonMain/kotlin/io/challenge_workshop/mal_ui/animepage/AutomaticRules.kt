@@ -1,5 +1,6 @@
 package io.challenge_workshop.mal_ui.animepage
 
+import io.challenge_workshop.mal_ui.animelist.ListEntry
 import io.challenge_workshop.mal_ui.animelist.WatchStatus
 import kotlinx.datetime.LocalDate
 
@@ -17,30 +18,31 @@ import kotlinx.datetime.LocalDate
  *
  * - Progress from 0 to more on a Plan to Watch entry → Watching, start date [today].
  * - Progress reaching the total → Completed, finish date [today].
- * - Watch Status set to Completed → progress set to the total.
+ * - Watch Status set to Completed → progress set to the total, finish date [today] — the same
+ *   finish date adding it as Completed gets ([newListEntry]), so the two ways of arriving agree.
  */
 internal fun applyAutomaticRules(
-    before: MyListStatus,
-    requested: MyListStatus,
+    before: ListEntry,
+    requested: ListEntry,
     today: LocalDate,
     totalEpisodes: Int,
-): MyListStatus {
+): ListEntry {
     if (totalEpisodes <= 0) return requested
-    var status = requested
+    var result = requested
     val todayText = today.toString()
 
     if (before.watchStatus == WatchStatus.PlanToWatch && requested.watchStatus == WatchStatus.PlanToWatch &&
         before.episodesWatched == 0 && requested.episodesWatched > 0
     ) {
-        status = status.copy(watchStatus = WatchStatus.Watching, startDate = status.startDate ?: todayText)
+        result = result.copy(watchStatus = WatchStatus.Watching, startDate = result.startDate ?: todayText)
     }
     if (requested.episodesWatched == totalEpisodes && before.episodesWatched != totalEpisodes) {
-        status = status.copy(watchStatus = WatchStatus.Completed, finishDate = status.finishDate ?: todayText)
+        result = result.copy(watchStatus = WatchStatus.Completed, finishDate = result.finishDate ?: todayText)
     }
     if (requested.watchStatus == WatchStatus.Completed && before.watchStatus != WatchStatus.Completed) {
-        status = status.copy(episodesWatched = totalEpisodes)
+        result = result.copy(episodesWatched = totalEpisodes, finishDate = result.finishDate ?: todayText)
     }
-    return status
+    return result
 }
 
 /**
@@ -51,8 +53,9 @@ internal fun applyAutomaticRules(
  * - Completed → progress set to the total (when known) and finish date [today].
  * - Plan to Watch, On Hold, Dropped → nothing.
  */
-internal fun newListEntry(watchStatus: WatchStatus, today: LocalDate, totalEpisodes: Int): MyListStatus {
-    val entry = MyListStatus(watchStatus, score = 0, episodesWatched = 0, startDate = null, finishDate = null, updatedAt = null)
+internal fun newListEntry(watchStatus: WatchStatus, today: LocalDate, totalEpisodes: Int): ListEntry {
+    val entry =
+        ListEntry(watchStatus, score = 0, episodesWatched = 0, startDate = null, finishDate = null, updatedAt = null)
     val todayText = today.toString()
     return when (watchStatus) {
         WatchStatus.Watching -> entry.copy(startDate = todayText)

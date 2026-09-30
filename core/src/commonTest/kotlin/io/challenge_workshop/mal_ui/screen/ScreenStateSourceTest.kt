@@ -1,6 +1,7 @@
 package io.challenge_workshop.mal_ui.screen
 
 import io.challenge_workshop.mal_ui.animelist.AiringStatus
+import io.challenge_workshop.mal_ui.animelist.Anime
 import io.challenge_workshop.mal_ui.animelist.AnimeListContent
 import io.challenge_workshop.mal_ui.animelist.AnimeListLayout
 import io.challenge_workshop.mal_ui.animelist.AnimeListState
@@ -424,13 +425,15 @@ class ScreenStateSourceTest {
     }
 
     private fun animePage(id: Long) = AnimePage(
-        animeId = id,
-        title = "Anime $id",
-        picture = null,
-        totalEpisodes = 12,
-        mediaType = "tv",
-        airingStatus = AiringStatus.FinishedAiring,
-        listStatus = null,
+        anime = Anime(
+            id,
+            "Anime $id",
+            picture = null,
+            totalEpisodes = 12,
+            mediaType = "tv",
+            AiringStatus.FinishedAiring
+        ),
+        listEntry = null,
         synopsis = null,
         load = AnimePageLoad.Loading,
     )

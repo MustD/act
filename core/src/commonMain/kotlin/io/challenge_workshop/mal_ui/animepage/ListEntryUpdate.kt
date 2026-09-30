@@ -10,7 +10,7 @@ import kotlinx.datetime.LocalDate
  * Dates need a third state beyond "keep" and "set", so they are [DateUpdate]s and not a nullable
  * date: clearing one is sending it *empty*, and that is a different request from not mentioning it.
  */
-data class ListStatusUpdate(
+data class ListEntryUpdate(
     val watchStatus: WatchStatus? = null,
     /** 0–10; 0 is "no score". */
     val score: Int? = null,

@@ -1,7 +1,7 @@
 package io.challenge_workshop.mal_ui.animelist
 
-import io.challenge_workshop.mal_ui.mal.MalAuthException
 import io.challenge_workshop.mal_ui.mal.decodeOrThrow
+import io.challenge_workshop.mal_ui.mal.reachMalApi
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
@@ -34,7 +34,7 @@ class MalAnimeListClient(
         watchStatus: WatchStatus? = null,
         sortOrder: AnimeListSortOrder = AnimeListSortOrder.LastUpdated,
     ): AnimeListPage {
-        val response = try {
+        val response = reachMalApi {
             http.get("${apiBaseUrl.trimEnd('/')}/users/@me/animelist") {
                 parameter("limit", limit)
                 parameter("offset", offset)
@@ -45,10 +45,6 @@ class MalAnimeListClient(
                 parameter("fields", ANIME_LIST_FIELDS)
                 watchStatus?.wireValue?.let { parameter("status", it) }
             }
-        } catch (e: MalAuthException) {
-            throw e
-        } catch (e: Exception) {
-            throw MalAuthException("Could not reach the MAL API: ${e.message}", cause = e)
         }
         return response.decodeOrThrow<AnimeListPageBody>().toPage()
     }

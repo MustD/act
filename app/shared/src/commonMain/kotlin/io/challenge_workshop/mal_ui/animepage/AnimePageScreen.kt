@@ -39,6 +39,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import io.challenge_workshop.mal_ui.animelist.Anime
 import io.challenge_workshop.mal_ui.animelist.AnimeCoverBox
 import io.challenge_workshop.mal_ui.animelist.airingLabel
 import io.challenge_workshop.mal_ui.animelist.coverUrl
@@ -124,7 +125,7 @@ private fun PageContent(page: AnimePage, canGoBack: Boolean, actions: AnimePageA
             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Header(page)
+            Header(page.anime)
             HorizontalDivider()
             ListEntrySection(page, actions.onEdit, actions.onAdd)
             HorizontalDivider()
@@ -135,19 +136,19 @@ private fun PageContent(page: AnimePage, canGoBack: Boolean, actions: AnimePageA
 }
 
 @Composable
-private fun Header(page: AnimePage) {
+private fun Header(anime: Anime) {
     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         AnimeCoverBox(
-            title = page.title,
-            url = page.picture.coverUrl(preferLarge = true),
+            title = anime.title,
+            url = anime.picture.coverUrl(preferLarge = true),
             modifier = Modifier.width(COVER_WIDTH).height(COVER_WIDTH * 3 / 2),
         )
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(page.title, style = MaterialTheme.typography.headlineSmall)
+            Text(anime.title, style = MaterialTheme.typography.headlineSmall)
             val facts = listOfNotNull(
-                mediaTypeLabel(page.mediaType),
-                page.airingStatus.airingLabel(),
-                if (page.totalEpisodes > 0) "${page.totalEpisodes} episodes" else null,
+                mediaTypeLabel(anime.mediaType),
+                anime.airingStatus.airingLabel(),
+                if (anime.totalEpisodes > 0) "${anime.totalEpisodes} episodes" else null,
             ).joinToString(" · ")
             if (facts.isNotEmpty()) {
                 Text(

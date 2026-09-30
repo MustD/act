@@ -82,11 +82,27 @@ data class AnimePicture(
 )
 
 /**
+ * One anime as MAL describes it to everyone — nobody's List Entry in it. What an Anime Page's header
+ * draws, and the half of an [AnimeListEntry] that is not the user's.
+ */
+data class Anime(
+    val animeId: Long,
+    val title: String,
+    val picture: AnimePicture?,
+    /** MAL reports `0` for an anime whose total is not yet known, not null. */
+    val totalEpisodes: Int,
+    /** MAL's `media_type`, verbatim: `tv`, `movie`, `ova`, … Left a string because MAL adds them. */
+    val mediaType: String?,
+    val airingStatus: AiringStatus,
+)
+
+/**
  * One anime together with *this user's* relationship to it — the unit the Anime List is made of.
  *
- * Flattened from MAL's two-object shape (`node` plus `list_status`) on purpose: nothing in this app
- * ever has one without the other, and keeping the split would mean every call site reaching through
- * a wrapper to answer "how far through is this".
+ * Flattened from MAL's two-object shape (`node` plus `list_status`) on purpose: every list row has
+ * both, and keeping the split would mean every call site reaching through a wrapper to answer "how
+ * far through is this". The Anime Page, which can have one without the other, takes the halves
+ * apart with [anime] and [listEntry].
  */
 data class AnimeListEntry(
     val animeId: Long,
@@ -102,6 +118,48 @@ data class AnimeListEntry(
     val score: Int,
     val episodesWatched: Int,
     /** MAL's ISO-8601 stamp, verbatim. Nothing here parses it — the sort happens server-side. */
+    val updatedAt: String?,
+) {
+    /** The anime's half of this entry. */
+    val anime: Anime get() = Anime(animeId, title, picture, totalEpisodes, mediaType, airingStatus)
+
+    /** The user's half of this entry. Without dates: the list endpoint is not asked for them. */
+    val listEntry: ListEntry
+        get() = ListEntry(
+            watchStatus,
+            score,
+            episodesWatched,
+            startDate = null,
+            finishDate = null,
+            updatedAt = updatedAt
+        )
+
+    /** This row with [entry] as the user's half. Its dates have nowhere to go here. */
+    internal fun with(entry: ListEntry): AnimeListEntry = copy(
+        watchStatus = entry.watchStatus,
+        score = entry.score,
+        episodesWatched = entry.episodesWatched,
+        updatedAt = entry.updatedAt,
+    )
+}
+
+/**
+ * *This user's* relationship to one anime, without the anime: a List Entry in the glossary's sense.
+ * What `GET /anime/{id}` and a `PATCH .../my_list_status` report, and what an Anime Page edits —
+ * [AnimeListEntry]'s own half of it plus the two dates, which the list endpoint is not asked for.
+ * An anime that is not on the list has none, so it is held as `ListEntry?`.
+ *
+ * The dates are **strings, verbatim**. MAL sends `yyyy-MM-dd`, but also `yyyy` and `yyyy-MM` for a
+ * partial date, and a type that could only hold a full date could not show what is on the account.
+ * An unset date is null.
+ */
+data class ListEntry(
+    val watchStatus: WatchStatus,
+    /** 0–10, where 0 is "no score". */
+    val score: Int,
+    val episodesWatched: Int,
+    val startDate: String?,
+    val finishDate: String?,
     val updatedAt: String?,
 )
 

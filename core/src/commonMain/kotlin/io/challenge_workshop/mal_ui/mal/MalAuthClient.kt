@@ -109,14 +109,10 @@ class MalAuthClient(
      * as well would send two `Authorization` headers.
      */
     suspend fun me(accessToken: String? = null): MalUser {
-        val response = try {
+        val response = reachMalApi {
             http.get("${config.apiBaseUrl.trimEnd('/')}/users/@me") {
                 if (accessToken != null) header(HttpHeaders.Authorization, "Bearer $accessToken")
             }
-        } catch (e: MalAuthException) {
-            throw e
-        } catch (e: Exception) {
-            throw MalAuthException("Could not reach the MAL API: ${e.message}", cause = e)
         }
         return response.decodeOrThrow()
     }

@@ -195,13 +195,16 @@ val ANIME_PAGE_ERROR_TAG: String = "$ANIME_PAGE_TAG.error"
 val ANIME_PAGE_SYNOPSIS_TAG: String = "$ANIME_PAGE_TAG.synopsis"
 
 /** The user's List Entry section: the fields, or "Add to list as…" for an anime that is not on their list. */
-val ANIME_PAGE_LIST_STATUS_TAG: String = "$ANIME_PAGE_TAG.listStatus"
+val ANIME_PAGE_LIST_ENTRY_TAG: String = "$ANIME_PAGE_TAG.listEntry"
 
 /** The Anime Page when it sits beside the list. Absent below the side-panel width, where the page is the screen. */
 val ANIME_PAGE_PANEL_TAG: String = "$ANIME_PAGE_TAG.panel"
 
-/** "Saving…" beside the List Entry: present while any change of the user's is not yet confirmed by MAL. */
-val ANIME_PAGE_SAVING_TAG: String = "$ANIME_PAGE_TAG.saving"
+/**
+ * "Saving…" beside one List Entry field — the one whose tag is [fieldTag] — while a change to it is
+ * not yet confirmed by MAL. Per field, so a test can tell *which* change is pending.
+ */
+fun animePageSavingTag(fieldTag: String): String = "$fieldTag.saving"
 
 /** Why the last save was refused. The fields have already gone back to what MAL holds. */
 val ANIME_PAGE_SAVE_ERROR_TAG: String = "$ANIME_PAGE_TAG.saveError"
@@ -210,7 +213,7 @@ val ANIME_PAGE_SAVE_ERROR_TAG: String = "$ANIME_PAGE_TAG.saveError"
 val ANIME_PAGE_ADD_TAG: String = "$ANIME_PAGE_TAG.add"
 
 /** The Watch Status button, which opens the picker. */
-val ANIME_PAGE_STATUS_TAG: String = "$ANIME_PAGE_TAG.status"
+val ANIME_PAGE_WATCH_STATUS_TAG: String = "$ANIME_PAGE_TAG.watchStatus"
 
 /** The progress number field, and the − and + beside it. */
 val ANIME_PAGE_EPISODES_TAG: String = "$ANIME_PAGE_TAG.episodes"

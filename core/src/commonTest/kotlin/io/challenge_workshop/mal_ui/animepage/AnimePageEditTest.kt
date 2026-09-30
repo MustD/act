@@ -69,15 +69,15 @@ class AnimePageEditTest {
                     FakeAnimeDetails(id, "One", numEpisodes = pageTotal, watchStatus = "watching", score = 5, watched = 3),
                 )
             },
-            updateListStatus = mal.respond,
-            holdListStatusUpdate = mal.hold,
+            updateListEntry = mal.respond,
+            holdListEntryUpdate = mal.hold,
         )
         h.pages.open(h.entry(1))
         h.awaitLoaded()
         return h
     }
 
-    private val AnimePage.shown get() = shownListStatus!!
+    private val AnimePage.shown get() = shownListEntry!!
 
     @Test
     fun nothing_is_editable_until_the_fetch_has_succeeded() = runTest {
@@ -85,8 +85,8 @@ class AnimePageEditTest {
         val mal = Mal()
         val h = harness(
             holdAnimeDetails = { gate.await() },
-            updateListStatus = mal.respond,
-            holdListStatusUpdate = mal.hold,
+            updateListEntry = mal.respond,
+            holdListEntryUpdate = mal.hold,
         )
         h.pages.open(h.entry(1))
 
@@ -122,12 +122,12 @@ class AnimePageEditTest {
 
         val pending = h.history.current!!
         assertEquals(9, pending.shown.score, "the requested value is shown straight away")
-        assertEquals(5, pending.listStatus!!.score, "and MAL's confirmed one is still the old one")
+        assertEquals(5, pending.listEntry!!.score, "and MAL's confirmed one is still the old one")
         assertTrue(pending.isSaving)
 
         mal.gate!!.complete(Unit)
         val saved = h.awaitPage { !it.isSaving }
-        assertEquals(9, saved.listStatus!!.score)
+        assertEquals(9, saved.listEntry!!.score)
         assertNull(saved.save.error)
         val patch = h.mal.listStatusPatches.single()
         assertEquals(mapOf("score" to listOf("9")), patch.form.entries().associate { it.key to it.value })
@@ -147,7 +147,7 @@ class AnimePageEditTest {
         mal.gate!!.complete(Unit)
         val saved = h.awaitPage { !it.isSaving }
 
-        assertEquals(6, saved.listStatus!!.episodesWatched)
+        assertEquals(6, saved.listEntry!!.episodesWatched)
         assertEquals(6, mal.entry.watched)
         val sent = h.mal.listStatusPatches.map { it.form["num_watched_episodes"] }
         assertEquals(listOf("4", "6"), sent, "the first tap went at once, the other two as one")
@@ -230,7 +230,7 @@ class AnimePageEditTest {
         h.pages.edit(ListEdit.SetEpisodes(20))
         val saved = h.awaitPage { !it.isSaving }
 
-        assertEquals(12, saved.listStatus!!.episodesWatched)
+        assertEquals(12, saved.listEntry!!.episodesWatched)
         assertEquals(12, saved.shown.episodesWatched)
         assertEquals(1, h.mal.listStatusPatches.size, "a clamp is not a difference to chase")
     }
@@ -247,7 +247,7 @@ class AnimePageEditTest {
 
         val unbounded = harness(
             animeDetails = { AnimeDetailsResponse.Found(FakeAnimeDetails(it, "One", numEpisodes = 0)) },
-            updateListStatus = { _, form -> ListStatusResponse.Saved(FakeListStatus().applying(form)) },
+            updateListEntry = { _, form -> ListStatusResponse.Saved(FakeListStatus().applying(form)) },
         )
         unbounded.pages.open(unbounded.entry(1))
         unbounded.awaitLoaded()
@@ -285,8 +285,8 @@ class AnimePageEditTest {
 
         assertEquals("2026-09-30", h.mal.listStatusPatches[0].form["finish_date"])
         assertEquals(listOf(""), h.mal.listStatusPatches[1].form.getAll("start_date"))
-        assertEquals("2026-09-30", done.listStatus!!.finishDate)
-        assertNull(done.listStatus!!.startDate)
+        assertEquals("2026-09-30", done.listEntry!!.finishDate)
+        assertNull(done.listEntry!!.startDate)
     }
 
     @Test
@@ -348,9 +348,15 @@ class AnimePageEditTest {
         val pending = h.history.current!!
         assertEquals(WatchStatus.Completed, pending.shown.watchStatus)
         assertEquals("2026-09-30", pending.shown.finishDate)
-        assertEquals(WatchStatus.Watching, pending.listStatus!!.watchStatus, "MAL has not confirmed it yet")
+        assertEquals(WatchStatus.Watching, pending.listEntry!!.watchStatus, "MAL has not confirmed it yet")
+        val marked = pending.pendingChange
+        assertNotNull(marked.watchStatus, "what the rule added is pending with the edit")
+        assertNotNull(marked.episodesWatched)
+        assertNotNull(marked.finishDate)
+        assertNull(marked.score, "a field nobody touched is not marked")
+        assertNull(marked.startDate)
         mal.gate!!.complete(Unit)
-        h.awaitPage { !it.isSaving }
+        assertTrue(h.awaitPage { !it.isSaving }.pendingChange.isEmpty)
 
         assertEquals(1, h.mal.listStatusPatches.size)
         val form = h.mal.listStatusPatches.single().form

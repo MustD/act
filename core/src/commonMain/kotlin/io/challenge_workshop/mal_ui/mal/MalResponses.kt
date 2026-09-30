@@ -15,6 +15,18 @@ import kotlinx.serialization.json.Json
  */
 private val errorJson = Json { ignoreUnknownKeys = true; isLenient = true }
 
+/**
+ * Sends one API request, putting a transport failure — no answer at all — into words. A
+ * [MalAuthException] from inside it is already in words and passes through untouched.
+ */
+internal suspend inline fun reachMalApi(request: () -> HttpResponse): HttpResponse = try {
+    request()
+} catch (e: MalAuthException) {
+    throw e
+} catch (e: Exception) {
+    throw MalAuthException("Could not reach the MAL API: ${e.message}", cause = e)
+}
+
 /** Decodes a 2xx body, or throws whatever the non-2xx one describes. */
 internal suspend inline fun <reified T> HttpResponse.decodeOrThrow(): T {
     if (!status.isSuccess()) throw toMalException()

@@ -123,15 +123,10 @@ internal class AnimeListPager(
      * revision does not move — the screen must not scroll to the top under an edit. Nothing happens
      * for an anime that is not loaded.
      */
-    fun applyListStatus(animeId: Long, status: WatchStatus, score: Int, episodesWatched: Int, updatedAt: String?) {
+    fun applyListEntry(animeId: Long, entry: ListEntry) {
         update { paging ->
             if (paging.entries.none { it.animeId == animeId }) return@update paging
-            paging.copy(
-                entries = paging.entries.map {
-                    if (it.animeId != animeId) it
-                    else it.copy(watchStatus = status, score = score, episodesWatched = episodesWatched, updatedAt = updatedAt)
-                },
-            )
+            paging.copy(entries = paging.entries.map { if (it.animeId == animeId) it.with(entry) else it })
         }
     }
 

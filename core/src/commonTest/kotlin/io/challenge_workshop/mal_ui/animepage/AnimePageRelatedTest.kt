@@ -69,15 +69,15 @@ class AnimePageRelatedTest {
 
         val page = h.history.current!!
         assertEquals(listOf(1L, 10L), h.history.pages.map { it.animeId })
-        assertEquals("Prequel", page.title)
-        assertEquals(first.related[0].picture, page.picture)
+        assertEquals("Prequel", page.anime.title)
+        assertEquals(first.related[0].picture, page.anime.picture)
         assertEquals(AnimePageLoad.Loading, page.load)
-        assertNull(page.listStatus, "an anime not on the list has no List Entry to show")
+        assertNull(page.listEntry, "an anime not on the list has no List Entry to show")
         assertFalse(page.canEdit)
         gate.complete(Unit)
         val loaded = h.awaitLoaded()
-        assertEquals("Anime 10", loaded.title)
-        assertNull(loaded.listStatus, "still not on the list: no List Entry fields")
+        assertEquals("Anime 10", loaded.anime.title)
+        assertNull(loaded.listEntry, "still not on the list: no List Entry fields")
         assertFalse(loaded.canEdit)
     }
 
@@ -91,7 +91,7 @@ class AnimePageRelatedTest {
         val page = h.awaitLoaded()
 
         assertEquals(11L, page.animeId)
-        assertEquals(WatchStatus.Watching, page.listStatus!!.watchStatus)
+        assertEquals(WatchStatus.Watching, page.listEntry!!.watchStatus)
         assertTrue(page.canEdit)
     }
 
@@ -182,6 +182,38 @@ class AnimePageRelatedTest {
     }
 
     @Test
+    fun going_back_from_an_anime_open_twice_keeps_the_fetch_the_lower_copy_needs() = runTest {
+        // A → B → A. One fetch fills both copies of A, so leaving the top one must not cancel it.
+        var fetchesOfOne = 0
+        val gate = CompletableDeferred<Unit>()
+        val h = harness(
+            animeDetails = {
+                when {
+                    it == 1L && ++fetchesOfOne == 2 -> AnimeDetailsResponse.Failure()
+                    it == 1L -> details(1, listOf(FakeRelated(10, "Ten")))
+                    else -> details(it, listOf(FakeRelated(1, "One")))
+                }
+            },
+            holdAnimeDetails = { if (it == 1L && fetchesOfOne == 2) gate.await() },
+        )
+        h.pages.open(h.entry(1))
+        h.pages.open(h.awaitLoaded().related.single())
+        h.pages.open(h.awaitPage { it.animeId == 10L && it.load == AnimePageLoad.Loaded }.related.single())
+        // The top A's fetch fails, and that failure is on both copies; its retry is then held.
+        h.awaitPage { it.animeId == 1L && it.load is AnimePageLoad.Failed }
+        h.pages.retry()
+        assertEquals(AnimePageLoad.Loading, h.history.pages.first().load)
+
+        h.pages.back()
+        h.pages.back()
+        gate.complete(Unit)
+
+        val lower = h.awaitPage { it.load == AnimePageLoad.Loaded }
+        assertEquals(listOf(1L), h.history.pages.map { it.animeId })
+        assertEquals(1L, lower.animeId)
+    }
+
+    @Test
     fun opening_a_related_anime_never_closes_the_page_it_came_from_if_the_fetch_fails() = runTest {
         val h = harness(animeDetails = {
             if (it == 10L) AnimeDetailsResponse.Failure() else details(it, related)
@@ -192,6 +224,6 @@ class AnimePageRelatedTest {
         h.awaitPage { it.load is AnimePageLoad.Failed }
 
         assertEquals(listOf(1L, 10L), h.history.pages.map { it.animeId })
-        assertEquals("Prequel", h.history.current!!.title)
+        assertEquals("Prequel", h.history.current!!.anime.title)
     }
 }

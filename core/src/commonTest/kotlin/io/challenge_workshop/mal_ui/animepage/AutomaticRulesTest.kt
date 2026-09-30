@@ -1,10 +1,8 @@
 package io.challenge_workshop.mal_ui.animepage
 
+import io.challenge_workshop.mal_ui.animelist.ListEntry
 import io.challenge_workshop.mal_ui.animelist.WatchStatus
-import io.challenge_workshop.mal_ui.animelist.WatchStatus.Completed
-import io.challenge_workshop.mal_ui.animelist.WatchStatus.Dropped
-import io.challenge_workshop.mal_ui.animelist.WatchStatus.PlanToWatch
-import io.challenge_workshop.mal_ui.animelist.WatchStatus.Watching
+import io.challenge_workshop.mal_ui.animelist.WatchStatus.*
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -17,14 +15,21 @@ class AutomaticRulesTest {
         watched: Int,
         start: String? = null,
         finish: String? = null,
-    ) = MyListStatus(status, score = 0, episodesWatched = watched, startDate = start, finishDate = finish, updatedAt = null)
+    ) = ListEntry(
+        status,
+        score = 0,
+        episodesWatched = watched,
+        startDate = start,
+        finishDate = finish,
+        updatedAt = null
+    )
 
     private class Case(
         val name: String,
-        val before: MyListStatus,
-        val requested: MyListStatus,
+        val before: ListEntry,
+        val requested: ListEntry,
         val total: Int,
-        val expected: MyListStatus,
+        val expected: ListEntry,
     )
 
     private fun cases() = listOf(
@@ -49,10 +54,19 @@ class AutomaticRulesTest {
             entry(PlanToWatch, 2), entry(PlanToWatch, 3), 12, entry(PlanToWatch, 3)),
         Case("choosing a status with the first episode is left alone",
             entry(PlanToWatch, 0), entry(Dropped, 1), 12, entry(Dropped, 1)),
-        Case("marking Completed fills in the episode count",
-            entry(Watching, 3), entry(Completed, 3), 12, entry(Completed, 12)),
-        Case("marking Completed does not touch dates",
-            entry(Watching, 3), entry(Completed, 3), 12, entry(Completed, 12)),
+        Case(
+            "marking Completed fills in the episode count and the finish date",
+            entry(Watching, 3), entry(Completed, 3), 12, entry(Completed, 12, finish = "2026-09-30")
+        ),
+        Case(
+            "marking Completed keeps a finish date already set",
+            entry(Watching, 3, finish = "2025-01-01"), entry(Completed, 3, finish = "2025-01-01"), 12,
+            entry(Completed, 12, finish = "2025-01-01")
+        ),
+        Case(
+            "marking Plan to Watch Completed fills no start date",
+            entry(PlanToWatch, 0), entry(Completed, 0), 12, entry(Completed, 12, finish = "2026-09-30")
+        ),
         Case("an entry already Completed is not refilled",
             entry(Completed, 12, finish = null), entry(Completed, 12, finish = null), 12,
             entry(Completed, 12, finish = null)),

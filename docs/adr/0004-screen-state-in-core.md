@@ -41,7 +41,7 @@ Targets; the drawing is the part that can only be tested where a Compose harness
 **`ScreenStateSource` takes seven flows** (six when this was written; the Anime Page history is the seventh, see [ADR-0006](0006-anime-page-history-in-screen-state.md)). The caller sees one; the constructor is wide, and that is the objection a
 review will raise. It is defensible because each input has exactly one owner and the combine is total over
 `SessionState` by the compiler's own exhaustiveness check — but the answer is not "it is fine", it is that every
-alternative puts the mapping back in a composable. Two of the six are deliberately not the objects that own them:
+alternative puts the mapping back in a composable. Two of the inputs are deliberately not the objects that own them:
 
 - `animeList` is `AnimeListPager.state` and not the pager, because the pager stays ViewModel-scoped. **Loaded pages
   must not outlive a sign-out**, so needing to hand the source an object is not a reason to promote one to a `single`.
@@ -52,7 +52,7 @@ alternative puts the mapping back in a composable. Two of the six are deliberate
 - `layout` is `LayoutPreference.value`, and the preference *is* process-scoped, because a Layout change issues no
   request and the pager has never heard of it.
 
-A `(PendingAuthorization) -> String` adapter for the authorization URL was considered as a seventh parameter and
+A `(PendingAuthorization) -> String` adapter for the authorization URL was considered as one more parameter and
 rejected: one adapter with one implementation is a hypothetical seam, and `StateFlow<MalAuthConfig>` keeps the combine
 pure. The URL is rebuilt through `authorizationUrl(config, verifier, state)`, which has no `require` in it — a total
 mapping cannot throw, or a combine that threw would take the collecting scope with it and leave the app on whichever
@@ -64,7 +64,7 @@ frame it last drew.
 by the `SignedOut` and `SignedIn` variants. It was not asked for: it is what the screens lost when they stopped taking
 `MalSessionViewModel`, which exposed `endpoints`, `redirectUri` and `usesRelay` directly. Both readers need it and
 neither can compute it — the sign-in screen says so up front because a browser with no relay running fails at its first
-request with a bare "Failed to fetch", and the debug panel says so afterwards. It is *not* a seventh constructor
+request with a bare "Failed to fetch", and the debug panel says so afterwards. It is *not* one more constructor
 parameter: `platformMalEndpoints()` is an `expect fun` and so already this Target's answer, and injecting it would be
 the same one-implementation seam that kept a `(PendingAuthorization) -> String` adapter out.
 
@@ -73,7 +73,9 @@ the same one-implementation seam that kept a `(PendingAuthorization) -> String` 
 - Screens take a `ScreenState` variant plus an actions record, never a ViewModel. `App()` resolves both ViewModels;
   `AppScreen` wires them to the value and binds the `AuthRedirectChannel`; `SessionRoute` switches.
   *Superseded in part (2026-09-29):* there are no ViewModels any more — `App()` resolves `MalSessionRepository`,
-  `SignIn` and `SessionControls` directly, see [ADR-0005](0005-no-viewmodels.md). The six-input count is unchanged.
+  `SignIn` and `SessionControls` directly, see [ADR-0005](0005-no-viewmodels.md). That left the input count at six; the
+  Anime Page history later
+  made it seven ([ADR-0006](0006-anime-page-history-in-screen-state.md)).
 - The rendering tests build their state as a literal. The one exception is
   `SignInScreenTest.signing_in_arms_this_targets_capture_and_still_offers_paste_the_code`, which binds 18040 on purpose
   because the stack is what it asserts.

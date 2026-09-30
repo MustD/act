@@ -8,8 +8,8 @@ import io.challenge_workshop.mal_ui.mal.MalAuthConfig
 import io.challenge_workshop.mal_ui.mal.MalEndpoints
 import io.challenge_workshop.mal_ui.mal.platformMalEndpoints
 import io.challenge_workshop.mal_ui.session.SessionControlsState
-import io.challenge_workshop.mal_ui.session.authorizationUrlFor
 import io.challenge_workshop.mal_ui.session.SessionState
+import io.challenge_workshop.mal_ui.session.authorizationUrlFor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -37,7 +37,7 @@ import kotlinx.coroutines.flow.stateIn
  *  - `animePages` is `AnimePageRepository.state`, and only the signed-in variant carries it: the
  *    history ends with the Session, so no other variant has anything to show.
  *
- * The seven flows are the whole constructor. Where this build sends MAL traffic is *not* a seventh
+ * The seven flows are the whole constructor. Where this build sends MAL traffic is *not* an eighth
  * parameter: [platformMalEndpoints] is an `expect fun` and therefore already this Target's answer, and
  * injecting it would be a seam with one production implementation — the same objection that kept a
  * `(PendingAuthorization) -> String` adapter out. A test asserts it against `platformMalEndpoints()`

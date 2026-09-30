@@ -127,7 +127,8 @@ Web therefore needs two processes:
 ```
 
 Three things must agree on the `/mal` prefix: `MAL_RELAY_PATH_PREFIX` in `:core`, the reverse-proxy route, and the
-dev-server proxy in `webpack.config.d/devserver.js`.
+dev-server proxy in `webpack.config.d/devserver.js`. `:server`'s routes are built from the constant itself, so they
+cannot drift from it.
 
 Details and the full diagnosis are in `docs/errors.md`.
 

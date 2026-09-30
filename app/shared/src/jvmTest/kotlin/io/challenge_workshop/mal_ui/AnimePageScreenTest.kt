@@ -9,62 +9,63 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.assertWidthIsEqualTo
-import androidx.compose.ui.test.isSelected
-import androidx.compose.ui.test.performScrollToIndex
-import androidx.compose.ui.unit.dp
-import io.challenge_workshop.mal_ui.animelist.AnimeListLayout
-import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_PANEL_TAG
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertWidthIsEqualTo
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isSelected
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.dp
 import io.challenge_workshop.mal_ui.animelist.AiringStatus
+import io.challenge_workshop.mal_ui.animelist.Anime
+import io.challenge_workshop.mal_ui.animelist.AnimeListLayout
+import io.challenge_workshop.mal_ui.animelist.ListEntry
 import io.challenge_workshop.mal_ui.animelist.WatchStatus
 import io.challenge_workshop.mal_ui.animepage.AnimePage
 import io.challenge_workshop.mal_ui.animepage.AnimePageHistory
 import io.challenge_workshop.mal_ui.animepage.AnimePageLoad
 import io.challenge_workshop.mal_ui.animepage.ListEdit
-import io.challenge_workshop.mal_ui.animepage.MyListStatus
 import io.challenge_workshop.mal_ui.animepage.PageSave
+import io.challenge_workshop.mal_ui.animepage.RelatedAnime
+import io.challenge_workshop.mal_ui.auth.ANIME_LIST_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_ADD_TAG
+import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_BACK_TAG
+import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_CLOSE_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_EPISODES_MINUS_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_EPISODES_PLUS_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_EPISODES_TAG
+import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_ERROR_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_FINISH_DATE_CLEAR_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_FINISH_DATE_TAG
+import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_LOADING_TAG
+import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_PANEL_TAG
+import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_RELATED_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_SAVE_ERROR_TAG
-import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_SAVING_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_SCORE_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_START_DATE_TAG
-import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_STATUS_TAG
-import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onLast
-import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.assertTextContains
-import androidx.compose.ui.test.performTextClearance
-import androidx.compose.ui.test.performTextInput
-import androidx.compose.ui.test.performImeAction
-import io.challenge_workshop.mal_ui.auth.ANIME_LIST_TAG
-import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_BACK_TAG
-import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_CLOSE_TAG
-import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_ERROR_TAG
-import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_LOADING_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_SYNOPSIS_TAG
-import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_RELATED_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_TAG
+import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_WATCH_STATUS_TAG
 import io.challenge_workshop.mal_ui.auth.animePageRelatedOnListTag
 import io.challenge_workshop.mal_ui.auth.animePageRelatedTag
-import io.challenge_workshop.mal_ui.animepage.RelatedAnime
+import io.challenge_workshop.mal_ui.auth.animePageSavingTag
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -78,17 +79,19 @@ class AnimePageScreenTest {
         id: Long = 1,
         load: AnimePageLoad = AnimePageLoad.Loading,
         synopsis: String? = null,
-        listStatus: MyListStatus? = MyListStatus(WatchStatus.Watching, 8, 3, null, null, null),
+        listEntry: ListEntry? = ListEntry(WatchStatus.Watching, 8, 3, null, null, null),
         save: PageSave = PageSave(),
         related: List<RelatedAnime> = emptyList(),
     ) = AnimePage(
-        animeId = id,
-        title = "Cowboy Bebop",
-        picture = null,
-        totalEpisodes = 26,
-        mediaType = "tv",
-        airingStatus = AiringStatus.FinishedAiring,
-        listStatus = listStatus,
+        anime = Anime(
+            id,
+            "Cowboy Bebop",
+            picture = null,
+            totalEpisodes = 26,
+            mediaType = "tv",
+            AiringStatus.FinishedAiring
+        ),
+        listEntry = listEntry,
         synopsis = synopsis,
         load = load,
         save = save,
@@ -184,7 +187,7 @@ class AnimePageScreenTest {
             val loaded = page(
                 load = AnimePageLoad.Loaded,
                 synopsis = "Bounty hunters in space.",
-                listStatus = MyListStatus(WatchStatus.Completed, 9, 26, "2024-03", "2024-04-02", null),
+                listEntry = ListEntry(WatchStatus.Completed, 9, 26, "2024-03", "2024-04-02", null),
             )
             setContent { SessionRoute(stateWith(loaded), RecordedActions().actions) }
 
@@ -213,19 +216,15 @@ class AnimePageScreenTest {
     }
 
     @Test
-    fun an_anime_not_on_the_list_says_so() {
-        runComposeUiTest {
-            setContent { SessionRoute(stateWith(page(load = AnimePageLoad.Loaded, listStatus = null)), RecordedActions().actions) }
-
-            onNodeWithText("Not on your list.").assertIsDisplayed()
-        }
-    }
-
-    @Test
     fun an_anime_not_on_the_list_offers_to_add_it_and_nothing_else() {
         runComposeUiTest {
             val recorded = RecordedActions()
-            setContent { SessionRoute(stateWith(page(load = AnimePageLoad.Loaded, listStatus = null)), recorded.actions) }
+            setContent {
+                SessionRoute(
+                    stateWith(page(load = AnimePageLoad.Loaded, listEntry = null)),
+                    recorded.actions
+                )
+            }
 
             onAllNodesWithTag(ANIME_PAGE_EPISODES_TAG).assertCountEquals(0)
             onAllNodesWithTag(ANIME_PAGE_SCORE_TAG).assertCountEquals(0)
@@ -239,16 +238,24 @@ class AnimePageScreenTest {
     @Test
     fun adding_is_not_offered_before_the_fetch_and_is_disabled_while_the_add_is_pending() {
         runComposeUiTest {
-            setContent { SessionRoute(stateWith(page(load = AnimePageLoad.Loading, listStatus = null)), RecordedActions().actions) }
+            setContent {
+                SessionRoute(
+                    stateWith(page(load = AnimePageLoad.Loading, listEntry = null)),
+                    RecordedActions().actions
+                )
+            }
             onAllNodesWithTag(ANIME_PAGE_ADD_TAG).assertCountEquals(0)
-            onAllNodesWithText("Not on your list.").assertCountEquals(0)
         }
         runComposeUiTest {
-            val pending = PageSave(target = MyListStatus(WatchStatus.Watching, 0, 0, null, null, null))
+            val pending = PageSave(target = ListEntry(WatchStatus.Watching, 0, 0, null, null, null))
             setContent {
-                SessionRoute(stateWith(page(load = AnimePageLoad.Loaded, listStatus = null, save = pending)), RecordedActions().actions)
+                SessionRoute(
+                    stateWith(page(load = AnimePageLoad.Loaded, listEntry = null, save = pending)),
+                    RecordedActions().actions
+                )
             }
             onNodeWithTag(ANIME_PAGE_ADD_TAG).performScrollTo().assertIsNotEnabled().assertTextContains("Watching")
+            onNodeWithTag(animePageSavingTag(ANIME_PAGE_ADD_TAG)).assertIsDisplayed()
             onAllNodesWithTag(ANIME_PAGE_EPISODES_TAG).assertCountEquals(0)
         }
     }
@@ -258,14 +265,20 @@ class AnimePageScreenTest {
         runComposeUiTest {
             setContent {
                 SessionRoute(
-                    stateWith(page(load = AnimePageLoad.Loaded, listStatus = null, save = PageSave(error = "MAL said no"))),
+                    stateWith(
+                        page(
+                            load = AnimePageLoad.Loaded,
+                            listEntry = null,
+                            save = PageSave(error = "MAL said no")
+                        )
+                    ),
                     RecordedActions().actions,
                 )
             }
 
             onNodeWithTag(ANIME_PAGE_SAVE_ERROR_TAG).performScrollTo().assertIsDisplayed()
-            onNodeWithText("Not on your list.").assertExists()
             onNodeWithTag(ANIME_PAGE_ADD_TAG).assertIsEnabled()
+            onAllNodesWithTag(animePageSavingTag(ANIME_PAGE_ADD_TAG)).assertCountEquals(0)
         }
     }
 
@@ -363,7 +376,10 @@ class AnimePageScreenTest {
     }
 
     private val editControls = listOf(
-        ANIME_PAGE_STATUS_TAG, ANIME_PAGE_EPISODES_MINUS_TAG, ANIME_PAGE_EPISODES_PLUS_TAG, ANIME_PAGE_EPISODES_TAG,
+        ANIME_PAGE_WATCH_STATUS_TAG,
+        ANIME_PAGE_EPISODES_MINUS_TAG,
+        ANIME_PAGE_EPISODES_PLUS_TAG,
+        ANIME_PAGE_EPISODES_TAG,
         ANIME_PAGE_SCORE_TAG, ANIME_PAGE_START_DATE_TAG, ANIME_PAGE_FINISH_DATE_TAG,
     )
 
@@ -428,7 +444,7 @@ class AnimePageScreenTest {
             val recorded = RecordedActions()
             setContent { SessionRoute(stateWith(page(load = AnimePageLoad.Loaded)), recorded.actions) }
 
-            onNodeWithTag(ANIME_PAGE_STATUS_TAG).performClick()
+            onNodeWithTag(ANIME_PAGE_WATCH_STATUS_TAG).performClick()
             // "On hold" is also a filter chip in the list beside the page; the menu item is drawn last.
             onAllNodesWithText("On hold").onLast().performClick()
 
@@ -440,9 +456,9 @@ class AnimePageScreenTest {
     fun a_date_can_be_cleared_and_only_a_set_one_offers_it() {
         runComposeUiTest {
             val recorded = RecordedActions()
-            val status = MyListStatus(WatchStatus.Completed, 9, 26, null, "2024", null)
+            val status = ListEntry(WatchStatus.Completed, 9, 26, null, "2024", null)
             setContent {
-                SessionRoute(stateWith(page(load = AnimePageLoad.Loaded, listStatus = status)), recorded.actions)
+                SessionRoute(stateWith(page(load = AnimePageLoad.Loaded, listEntry = status)), recorded.actions)
             }
 
             onAllNodesWithTag(io.challenge_workshop.mal_ui.auth.ANIME_PAGE_START_DATE_CLEAR_TAG).assertCountEquals(0)
@@ -454,20 +470,28 @@ class AnimePageScreenTest {
     }
 
     @Test
-    fun a_pending_change_is_shown_and_marked_as_saving() {
+    fun a_pending_change_is_shown_and_only_its_fields_are_marked_as_saving() {
         runComposeUiTest {
-            val confirmed = MyListStatus(WatchStatus.Watching, 8, 3, null, null, null)
+            val confirmed = ListEntry(WatchStatus.Watching, 8, 3, null, null, null)
             val pending = confirmed.copy(episodesWatched = 6, score = 10)
             val saving = page(
                 load = AnimePageLoad.Loaded,
-                listStatus = confirmed,
+                listEntry = confirmed,
                 save = PageSave(target = pending, inFlight = confirmed.copy(episodesWatched = 4)),
             )
             setContent { SessionRoute(stateWith(saving), RecordedActions().actions) }
 
-            onNodeWithTag(ANIME_PAGE_SAVING_TAG).assertIsDisplayed()
             onNodeWithTag(ANIME_PAGE_EPISODES_TAG).assertTextContains("6")
             onNodeWithTag(ANIME_PAGE_SCORE_TAG).assertTextContains("10 – Masterpiece")
+            onNodeWithTag(animePageSavingTag(ANIME_PAGE_EPISODES_TAG)).assertIsDisplayed()
+            onNodeWithTag(animePageSavingTag(ANIME_PAGE_SCORE_TAG)).assertIsDisplayed()
+            for (untouched in listOf(
+                ANIME_PAGE_WATCH_STATUS_TAG,
+                ANIME_PAGE_START_DATE_TAG,
+                ANIME_PAGE_FINISH_DATE_TAG
+            )) {
+                onAllNodesWithTag(animePageSavingTag(untouched)).assertCountEquals(0)
+            }
         }
     }
 
@@ -483,7 +507,7 @@ class AnimePageScreenTest {
 
             onNodeWithTag(ANIME_PAGE_SAVE_ERROR_TAG).assertIsDisplayed()
             onNodeWithText("MAL said no").assertIsDisplayed()
-            onAllNodesWithTag(ANIME_PAGE_SAVING_TAG).assertCountEquals(0)
+            onAllNodesWithText("Saving…").assertCountEquals(0)
         }
     }
 }

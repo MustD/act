@@ -41,7 +41,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,9 +48,9 @@ import androidx.compose.ui.unit.dp
 import io.challenge_workshop.mal_ui.animelist.AnimeListFilters
 import io.challenge_workshop.mal_ui.animelist.AnimeListSortMenu
 import io.challenge_workshop.mal_ui.animelist.LoadMoreWhenNearEnd
-import io.challenge_workshop.mal_ui.animepage.AnimePageScreen
 import io.challenge_workshop.mal_ui.animelist.animeListItems
 import io.challenge_workshop.mal_ui.animelist.gridCells
+import io.challenge_workshop.mal_ui.animepage.AnimePageScreen
 import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.screen.ShownError
 
@@ -272,50 +271,46 @@ fun SignedInScreen(
 
     val page = state.animePages.current
     val pageActions = actions.animePage
-    val canGoBack = state.animePages.pages.size > 1
+    val canGoBack = state.animePages.canGoBack
 
     // Measured rather than a window size class: the same decision the list's rows make about their
     // own width, and no dependency. The list's own state — its scroll position included — is hoisted
     // above this, so it survives the panel opening and closing and a resize across the line.
     BoxWithConstraints(modifier.fillMaxSize().safeContentPadding()) {
         val sideBySide = maxWidth >= SIDE_PANEL_MIN_WIDTH
-        when {
+        if (page != null && !sideBySide) {
             // Narrow: an open page is the whole screen, and closing it lands where the list was left.
-            page != null && !sideBySide -> AnimePageScreen(
+            AnimePageScreen(
                 page = page,
                 canGoBack = canGoBack,
                 actions = pageActions,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
             )
+        } else {
             // The screen tag is on this wrapper rather than on the list, because the list carries its
             // own and a second `testTag` would replace it.
-            page != null -> Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
                 SignedInTopBar(
                     state = state,
                     actions = actions,
                     onShowDiagnostics = { diagnosticsOpen = true },
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Row(Modifier.weight(1f).fillMaxWidth()) {
-                    AnimeListPane(state, actions, gridState, Modifier.weight(1f).fillMaxHeight())
-                    VerticalDivider()
-                    AnimePageScreen(
-                        page = page,
-                        canGoBack = canGoBack,
-                        actions = pageActions,
-                        modifier = Modifier.width(SIDE_PANEL_WIDTH).fillMaxHeight()
-                            .testTag(ANIME_PAGE_PANEL_TAG).padding(16.dp),
-                    )
+                if (page == null) {
+                    AnimeListPane(state, actions, gridState, Modifier.weight(1f).fillMaxWidth())
+                } else {
+                    Row(Modifier.weight(1f).fillMaxWidth()) {
+                        AnimeListPane(state, actions, gridState, Modifier.weight(1f).fillMaxHeight())
+                        VerticalDivider()
+                        AnimePageScreen(
+                            page = page,
+                            canGoBack = canGoBack,
+                            actions = pageActions,
+                            modifier = Modifier.width(SIDE_PANEL_WIDTH).fillMaxHeight()
+                                .testTag(ANIME_PAGE_PANEL_TAG).padding(16.dp),
+                        )
+                    }
                 }
-            }
-            else -> Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-                SignedInTopBar(
-                    state = state,
-                    actions = actions,
-                    onShowDiagnostics = { diagnosticsOpen = true },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                AnimeListPane(state, actions, gridState, Modifier.weight(1f).fillMaxWidth())
             }
         }
     }
@@ -430,11 +425,9 @@ private fun ScreenColumn(modifier: Modifier = Modifier, content: @Composable () 
 }
 
 /**
- * The width one column of this app's content gets: as wide as the window, up to a line length that
- * is still readable on a desktop or a browser maximised across a monitor.
- *
- * A modifier rather than a wrapper composable, because the signed-in screen's content is now lazy
- * items and there is no single node left to wrap.
+ * The width a sign-in pane gets: as wide as the window, up to a line length that is still readable
+ * on a desktop or a browser maximised across a monitor. The Anime List does not use it — it fills
+ * the window.
  */
 internal fun Modifier.paneItem(): Modifier = widthIn(max = PANE_MAX_WIDTH).fillMaxWidth()
 

@@ -57,8 +57,8 @@ internal suspend fun TestScope.harness(
         AnimeDetailsResponse.Found(FakeAnimeDetails(it, "Anime $it"))
     },
     holdAnimeDetails: suspend (Long) -> Unit = {},
-    updateListStatus: (Long, Parameters) -> ListStatusResponse = { _, _ -> ListStatusResponse.Failure() },
-    holdListStatusUpdate: suspend (Long) -> Unit = {},
+    updateListEntry: (Long, Parameters) -> ListStatusResponse = { _, _ -> ListStatusResponse.Failure() },
+    holdListEntryUpdate: suspend (Long) -> Unit = {},
     today: LocalDate = LocalDate(2026, 9, 30),
 ): Harness {
     val mal = FakeMal(
@@ -66,8 +66,8 @@ internal suspend fun TestScope.harness(
         animeList = { AnimeListResponse.Page(listEntries, hasMore = false) },
         animeDetails = animeDetails,
         holdAnimeDetails = holdAnimeDetails,
-        updateListStatus = updateListStatus,
-        holdListStatusUpdate = holdListStatusUpdate,
+        updateListEntry = updateListEntry,
+        holdListEntryUpdate = holdListEntryUpdate,
     )
     val store = JsonTokenStore(FakeKeyValueStore(), clock = FakeClock())
     store.writeSession(VALID_TOKENS, TEST_USER)

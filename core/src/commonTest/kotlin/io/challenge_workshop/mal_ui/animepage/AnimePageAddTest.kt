@@ -4,7 +4,6 @@ package io.challenge_workshop.mal_ui.animepage
 
 import io.challenge_workshop.mal_ui.animelist.WatchStatus
 import io.ktor.http.Parameters
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -36,27 +35,27 @@ class AnimePageAddTest {
 
     @Test
     fun adding_sends_the_status_with_its_extras_and_then_the_entry_can_be_edited() = runTest {
-        val h = harness(animeDetails = notOnList, updateListStatus = { _, form -> saved(form) })
-        assertNull(h.openUnlisted().listStatus)
+        val h = harness(animeDetails = notOnList, updateListEntry = { _, form -> saved(form) })
+        assertNull(h.openUnlisted().listEntry)
 
         h.pages.add(WatchStatus.Completed)
-        val page = h.awaitPage { !it.isSaving && it.listStatus != null }
+        val page = h.awaitPage { !it.isSaving && it.listEntry != null }
 
         assertEquals(
             mapOf("status" to listOf("completed"), "num_watched_episodes" to listOf("12"), "finish_date" to listOf("2026-09-30")),
             h.mal.listStatusPatches.single().form.asMap(),
         )
-        assertEquals(WatchStatus.Completed, page.listStatus!!.watchStatus)
+        assertEquals(WatchStatus.Completed, page.listEntry!!.watchStatus)
         assertTrue(page.canEdit)
     }
 
     @Test
     fun plan_to_watch_sends_the_status_alone() = runTest {
-        val h = harness(animeDetails = notOnList, updateListStatus = { _, form -> saved(form) })
+        val h = harness(animeDetails = notOnList, updateListEntry = { _, form -> saved(form) })
         h.openUnlisted()
 
         h.pages.add(WatchStatus.PlanToWatch)
-        h.awaitPage { it.listStatus != null }
+        h.awaitPage { it.listEntry != null }
 
         assertEquals(mapOf("status" to listOf("plan_to_watch")), h.mal.listStatusPatches.single().form.asMap())
     }
@@ -69,18 +68,18 @@ class AnimePageAddTest {
         h.pages.add(WatchStatus.Watching)
         val failed = h.awaitPage { !it.isSaving }
 
-        assertNull(failed.listStatus)
-        assertNull(failed.shownListStatus)
+        assertNull(failed.listEntry)
+        assertNull(failed.shownListEntry)
         assertNotNull(failed.save.error)
     }
 
     @Test
     fun an_add_does_not_change_the_anime_list() = runTest {
-        val h = harness(animeDetails = notOnList, updateListStatus = { _, form -> saved(form) })
+        val h = harness(animeDetails = notOnList, updateListEntry = { _, form -> saved(form) })
         h.openUnlisted()
 
         h.pages.add(WatchStatus.Watching)
-        h.awaitPage { it.listStatus != null }
+        h.awaitPage { it.listEntry != null }
 
         assertEquals(listOf(1L, 2L, 3L), h.awaitEntries().map { it.animeId }, "no entry is inserted")
     }
@@ -93,7 +92,7 @@ class AnimePageAddTest {
         runCurrent()
         assertTrue(h.mal.listStatusPatches.isEmpty())
 
-        val loaded = harness(updateListStatus = { _, form -> saved(form) })
+        val loaded = harness(updateListEntry = { _, form -> saved(form) })
         loaded.pages.open(loaded.entry(1))
         loaded.awaitLoaded()
         loaded.pages.add(WatchStatus.Dropped)

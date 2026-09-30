@@ -11,8 +11,8 @@ import io.ktor.client.plugins.DefaultRequest
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.Parameters
-import kotlinx.datetime.LocalDate
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -36,7 +36,7 @@ class MalAnimeClientTest {
         FakeMal(acceptedAccessToken = "good-access", animeDetails = response)
 
     private fun malSaving(response: (Long, Parameters) -> ListStatusResponse) =
-        FakeMal(acceptedAccessToken = "good-access", updateListStatus = response)
+        FakeMal(acceptedAccessToken = "good-access", updateListEntry = response)
 
     @Test
     fun the_request_asks_for_the_agreed_fields_on_the_anime_path() = runTest {
@@ -66,14 +66,14 @@ class MalAnimeClientTest {
             )
         }
 
-        val anime = clientOver(mal).anime(6)
+        val details = clientOver(mal).anime(6)
 
-        assertEquals(6, anime.animeId)
-        assertEquals("Trigun", anime.title)
-        assertEquals("A synopsis.", anime.synopsis)
-        assertEquals(26, anime.totalEpisodes)
-        assertEquals(AiringStatus.FinishedAiring, anime.airingStatus)
-        val status = anime.listStatus!!
+        assertEquals(6, details.anime.animeId)
+        assertEquals("Trigun", details.anime.title)
+        assertEquals("A synopsis.", details.synopsis)
+        assertEquals(26, details.anime.totalEpisodes)
+        assertEquals(AiringStatus.FinishedAiring, details.anime.airingStatus)
+        val status = details.listEntry!!
         assertEquals(WatchStatus.Completed, status.watchStatus)
         assertEquals(9, status.score)
         assertEquals(26, status.episodesWatched)
@@ -87,7 +87,7 @@ class MalAnimeClientTest {
 
         val anime = clientOver(mal).anime(6)
 
-        assertNull(anime.listStatus)
+        assertNull(anime.listEntry)
         assertNull(anime.synopsis)
     }
 
@@ -95,7 +95,7 @@ class MalAnimeClientTest {
     fun an_unset_date_is_null_rather_than_an_error() = runTest {
         val mal = mal { AnimeDetailsResponse.Found(FakeAnimeDetails(it, "Trigun")) }
 
-        val status = clientOver(mal).anime(6).listStatus!!
+        val status = clientOver(mal).anime(6).listEntry!!
 
         assertNull(status.startDate)
         assertNull(status.finishDate)
@@ -115,9 +115,9 @@ class MalAnimeClientTest {
     fun an_update_is_a_form_encoded_patch_on_the_my_list_status_path() = runTest {
         val mal = malSaving { _, _ -> ListStatusResponse.Saved(FakeListStatus()) }
 
-        clientOver(mal).updateListStatus(
+        clientOver(mal).updateListEntry(
             6,
-            ListStatusUpdate(
+            ListEntryUpdate(
                 watchStatus = WatchStatus.OnHold,
                 score = 7,
                 episodesWatched = 12,
@@ -146,7 +146,7 @@ class MalAnimeClientTest {
     fun a_field_left_out_of_the_update_is_left_out_of_the_request() = runTest {
         val mal = malSaving { _, _ -> ListStatusResponse.Saved(FakeListStatus()) }
 
-        clientOver(mal).updateListStatus(6, ListStatusUpdate(score = 0))
+        clientOver(mal).updateListEntry(6, ListEntryUpdate(score = 0))
 
         assertEquals(mapOf("score" to listOf("0")), mal.listStatusPatches.single().form.entries().associate { it.key to it.value })
     }
@@ -155,7 +155,7 @@ class MalAnimeClientTest {
     fun clearing_a_date_sends_the_field_empty() = runTest {
         val mal = malSaving { _, _ -> ListStatusResponse.Saved(FakeListStatus()) }
 
-        clientOver(mal).updateListStatus(6, ListStatusUpdate(finishDate = DateUpdate.Clear))
+        clientOver(mal).updateListEntry(6, ListEntryUpdate(finishDate = DateUpdate.Clear))
 
         val form = mal.listStatusPatches.single().form
         assertEquals(listOf(""), form.getAll("finish_date"), "present but empty is what clears")
@@ -168,7 +168,7 @@ class MalAnimeClientTest {
             ListStatusResponse.Saved(FakeListStatus(watched = 26, startDate = "2024-03").applying(form, 26))
         }
 
-        val status = clientOver(mal).updateListStatus(6, ListStatusUpdate(episodesWatched = 27))
+        val status = clientOver(mal).updateListEntry(6, ListEntryUpdate(episodesWatched = 27))
 
         assertEquals(26, status.episodesWatched, "MAL clamped it, and that is the value to believe")
         assertEquals("2024-03", status.startDate)
@@ -180,11 +180,16 @@ class MalAnimeClientTest {
         val refused = malSaving { _, _ -> ListStatusResponse.Failure() }
         assertEquals(
             400,
-            assertFailsWith<MalAuthException> { clientOver(refused).updateListStatus(6, ListStatusUpdate(score = 3)) }.status,
+            assertFailsWith<MalAuthException> {
+                clientOver(refused).updateListEntry(
+                    6,
+                    ListEntryUpdate(score = 3)
+                )
+            }.status,
         )
 
         val offline = malSaving { _, _ -> ListStatusResponse.TransportFailure }
-        val e = assertFailsWith<MalAuthException> { clientOver(offline).updateListStatus(6, ListStatusUpdate(score = 3)) }
+        val e = assertFailsWith<MalAuthException> { clientOver(offline).updateListEntry(6, ListEntryUpdate(score = 3)) }
         assertEquals(true, e.message!!.contains("Could not reach the MAL API"))
     }
 }

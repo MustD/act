@@ -2,6 +2,7 @@ package io.challenge_workshop.mal_ui.animepage
 
 import io.challenge_workshop.mal_ui.animelist.AnimeListEntry
 import io.challenge_workshop.mal_ui.animelist.AnimeListRepository
+import io.challenge_workshop.mal_ui.animelist.ListEntry
 import io.challenge_workshop.mal_ui.animelist.WatchStatus
 import io.challenge_workshop.mal_ui.session.MalSessionRepository
 import io.challenge_workshop.mal_ui.session.SessionState
@@ -117,12 +118,17 @@ class AnimePageRepository(
         fetch(related.animeId)
     }
 
-    /** One page back; from the only page, closes. The fetch of the page left is abandoned. */
+    /**
+     * One page back; from the only page, closes. The fetch of the page left is abandoned — unless
+     * the same anime is also open further down (A → B → A), because a fetch fills every open page
+     * of its anime and the one left below would otherwise be stuck loading.
+     */
     fun back() {
         val history = _state.value
         val left = history.current ?: return
-        fetches.remove(left.animeId)?.cancel()
-        _state.value = AnimePageHistory(history.pages.dropLast(1))
+        val remaining = history.pages.dropLast(1)
+        if (remaining.none { it.animeId == left.animeId }) fetches.remove(left.animeId)?.cancel()
+        _state.value = AnimePageHistory(remaining)
     }
 
     /** Closes every open page. */
@@ -150,21 +156,22 @@ class AnimePageRepository(
         if (!page.canEdit) return
         val id = page.animeId
         val save = saves[id] ?: PageSave()
-        val shown = page.shownListStatus!!
-        val target = applyAutomaticRules(shown, edit.applyTo(shown, page.totalEpisodes), today(), page.totalEpisodes)
+        val shown = page.shownListEntry!!
+        val target =
+            applyAutomaticRules(shown, edit.applyTo(shown, page.anime.totalEpisodes), today(), page.anime.totalEpisodes)
         if (target == shown) return
         saves[id] = save.copy(target = target, error = null)
         publish(id)
-        startSaving(id, sessionScope, page.listStatus!!)
+        startSaving(id, sessionScope, page.listEntry!!)
     }
 
     /**
      * Adds the current page's anime to the user's list with [watchStatus], worked out with what
-     * myanimelist.net fills in for that status ([newListEntry]). It is the same PATCH as an edit, which
+     * myanimelist.net fills in for that Watch Status ([newListEntry]). It is the same PATCH as an edit, which
      * creates the entry.
      *
      * The page stays "not on your list" while it is pending, and **goes back to it with the error**
-     * if MAL refuses, because [AnimePage.listStatus] only becomes non-null with MAL's answer. The
+     * if MAL refuses, because [AnimePage.listEntry] only becomes non-null with MAL's answer. The
      * Anime List is not touched: its pager has no entry to update, and the new one appears on the
      * next Reload. Does nothing until the fetch has succeeded, for an anime already on the list, or
      * while an add is pending.
@@ -172,10 +179,10 @@ class AnimePageRepository(
     fun add(watchStatus: WatchStatus) {
         val sessionScope = sessionScope ?: return
         val page = _state.value.current ?: return
-        if (page.load != AnimePageLoad.Loaded || page.listStatus != null) return
+        if (page.load != AnimePageLoad.Loaded || page.listEntry != null) return
         val id = page.animeId
         if (saves.containsKey(id)) return
-        saves[id] = PageSave(target = newListEntry(watchStatus, today(), page.totalEpisodes))
+        saves[id] = PageSave(target = newListEntry(watchStatus, today(), page.anime.totalEpisodes))
         publish(id)
         startSaving(id, sessionScope, NOT_ON_LIST)
     }
@@ -185,7 +192,7 @@ class AnimePageRepository(
      * Undispatched, so the first tap is at MAL before the second can be made, whatever the
      * dispatcher: the loop is what makes the later ones wait, and it must already be there.
      */
-    private fun startSaving(id: Long, sessionScope: CoroutineScope, confirmed: MyListStatus) {
+    private fun startSaving(id: Long, sessionScope: CoroutineScope, confirmed: ListEntry) {
         if (draining.add(id)) {
             sessionScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 try {
@@ -205,7 +212,7 @@ class AnimePageRepository(
      * does not repeat an earlier one. MAL's answer becomes the confirmed value; a refusal ends the
      * loop and puts the page back on the last one.
      */
-    private suspend fun drain(id: Long, confirmed: MyListStatus) {
+    private suspend fun drain(id: Long, confirmed: ListEntry) {
         var baseline = confirmed
         while (true) {
             val target = saves[id]?.target ?: return
@@ -218,7 +225,7 @@ class AnimePageRepository(
             saves[id] = saves.getValue(id).copy(inFlight = target)
             publish(id)
             val answer = try {
-                session.animeClient().updateListStatus(id, update)
+                session.animeClient().updateListEntry(id, update)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -227,7 +234,7 @@ class AnimePageRepository(
                 return
             }
             baseline = target
-            animeList.applyListStatus(id, answer)
+            animeList.applyListEntry(id, answer)
             val now = saves.getValue(id)
             if (now.target == target) saves.remove(id) else saves[id] = now.copy(inFlight = null)
             publish(id, confirmed = answer)
@@ -235,9 +242,9 @@ class AnimePageRepository(
     }
 
     /** Puts [saves]' word for [animeId] on every open page of it, and MAL's [confirmed] answer if there is one. */
-    private fun publish(animeId: Long, confirmed: MyListStatus? = null, error: String? = null) {
+    private fun publish(animeId: Long, confirmed: ListEntry? = null, error: String? = null) {
         val save = saves[animeId] ?: PageSave(error = error)
-        replace(animeId) { it.copy(save = save, listStatus = confirmed ?: it.listStatus) }
+        replace(animeId) { it.copy(save = save, listEntry = confirmed ?: it.listEntry) }
     }
 
     private fun cancelFetches() {
@@ -257,14 +264,14 @@ class AnimePageRepository(
         fetches[animeId] = sessionScope.launch {
             try {
                 val details = session.animeClient().anime(animeId)
-                // The list first, so it is never behind a page that already shows the newer status.
+                // The list first, so it is never behind a page that already shows the newer List Entry.
                 // A save under way is newer than this answer, which may predate it: keep the page's
                 // confirmed value and the list's, and let the PATCH's own answer replace them.
                 val saving = saves.containsKey(animeId)
-                if (!saving) details.listStatus?.let { animeList.applyListStatus(animeId, it) }
+                if (!saving) details.listEntry?.let { animeList.applyListEntry(animeId, it) }
                 replace(animeId) {
                     it.loadedWith(details).let { loaded ->
-                        if (saving) loaded.copy(listStatus = it.listStatus) else loaded
+                        if (saving) loaded.copy(listEntry = it.listEntry) else loaded
                     }
                 }
             } catch (e: CancellationException) {
@@ -280,9 +287,9 @@ class AnimePageRepository(
 
 /**
  * What MAL holds for an anime that is not on the list, as a baseline for the PATCH that creates the
- * entry: its status is one nobody can choose, so the chosen one always differs and is always sent.
+ * entry: its Watch Status is one nobody can choose, so the chosen one always differs and is always sent.
  */
-private val NOT_ON_LIST = MyListStatus(
+private val NOT_ON_LIST = ListEntry(
     watchStatus = WatchStatus.Unknown,
     score = 0,
     episodesWatched = 0,

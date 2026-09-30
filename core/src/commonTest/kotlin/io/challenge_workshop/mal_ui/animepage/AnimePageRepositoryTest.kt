@@ -5,32 +5,22 @@ package io.challenge_workshop.mal_ui.animepage
 import io.challenge_workshop.mal_ui.animelist.AnimeListContent
 import io.challenge_workshop.mal_ui.animelist.AnimeListEntry
 import io.challenge_workshop.mal_ui.animelist.AnimeListRepository
-import io.challenge_workshop.mal_ui.animelist.AnimeListResponse
 import io.challenge_workshop.mal_ui.animelist.AnimeListSortOrder
 import io.challenge_workshop.mal_ui.animelist.AnimeListState
 import io.challenge_workshop.mal_ui.animelist.AnimeListTail
 import io.challenge_workshop.mal_ui.animelist.FakeEntry
+import io.challenge_workshop.mal_ui.animelist.ListEntry
 import io.challenge_workshop.mal_ui.animelist.WatchStatus
-import io.challenge_workshop.mal_ui.session.FakeClock
-import io.challenge_workshop.mal_ui.session.FakeKeyValueStore
-import io.challenge_workshop.mal_ui.session.FakeMal
-import io.challenge_workshop.mal_ui.session.JsonTokenStore
 import io.challenge_workshop.mal_ui.session.MalSessionRepository
 import io.challenge_workshop.mal_ui.session.SessionState
-import io.challenge_workshop.mal_ui.session.TEST_CONFIG
-import io.challenge_workshop.mal_ui.session.TEST_USER
-import io.challenge_workshop.mal_ui.session.VALID_TOKENS
-import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -51,9 +41,9 @@ class AnimePageRepositoryTest {
 
         val page = h.history.current!!
         assertEquals(1, page.animeId)
-        assertEquals("One", page.title)
+        assertEquals("One", page.anime.title)
         assertEquals(AnimePageLoad.Loading, page.load)
-        val status = page.listStatus!!
+        val status = page.listEntry!!
         assertEquals(WatchStatus.Watching, status.watchStatus)
         assertEquals(5, status.score)
         assertEquals(3, status.episodesWatched)
@@ -76,7 +66,7 @@ class AnimePageRepositoryTest {
         val page = h.awaitLoaded()
 
         assertEquals("Fresh.", page.synopsis)
-        val status = page.listStatus!!
+        val status = page.listEntry!!
         assertEquals(WatchStatus.Completed, status.watchStatus)
         assertEquals(26, status.episodesWatched)
         assertEquals("2024-01-01", status.startDate)
@@ -94,7 +84,7 @@ class AnimePageRepositoryTest {
         h.pages.open(h.entry(1))
         val failed = h.awaitPage { it.load is AnimePageLoad.Failed }
         assertTrue((failed.load as AnimePageLoad.Failed).message.isNotBlank())
-        assertEquals("One", failed.title, "the page keeps what it opened with")
+        assertEquals("One", failed.anime.title, "the page keeps what it opened with")
 
         failing = false
         h.pages.retry()
@@ -148,7 +138,7 @@ class AnimePageRepositoryTest {
         val h = harness(listEntries = listOf(FakeEntry(1, "One")))
         val before = h.list.state.value
 
-        h.list.applyListStatus(99, MyListStatus(WatchStatus.Dropped, 1, 1, null, null, null))
+        h.list.applyListEntry(99, ListEntry(WatchStatus.Dropped, 1, 1, null, null, null))
 
         assertEquals(before, h.list.state.value)
     }
