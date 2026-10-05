@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ACT — Privacy policy</title>
+  <!--
+    Plain HTML on purpose: no script, no external requests, readable with JS off. Served at /privacy
+    (https://act.io-workshop.net/privacy); the app's own stylesheet is not used because it hides overflow.
+    The Data safety answers in .scratch/play-release/spec.md must keep matching this page.
+  -->
+  <style>
+    body { font: 16px/1.55 system-ui, sans-serif; max-width: 42rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; color: #222; background: #fff; }
+    @media (prefers-color-scheme: dark) { body { color: #ddd; background: #161616; } a { color: #8ab4f8; } }
+    h1 { font-size: 1.6rem; } h2 { font-size: 1.15rem; margin-top: 2rem; }
+  </style>
+</head>
+<body>
+<h1>ACT — Privacy policy</h1>
+<p>ACT is an unofficial client for your MyAnimeList (MAL) anime list, for Android, desktop and the web. This page says
+  what it keeps, where, and who it talks to.</p>
+
+<h2>Summary</h2>
+<ul>
+  <li>You sign in on myanimelist.net. ACT never sees your MAL password.</li>
+  <li>ACT has no accounts of its own, no analytics, no advertising and no tracking, and shares nothing with anyone.</li>
+  <li>The only copy of your data that ACT keeps is a sign-in token on your own device.</li>
+</ul>
+
+<h2>What is stored on your device</h2>
+<p>After you sign in, ACT stores the access and refresh tokens MAL issued, your MAL user name, the MAL Client ID the
+  app signed in with, and your chosen list layout. It stores nothing else about you.</p>
+<ul>
+  <li><strong>Android:</strong> in the app's private storage. The app opts out of cloud and device-to-device backup, so
+    the tokens are not copied off the device.</li>
+  <li><strong>Desktop:</strong> in a file readable only by your user account, in your state directory
+    (<code>$XDG_STATE_HOME</code>, usually <code>~/.local/state</code>, on Linux).</li>
+  <li><strong>Web:</strong> in your browser's session storage for this site. It is discarded when you close the tab.</li>
+</ul>
+<p>Signing out deletes the tokens. Uninstalling the app, or deleting its data, removes everything it stored.</p>
+
+<h2>What is sent to MyAnimeList</h2>
+<p>To show and update your list, ACT sends requests to MAL (myanimelist.net and api.myanimelist.net) carrying your
+  access token: searching, loading your list and anime details, and saving changes you make to a list entry. Cover
+  images are loaded from MAL's image servers. MAL handles that data under
+  <a href="https://myanimelist.net/about/privacy_policy">its own privacy policy</a>.</p>
+
+<h2>The web relay</h2>
+<p>MAL does not let browsers call its API directly, so the web version sends those requests through a small relay
+  server at act.io-workshop.net. The relay forwards each request to MAL and returns MAL's answer. It
+  <strong>does not store, and does not log, tokens, authorization codes or request and response bodies</strong>, and
+  has no database.</p>
+<p>To limit abuse, the relay counts requests per IP address. Those counters are held in memory only, are never
+  written to disk, and are discarded when the server restarts. The server in front of the relay may keep ordinary
+  connection logs (such as IP address and time) for operating the service. The Android and desktop apps do not use
+  the relay.</p>
+
+<h2>What ACT does not do</h2>
+<ul>
+  <li>No analytics, crash reporting or advertising SDKs.</li>
+  <li>No sharing or sale of data. There is no third party to share it with.</li>
+  <li>No account with ACT, so there is no ACT account to delete.</li>
+</ul>
+
+<h2>Deleting your data</h2>
+<p>Sign out in the app, or clear its data, to remove what is on your device. To cut ACT's access to your MAL account,
+  revoke it under <em>Account Settings → Apps</em> on myanimelist.net. Your list itself lives at MAL and is deleted or
+  changed through your MAL account.</p>
+
+<h2>Age</h2>
+<p>ACT is intended for people aged 18 and over, because MAL lists can include mature imagery.</p>
+
+<h2>Contact</h2>
+<p>Questions about this policy: <a href="mailto:CONTACT-ADDRESS-TO-BE-FILLED-IN">CONTACT-ADDRESS-TO-BE-FILLED-IN</a></p>
+
+<p><small>ACT is not affiliated with or endorsed by MyAnimeList. Last updated 2026-10-05.</small></p>
+</body>
+</html>
