@@ -24,17 +24,18 @@ fun main() {
 fun Application.module(
     relayClient: HttpClient = HttpClient(CIO) { expectSuccess = false },
 ) {
-    // Not load-bearing in normal use: both the reverse proxy and the webpack dev server
-    // route `/mal` to this server on the page's own origin, so relay calls are same-origin.
-    // Kept as a fallback for hitting the relay directly from another origin.
+    // Load-bearing even though relay calls are same-origin: browsers send `Origin` on every
+    // POST and PATCH, and behind a reverse proxy this plugin cannot tell that origin is the
+    // page's own, so it answers an unlisted one with an empty 403. Every hostname the app is
+    // served on must be listed here, or the token exchange fails after a successful login.
     install(CORS) {
         allowMethod(HttpMethod.Get)
         allowMethod(HttpMethod.Post)
         allowMethod(HttpMethod.Patch)
         allowHeader(HttpHeaders.ContentType)
         allowHeader(HttpHeaders.Authorization)
-        allowHost("mal-ui.localhost", schemes = listOf("https"))
-        allowHost("js.mal-ui.localhost", schemes = listOf("https"))
+        allowHost("act.io-workshop.localhost", schemes = listOf("https"))
+        allowHost("act.io-workshop.net", schemes = listOf("https"))
         listOf(18020, 18030).forEach { port ->
             allowHost("localhost:$port")
             allowHost("127.0.0.1:$port")

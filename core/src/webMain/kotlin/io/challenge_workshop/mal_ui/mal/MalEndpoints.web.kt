@@ -5,7 +5,7 @@ package io.challenge_workshop.mal_ui.mal
 import kotlin.js.ExperimentalWasmJsInterop
 
 /**
- * The page's own origin, such as `https://mal-ui.localhost` or `http://localhost:18020`.
+ * The page's own origin, such as `https://act.io-workshop.localhost` or `http://localhost:18020`.
  *
  * Read with `js()` rather than via `kotlinx.browser`, which the Wasm stdlib does not carry — this
  * avoids adding a dependency just to read one string.

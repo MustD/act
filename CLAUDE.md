@@ -47,11 +47,12 @@ The port is set in `app/webApp/build.gradle.kts`; everything else about the dev 
 the `/mal` proxy, and the `historyApiFallback` that serves the app on `/oauth/callback`) is in
 `app/webApp/webpack.config.d/devserver.js`.
 
-Optionally reachable as `https://mal-ui.localhost` through a local reverse proxy that routes `/mal` to 18010 and everything else to the dev server. Same-origin
-routing is required, not cosmetic — see below. That config lives outside this repo; in Caddy terms it is:
+Optionally reachable as `https://act.io-workshop.localhost` through a local reverse proxy that routes `/mal` to 18010
+and everything else to the dev server. Same-origin routing is required, not cosmetic — see below. That config lives
+outside this repo; in Caddy terms it is:
 
 ```caddyfile
-mal-ui.localhost {
+act.io-workshop.localhost {
 	handle /mal /mal/* {       # first, so the relay is never swallowed by the SPA fallback below
 		reverse_proxy 127.0.0.1:18010
 	}
@@ -65,6 +66,10 @@ The dev server's own `historyApiFallback` covers the SPA deep link on both paths
 its own — but it does need `/mal` matched **first**, or `/mal/...` reaches the dev server and comes back as
 `index.html`. If the app is ever served from a static bundle instead of the dev server, that side needs
 `try_files {path} /index.html` added.
+
+The proxy's hostname must also be in `:server`'s CORS allow-list (`Application.kt`), even though relay calls are
+same-origin: browsers send `Origin` on every `POST` and `PATCH`, Ktor's CORS plugin cannot tell a proxied request is
+same-origin, and an unlisted origin gets an empty 403 — the login succeeds and the token exchange then fails.
 
 Tests — there is no single aggregate target that covers everything; each platform has its own task:
 
