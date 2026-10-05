@@ -23,6 +23,20 @@ class ClientIpTest {
     }
 
     @Test
+    fun behind_caddy_behind_the_edge_both_hops_must_be_trusted() {
+        // Caddy (Compose network) appends the edge's private IP to the client the edge reported.
+        val chain = "1.2.3.4, 198.51.100.7, 10.114.0.2"
+        assertEquals("198.51.100.7", clientIp("172.18.0.3", chain, trusted + Cidr.parse("10.114.0.2")))
+        assertEquals("10.114.0.2", clientIp("172.18.0.3", chain, trusted))
+    }
+
+    @Test
+    fun out_of_range_octets_are_not_addresses() {
+        assertEquals("172.18.0.2", clientIp("172.18.0.2", "999.1.1.1", trusted))
+        assertFailsWith<IllegalStateException> { Cidr.parse("localhost") }
+    }
+
+    @Test
     fun a_trusted_peer_without_a_header_is_itself() {
         assertEquals("172.18.0.2", clientIp("172.18.0.2", null, trusted))
     }

@@ -99,7 +99,7 @@ class SignInPopupRelayTest {
     )
 
     private companion object {
-        const val ORIGIN = "https://mal-ui.localhost"
+        const val ORIGIN = "https://act.io-workshop.localhost"
         const val HREF = "$ORIGIN/oauth/callback?code=a-code&state=a-state"
     }
 }

@@ -15,24 +15,24 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import io.ktor.http.parseUrlEncodedParameters
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.ApplicationStopped
-import io.ktor.http.parseUrlEncodedParameters
+import io.ktor.server.application.install
 import io.ktor.server.plugins.ratelimit.RateLimit
 import io.ktor.server.plugins.ratelimit.RateLimitName
 import io.ktor.server.plugins.ratelimit.rateLimit
-import io.ktor.server.application.install
 import io.ktor.server.request.contentLength
 import io.ktor.server.request.receiveChannel
-import io.ktor.utils.io.readRemaining
-import kotlinx.io.readByteArray
-import kotlin.time.Duration.Companion.minutes
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
+import io.ktor.utils.io.readRemaining
+import kotlin.time.Duration.Companion.minutes
+import kotlinx.io.readByteArray
 
 /**
  * A minimal relay that lets the **web** target complete the MAL login.
@@ -56,10 +56,10 @@ import io.ktor.server.routing.post
 fun Application.malRelay(route: Route, client: HttpClient, config: RelayConfig = RelayConfig()) {
     monitor.subscribe(ApplicationStopped) { client.close() }
 
-    val trusted = config.trustedProxies.map(Cidr::parse)
     install(RateLimit) {
         val key: (ApplicationCall) -> Any = { call ->
-            rateLimitKey(clientIp(call.request.local.remoteAddress, call.request.headers["X-Forwarded-For"], trusted))
+            val forwardedFor = call.request.headers[HttpHeaders.XForwardedFor]
+            rateLimitKey(clientIp(call.request.local.remoteAddress, forwardedFor, config.trustedProxies))
         }
         register(TOKEN_LIMIT) {
             rateLimiter(limit = config.tokenLimitPerMinute, refillPeriod = 1.minutes)
@@ -73,50 +73,51 @@ fun Application.malRelay(route: Route, client: HttpClient, config: RelayConfig =
 
     with(route) {
         // The prefix is the one `platformMalEndpoints()` puts on every web request.
-        rateLimit(TOKEN_LIMIT) { post("$MAL_RELAY_PATH_PREFIX/oauth2/token") {
-            val body = call.receiveCapped(config.maxBodyBytes) ?: return@post
-            val form = body.parseUrlEncodedParameters()
-            val upstream = client.submitForm(
-                url = MalAuthConfig.DEFAULT_TOKEN_ENDPOINT,
-                formParameters = form,
-            )
-            call.respondWith(upstream)
-        } }
+        rateLimit(TOKEN_LIMIT) {
+            post("$MAL_RELAY_PATH_PREFIX/oauth2/token") {
+                val body = call.receiveCapped(config.maxBodyBytes) ?: return@post
+                val form = body.parseUrlEncodedParameters()
+                val upstream = client.submitForm(
+                    url = MalAuthConfig.DEFAULT_TOKEN_ENDPOINT,
+                    formParameters = form,
+                )
+                call.respondWith(upstream)
+            }
+        }
 
         rateLimit(API_LIMIT) {
+            // The only write route, and only this path: `{id}` must be numeric, so nothing else under
+            // `/v2` can be reached with a PATCH.
+            patch(Regex("$MAL_RELAY_PATH_PREFIX/v2/anime/(?<id>\\d+)/my_list_status")) {
+                val id = call.parameters["id"]
+                val body = call.receiveCapped(config.maxBodyBytes) ?: return@patch
+                val upstream = client.patch("${MalAuthConfig.DEFAULT_API_BASE_URL}/anime/$id/my_list_status") {
+                    call.request.headers[HttpHeaders.Authorization]?.let {
+                        header(HttpHeaders.Authorization, it)
+                    }
+                    contentType(ContentType.Application.FormUrlEncoded)
+                    setBody(body)
+                }
+                call.respondWith(upstream)
+            }
 
-        // The only write route, and only this path: `{id}` must be numeric, so nothing else under
-        // `/v2` can be reached with a PATCH.
-        patch(Regex("$MAL_RELAY_PATH_PREFIX/v2/anime/(?<id>\\d+)/my_list_status")) {
-            val id = call.parameters["id"]
-            val body = call.receiveCapped(config.maxBodyBytes) ?: return@patch
-            val upstream = client.patch("${MalAuthConfig.DEFAULT_API_BASE_URL}/anime/$id/my_list_status") {
-                call.request.headers[HttpHeaders.Authorization]?.let {
-                    header(HttpHeaders.Authorization, it)
+            get("$MAL_RELAY_PATH_PREFIX/v2/{path...}") {
+                val path = call.parameters.getAll("path")?.joinToString("/").orEmpty()
+                if (path.isEmpty()) {
+                    call.respondText("Missing API path", status = HttpStatusCode.BadRequest)
+                    return@get
                 }
-                contentType(ContentType.Application.FormUrlEncoded)
-                setBody(body)
-            }
-            call.respondWith(upstream)
-        }
-
-        get("$MAL_RELAY_PATH_PREFIX/v2/{path...}") {
-            val path = call.parameters.getAll("path")?.joinToString("/").orEmpty()
-            if (path.isEmpty()) {
-                call.respondText("Missing API path", status = HttpStatusCode.BadRequest)
-                return@get
-            }
-            val upstream = client.get("${MalAuthConfig.DEFAULT_API_BASE_URL}/$path") {
-                // The browser holds the token; the relay only forwards it.
-                call.request.headers[HttpHeaders.Authorization]?.let {
-                    header(HttpHeaders.Authorization, it)
+                val upstream = client.get("${MalAuthConfig.DEFAULT_API_BASE_URL}/$path") {
+                    // The browser holds the token; the relay only forwards it.
+                    call.request.headers[HttpHeaders.Authorization]?.let {
+                        header(HttpHeaders.Authorization, it)
+                    }
+                    call.request.queryParameters.forEach { key, values ->
+                        values.forEach { parameter(key, it) }
+                    }
                 }
-                call.request.queryParameters.forEach { key, values ->
-                    values.forEach { parameter(key, it) }
-                }
+                call.respondWith(upstream)
             }
-            call.respondWith(upstream)
-        }
         }
     }
 }
@@ -131,17 +132,14 @@ private val API_LIMIT = RateLimitName("api")
  */
 private suspend fun ApplicationCall.receiveCapped(max: Int): String? {
     val declared = request.contentLength()
-    if (declared != null && declared > max) {
-        response.headers.append(HttpHeaders.Connection, "close") // the unread body must not be parsed as a next request
+    val bytes = if (declared != null && declared > max) null
+    else receiveChannel().readRemaining(max.toLong() + 1).readByteArray().takeIf { it.size <= max }
+    if (bytes == null) {
+        // Either way part of the body is unread, and it must not be parsed as a next request.
+        response.headers.append(HttpHeaders.Connection, "close")
         respondText("Request body too large", status = HttpStatusCode.PayloadTooLarge)
-        return null
     }
-    val bytes = receiveChannel().readRemaining(max.toLong() + 1).readByteArray()
-    if (bytes.size > max) {
-        respondText("Request body too large", status = HttpStatusCode.PayloadTooLarge)
-        return null
-    }
-    return bytes.decodeToString()
+    return bytes?.decodeToString()
 }
 
 /** Hands MAL's answer back as it came: body, content type and status, a 4xx or 5xx included. */

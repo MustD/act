@@ -44,6 +44,13 @@ class RelayConfigTest {
     }
 
     @Test
+    fun an_origin_that_is_not_scheme_host_port_fails_startup() {
+        listOf("act.io-workshop.net", "ftp://a.example", "https://a.example/path", "https://a.example:x").forEach {
+            assertFailsWith<IllegalStateException>(it) { RelayConfig.fromEnv(mapOf(ENV_RELAY_CORS_ORIGINS to it)) }
+        }
+    }
+
+    @Test
     fun a_custom_origin_list_allows_that_origin_and_rejects_localhost() = testApplication {
         application { module(config = RelayConfig(corsOrigins = listOf("https://act.io-workshop.net"))) }
 
@@ -67,9 +74,10 @@ class RelayHardeningConfigTest {
                 ENV_RELAY_MAX_BODY_BYTES to "1024",
             ),
         )
-        assertEquals(listOf("172.18.0.0/16", "10.0.0.1"), config.trustedProxies)
+        assertEquals(listOf(Cidr.parse("172.18.0.0/16"), Cidr.parse("10.0.0.1/32")), config.trustedProxies)
         assertEquals(Triple(5, 50, 1024), Triple(config.tokenLimitPerMinute, config.apiLimitPerMinute, config.maxBodyBytes))
         assertFailsWith<IllegalStateException> { RelayConfig.fromEnv(mapOf(ENV_RELAY_TOKEN_LIMIT to "0")) }
         assertFailsWith<IllegalStateException> { RelayConfig.fromEnv(mapOf(ENV_RELAY_TRUSTED_PROXIES to "10.0.0.0/99")) }
+        assertFailsWith<IllegalStateException> { RelayConfig.fromEnv(mapOf(ENV_RELAY_TRUSTED_PROXIES to "caddy")) }
     }
 }

@@ -8,9 +8,9 @@ class MalEndpointsTest {
 
     @Test
     fun buildsRelayEndpointsBehindTheReverseProxy() {
-        val endpoints = relayEndpointsFor("https://mal-ui.localhost")
-        assertEquals("https://mal-ui.localhost/mal/oauth2/token", endpoints.tokenEndpoint)
-        assertEquals("https://mal-ui.localhost/mal/v2", endpoints.apiBaseUrl)
+        val endpoints = relayEndpointsFor("https://act.io-workshop.localhost")
+        assertEquals("https://act.io-workshop.localhost/mal/oauth2/token", endpoints.tokenEndpoint)
+        assertEquals("https://act.io-workshop.localhost/mal/v2", endpoints.apiBaseUrl)
     }
 
     @Test
@@ -23,8 +23,8 @@ class MalEndpointsTest {
     @Test
     fun toleratesATrailingSlashOnTheOrigin() {
         assertEquals(
-            relayEndpointsFor("https://mal-ui.localhost").tokenEndpoint,
-            relayEndpointsFor("https://mal-ui.localhost/").tokenEndpoint,
+            relayEndpointsFor("https://act.io-workshop.localhost").tokenEndpoint,
+            relayEndpointsFor("https://act.io-workshop.localhost/").tokenEndpoint,
         )
     }
 
@@ -36,7 +36,7 @@ class MalEndpointsTest {
 
     @Test
     fun buildsTheWebRedirectUriBehindTheReverseProxy() {
-        assertEquals("https://mal-ui.localhost/oauth/callback", redirectUriFor("https://mal-ui.localhost"))
+        assertEquals("https://act.io-workshop.localhost/oauth/callback", redirectUriFor("https://act.io-workshop.localhost"))
     }
 
     @Test
@@ -48,8 +48,8 @@ class MalEndpointsTest {
     fun toleratesATrailingSlashOnTheOriginOfARedirectUri() {
         // A doubled slash would be a different byte string, and MAL matches byte-exactly.
         assertEquals(
-            redirectUriFor("https://mal-ui.localhost"),
-            redirectUriFor("https://mal-ui.localhost/"),
+            redirectUriFor("https://act.io-workshop.localhost"),
+            redirectUriFor("https://act.io-workshop.localhost/"),
         )
     }
 

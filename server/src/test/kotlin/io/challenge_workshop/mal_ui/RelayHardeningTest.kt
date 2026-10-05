@@ -11,6 +11,9 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import io.ktor.http.content.OutgoingContent
+import io.ktor.utils.io.ByteWriteChannel
+import io.ktor.utils.io.writeStringUtf8
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kotlin.test.Test
@@ -30,7 +33,7 @@ class RelayHardeningTest {
         }
 
     // The test host's peer is loopback, so trusting it stands in for "behind the proxy".
-    private val loopback = listOf("127.0.0.1/32", "::1/128")
+    private val loopback = listOf("127.0.0.1/32", "::1/128").map(Cidr::parse)
 
     @Test
     fun the_token_endpoint_trips_at_the_configured_rate_with_429() = testApplication {
@@ -70,6 +73,19 @@ class RelayHardeningTest {
         relay(RelayConfig(maxBodyBytes = 32))
         assertEquals(HttpStatusCode.OK, token("a=" + "x".repeat(30)).status)
         assertEquals(HttpStatusCode.PayloadTooLarge, token("a=" + "x".repeat(31)).status)
+    }
+
+    @Test
+    fun an_oversized_chunked_body_is_413_without_a_content_length() = testApplication {
+        relay(RelayConfig(maxBodyBytes = 32))
+        fun chunked(body: String) = object : OutgoingContent.WriteChannelContent() {
+            override val contentType = ContentType.Application.FormUrlEncoded
+            override suspend fun writeTo(channel: ByteWriteChannel) = channel.writeStringUtf8(body)
+        }
+        val big = client.post("/mal/oauth2/token") { setBody(chunked("a=" + "x".repeat(100))) }
+        assertEquals(HttpStatusCode.PayloadTooLarge, big.status)
+        val small = client.post("/mal/oauth2/token") { setBody(chunked("grant_type=x")) }
+        assertEquals(HttpStatusCode.OK, small.status)
     }
 
     @Test

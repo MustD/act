@@ -23,16 +23,23 @@ blocking, so without it Gradle finishes (`BUILD SUCCESSFUL` in well under a seco
 it, leaving nothing on the port.
 
 `:server` reads its configuration from the environment (`RelayConfig`, parsed once in `main()` and passed to
-`Application.module`); with nothing set it is `127.0.0.1:18010` and the localhost CORS list, as above:
+`Application.module`); with nothing set it binds `127.0.0.1:18010` and allows `RelayConfig.DEFAULT_CORS_ORIGINS` —
+`https://act.io-workshop.localhost`, `https://act.io-workshop.net`, and `http://` `localhost`/`127.0.0.1` on 18020 and
+18030. A malformed value fails startup rather than falling back:
 
 | Variable                 | Meaning                                                              |
 |--------------------------|----------------------------------------------------------------------|
 | `ACT_RELAY_HOST`         | bind address, default `127.0.0.1`                                    |
 | `ACT_RELAY_PORT`         | port, default `18010`                                                |
-| `ACT_RELAY_CORS_ORIGINS` | comma-separated full origins (`https://host[:port]`) replacing the defaults |
-| `ACT_RELAY_TRUSTED_PROXIES` | comma-separated CIDRs whose `X-Forwarded-For` is believed; default none (socket address is the client) |
+| `ACT_RELAY_CORS_ORIGINS` | comma-separated origins (`http(s)://host[:port]`, no path) replacing the defaults |
+| `ACT_RELAY_TRUSTED_PROXIES` | comma-separated CIDRs or bare IPs whose `X-Forwarded-For` is believed; default none (socket address is the client) |
 | `ACT_RELAY_TOKEN_LIMIT_PER_MIN` / `ACT_RELAY_API_LIMIT_PER_MIN` | per-client-IP rate limits, defaults 10 on the token POST and 120 on `/mal/v2/*`; 429 beyond |
 | `ACT_RELAY_MAX_BODY_BYTES` | cap on the token POST and PATCH bodies, default 16384; 413 beyond |
+
+**Every hop in front of the relay must be in `ACT_RELAY_TRUSTED_PROXIES`**, not only the one it talks to. The client
+IP is the right-most `X-Forwarded-For` entry that is not trusted, and behind Caddy behind the edge that header reads
+`client, edge` — so with only the Compose network trusted, the edge's private IP is every user's, and the per-IP rate
+limit becomes one global limit. In prod: the Compose network's CIDR **and** the edge's private IP.
 
 The web target needs `:server` running as well — see [MAL authentication](#mal-authentication).
 
@@ -43,7 +50,7 @@ unallocated.
 
 | Port  | Service                                              |
 |-------|------------------------------------------------------|
-| 18010 | `:server` — Ktor, MAL relay, loopback only           |
+| 18010 | `:server` — Ktor, MAL relay, loopback unless `ACT_RELAY_HOST` says otherwise |
 | 18020 | `:app:webApp` dev server                             |
 | 18040 | Desktop OAuth callback on `127.0.0.1` — `LoopbackRedirectListener`, bound only while signing in |
 
@@ -79,9 +86,10 @@ its own — but it does need `/mal` matched **first**, or `/mal/...` reaches the
 `index.html`. If the app is ever served from a static bundle instead of the dev server, that side needs
 `try_files {path} /index.html` added.
 
-The proxy's hostname must also be in `:server`'s CORS allow-list (`Application.kt`), even though relay calls are
-same-origin: browsers send `Origin` on every `POST` and `PATCH`, Ktor's CORS plugin cannot tell a proxied request is
-same-origin, and an unlisted origin gets an empty 403 — the login succeeds and the token exchange then fails.
+The proxy's origin must also be in `:server`'s CORS allow-list (`RelayConfig.DEFAULT_CORS_ORIGINS`, or
+`ACT_RELAY_CORS_ORIGINS` where that is set), even though relay calls are same-origin: browsers send `Origin` on every
+`POST` and `PATCH`, Ktor's CORS plugin cannot tell a proxied request is same-origin, and an unlisted origin gets an
+empty 403 — the login succeeds and the token exchange then fails.
 
 Tests — there is no single aggregate target that covers everything; each platform has its own task:
 

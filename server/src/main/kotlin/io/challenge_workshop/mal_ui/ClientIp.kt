@@ -4,6 +4,10 @@ import java.net.InetAddress
 
 /** A CIDR block (`10.0.0.0/8`, `fd00::/8`) or a single address, for the trusted-proxy list. */
 class Cidr private constructor(private val network: ByteArray, private val prefix: Int) {
+    override fun equals(other: Any?) = other is Cidr && prefix == other.prefix && network.contentEquals(other.network)
+    override fun hashCode() = 31 * network.contentHashCode() + prefix
+    override fun toString() = "${InetAddress.getByAddress(network).hostAddress}/$prefix"
+
     fun contains(address: InetAddress): Boolean {
         val bytes = address.address
         if (bytes.size != network.size) return false
@@ -17,7 +21,8 @@ class Cidr private constructor(private val network: ByteArray, private val prefi
 
     companion object {
         fun parse(text: String): Cidr {
-            val network = InetAddress.getByName(text.substringBefore('/').trim()).address
+            val address = text.substringBefore('/').trim()
+            val network = (literalIp(address) ?: error("Not an IP address in '$text'")).address
             val prefix = text.substringAfter('/', "").trim().takeIf { it.isNotEmpty() }
                 ?.let { it.toIntOrNull()?.takeIf { p -> p in 0..network.size * 8 } ?: error("Bad CIDR prefix in '$text'") }
                 ?: (network.size * 8)
@@ -26,11 +31,12 @@ class Cidr private constructor(private val network: ByteArray, private val prefi
     }
 }
 
-private val IPV4 = Regex("""\d{1,3}(\.\d{1,3}){3}""")
+private const val OCTET = """(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"""
+private val IPV4 = Regex("""$OCTET(\.$OCTET){3}""")
 
 /** Parses only literal addresses: forwarded hops are client-supplied, and a hostname would trigger a DNS lookup. */
 private fun literalIp(text: String): InetAddress? =
-    if (IPV4.matches(text) || (':' in text && text.all { it.isLetterOrDigit() || it == ':' || it == '.' })) {
+    if (IPV4.matches(text) || (':' in text && text.all { it in '0'..'9' || it.lowercaseChar() in 'a'..'f' || it == ':' || it == '.' })) {
         runCatching { InetAddress.getByName(text) }.getOrNull()
     } else null
 
@@ -44,6 +50,10 @@ fun rateLimitKey(ip: String): String =
  * in which case the right-most `X-Forwarded-For` entry that is not itself a trusted proxy.
  * Walking from the right is what makes a client-supplied prefix harmless — every hop appends,
  * so only entries added by trusted hops are believed.
+ *
+ * So **every** hop in front of the relay must be trusted, not only the one it talks to: behind
+ * Caddy behind the edge the header reads `client, edge`, and with only Caddy's network trusted
+ * the edge's address would be every user's.
  */
 fun clientIp(peer: String, forwardedFor: String?, trusted: List<Cidr>): String {
     fun trusts(ip: InetAddress?) = ip != null && trusted.any { it.contains(ip) }
