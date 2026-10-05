@@ -16,7 +16,8 @@ RUN addgroup -S -g 10001 relay && adduser -S -u 10001 -G relay -H -s /sbin/nolog
 WORKDIR /opt/relay
 COPY --chown=root:root bin/ bin/
 COPY --chown=root:root lib/ lib/
-RUN chmod 0755 bin/server
+# Gradle keeps some jars at 0600 from its cache, which the non-root user then cannot read.
+RUN chmod 0755 bin/server && chmod -R a+rX lib
 
 # Sized for a 1 GB droplet: the heap takes 60% of whatever memory limit Compose sets (mem_limit), leaving the
 # rest for metaspace, Netty's direct buffers and thread stacks.

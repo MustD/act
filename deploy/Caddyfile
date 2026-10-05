@@ -1,0 +1,69 @@
+# The act-web Caddyfile. Baked into the image next to the bundle, so the routing is versioned with what it routes.
+#
+# TLS is the edge's job: it terminates https://act.io-workshop.net and forwards *everything* (not a redirect, which
+# would change the origin) over the VPC to this port. EDGE_PRIVATE_IP is the edge's private address, passed in so the
+# image stays generic; RELAY_UPSTREAM is the relay service on the Compose network.
+{
+	auto_https off
+	admin off
+
+	servers {
+		# Believe X-Forwarded-For only from the edge, so the real client IP survives into the header sent on to the relay
+		# (reverse_proxy appends the peer it saw). The relay trusts this hop and the edge in turn.
+		trusted_proxies static {$EDGE_PRIVATE_IP}
+	}
+}
+
+:80 {
+	root * /srv
+
+	# DO NOT add Cross-Origin-Opener-Policy: same-origin here, or at the edge, or on the relay. The sign-in Redirect
+	# Capture is a popup that posts the redirect back to `window.opener`, and COOP: same-origin severs that reference
+	# the moment the popup navigates to myanimelist.net — the popup completes, posts into nothing, and the login hangs
+	# with no error anywhere. If cross-origin isolation is ever needed, `same-origin-allow-popups` preserves the popup.
+
+	# Caddy's default match skips application/wasm, which is 13 MB of the payload.
+	encode zstd gzip {
+		match {
+			header Content-Type text/*
+			header Content-Type application/javascript*
+			header Content-Type application/json*
+			header Content-Type application/wasm*
+			header Content-Type image/svg+xml*
+		}
+	}
+
+	# Matched first, so the relay is never swallowed by the SPA fallback below. Same-origin is the point: MAL sends no
+	# CORS headers, so the relay must not move to its own hostname.
+	@relay path /mal /mal/*
+	handle @relay {
+		reverse_proxy {$RELAY_UPSTREAM:relay:18010}
+	}
+
+	# Source maps are not shipped (the image strips them); answer 404 rather than the SPA fallback's index.html.
+	@maps path *.map
+	handle @maps {
+		respond 404
+	}
+
+	@privacy path /privacy /privacy/
+	handle @privacy {
+		rewrite * /privacy.html
+		header Cache-Control no-cache
+		file_server
+	}
+
+	handle {
+		# Stable names, so revalidate by ETag on every load. The wasm files are content-hashed and never change.
+		@wasm path *.wasm
+		header @wasm Cache-Control "max-age=31536000, immutable"
+
+		# Everything that is not a hashed wasm — including the index.html that the SPA fallback answers deep links
+		# with (/oauth/callback) — revalidates by ETag.
+		@revalidate not path *.wasm
+		header @revalidate Cache-Control no-cache
+
+		try_files {path} /index.html
+		file_server
+	}
+}
