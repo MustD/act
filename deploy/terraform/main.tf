@@ -4,9 +4,10 @@ data "digitalocean_vpc" "edge" {
   name = var.vpc_name
 }
 
-resource "digitalocean_ssh_key" "deploy" {
-  name       = "act-web-deploy"
-  public_key = var.ssh_public_key
+# An existing account key, looked up rather than created: DigitalOcean refuses a second key
+# with the same fingerprint, so a resource for a key already in the account fails the apply.
+data "digitalocean_ssh_key" "deploy" {
+  name = var.ssh_key_name
 }
 
 resource "digitalocean_droplet" "web" {
@@ -15,10 +16,10 @@ resource "digitalocean_droplet" "web" {
   size     = var.size
   image    = var.image
   vpc_uuid = data.digitalocean_vpc.edge.id
-  ssh_keys = [digitalocean_ssh_key.deploy.fingerprint]
+  ssh_keys = [data.digitalocean_ssh_key.deploy.id]
 
   user_data = templatefile("${path.module}/cloud-init.yaml.tftpl", {
-    ssh_public_key = trimspace(var.ssh_public_key)
+    ssh_public_key = trimspace(data.digitalocean_ssh_key.deploy.public_key)
   })
 
   lifecycle {

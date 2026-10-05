@@ -8,9 +8,9 @@ variable "vpc_name" {
   description = "Name of the existing VPC the edge lives in. The droplet joins it."
 }
 
-variable "ssh_public_key" {
+variable "ssh_key_name" {
   type        = string
-  description = "Public key for the deploy user (and the DigitalOcean key resource)."
+  description = "Name of an SSH key already in the DigitalOcean account. Installed for root by DO and for the deploy user by cloud-init."
 }
 
 variable "region" {
