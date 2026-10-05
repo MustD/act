@@ -55,3 +55,21 @@ class RelayConfigTest {
         assertNull(rejected.headers[HttpHeaders.AccessControlAllowOrigin])
     }
 }
+
+class RelayHardeningConfigTest {
+    @Test
+    fun hardening_settings_are_read_and_validated() {
+        val config = RelayConfig.fromEnv(
+            mapOf(
+                ENV_RELAY_TRUSTED_PROXIES to "172.18.0.0/16, 10.0.0.1",
+                ENV_RELAY_TOKEN_LIMIT to "5",
+                ENV_RELAY_API_LIMIT to "50",
+                ENV_RELAY_MAX_BODY_BYTES to "1024",
+            ),
+        )
+        assertEquals(listOf("172.18.0.0/16", "10.0.0.1"), config.trustedProxies)
+        assertEquals(Triple(5, 50, 1024), Triple(config.tokenLimitPerMinute, config.apiLimitPerMinute, config.maxBodyBytes))
+        assertFailsWith<IllegalStateException> { RelayConfig.fromEnv(mapOf(ENV_RELAY_TOKEN_LIMIT to "0")) }
+        assertFailsWith<IllegalStateException> { RelayConfig.fromEnv(mapOf(ENV_RELAY_TRUSTED_PROXIES to "10.0.0.0/99")) }
+    }
+}

@@ -48,6 +48,6 @@ fun Application.module(
         get("/") {
             call.respondText("mal_ui relay")
         }
-        malRelay(this, relayClient)
+        malRelay(this, relayClient, config)
     }
 }

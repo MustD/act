@@ -30,6 +30,9 @@ it, leaving nothing on the port.
 | `ACT_RELAY_HOST`         | bind address, default `127.0.0.1`                                    |
 | `ACT_RELAY_PORT`         | port, default `18010`                                                |
 | `ACT_RELAY_CORS_ORIGINS` | comma-separated full origins (`https://host[:port]`) replacing the defaults |
+| `ACT_RELAY_TRUSTED_PROXIES` | comma-separated CIDRs whose `X-Forwarded-For` is believed; default none (socket address is the client) |
+| `ACT_RELAY_TOKEN_LIMIT_PER_MIN` / `ACT_RELAY_API_LIMIT_PER_MIN` | per-client-IP rate limits, defaults 10 on the token POST and 120 on `/mal/v2/*`; 429 beyond |
+| `ACT_RELAY_MAX_BODY_BYTES` | cap on the token POST and PATCH bodies, default 16384; 413 beyond |
 
 The web target needs `:server` running as well — see [MAL authentication](#mal-authentication).
 

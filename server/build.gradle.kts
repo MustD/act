@@ -15,6 +15,7 @@ dependencies {
     implementation(libs.ktor.serverCore)
     implementation(libs.ktor.serverNetty)
     implementation(libs.ktor.serverCors)
+    implementation(libs.ktor.serverRateLimit)
     implementation(libs.ktor.serverCallLogging)
     implementation(libs.ktor.clientCore)
     implementation(libs.ktor.clientCio)
