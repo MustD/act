@@ -62,6 +62,9 @@ listener uses `com.sun.net.httpserver`, which is why `:app:desktopApp` declares
 `nativeDistributions { modules("jdk.httpserver") }` — Compose's default runtime modules do not include it, and the gap
 only shows up in a packaged build.
 
+Production is `https://act.io-workshop.net` — see [Deployment](#deployment). It is not a port; it is the same web
+bundle and relay, one origin, behind an edge proxy.
+
 The port is set in `app/webApp/build.gradle.kts`; everything else about the dev server (host binding, `allowedHosts`,
 the `/mal` proxy, and the `historyApiFallback` that serves the app on `/oauth/callback`) is in
 `app/webApp/webpack.config.d/devserver.js`.
@@ -182,7 +185,7 @@ verbatim, with no underscore-to-dot conversion, so that name sets `mal_clientId`
 dotted `ORG_GRADLE_PROJECT_mal.clientId` does work (a shell cannot assign that name, but `env` and most CI secret UIs
 can); `MAL_CLIENT_ID` is the straightforward route for CI.
 
-Set nowhere it is `""` and the app prompts; **a missing value does not fail a dev run or a test.**
+Set nowhere it is `""` and the app prompts; **a missing value does not fail a dev run or a test** (nor a build of anything but a release artifact).
 The exception is a release artifact: `:app:webApp:wasmJsBrowserDistribution` depends on `:core:requireMalClientId`,
 which fails naming the three sources, because that bundle ships to users who cannot be prompted for a build-time
 default. Android release reuses the same task (play-release 05) rather than adding a second check. Every step is a lazy
@@ -198,6 +201,47 @@ List's Layout, `mal.layout.v1`), and `JsonTokenStore.clear()` does **not** drop 
 app, not the user, so signing out must not turn the next sign-in into a retyping exercise. It is written when a
 sign-in actually starts (`beginAuthorization`), not on every keystroke. Neither preference is durable on the web
 targets, where the store is `sessionStorage` and goes with the tab.
+
+## Deployment
+
+The web target ships to `https://act.io-workshop.net`: the production Wasm bundle at `/`, the Relay at `/mal` and
+`privacy.html` at `/privacy`, one origin. Everything is run from the developer's machine; there is no CI. The decisions
+are in `.scratch/web-deploy/spec.md`.
+
+**Path:** browser → the **edge** (existing, outside this repo; terminates TLS and reverse-proxies *everything*, not a
+redirect, to the droplet's private VPC IP over HTTP) → **Caddy** in the `act-web` container (`${PRIVATE_IP}:80`, the only
+published port) → `/mal` to the **relay** container, everything else static with the SPA fallback. Images are
+`$DOCKERHUB_USER/act-web` and `act-relay`, tagged with `act.version` only — no `latest`, and an existing tag is refused,
+so a tag is immutable. `deploy/` holds the Dockerfiles, the Caddyfile, `docker-compose.yml`, `terraform/` and `scripts/`.
+
+**`/mal` must stay same-origin in production too.** MAL sends no CORS headers, so the relay on its own hostname would
+bring the original failure back; the edge must pass `/mal` through with `PATCH` and `Authorization`, and must not add
+`Cross-Origin-Opener-Policy` (see [the popup](#web-sign-in-the-popup-and-two-things-that-must-not-change)).
+
+**Secrets:** `.secure.env` (gitignored; `.secure.env.example` lists every key). Each mise task loads it for its own
+process only — no global `[env]` — so `DIGITALOCEAN_TOKEN` never reaches Gradle or an interactive shell; Gradle gets
+`MAL_CLIENT_ID` and nothing else. `docker login` is done once by hand. The Client ID ends up in plain text in a public
+image, deliberately: it is equally public in `webApp.js`.
+
+| Task | Does |
+|------|------|
+| `mise run infra:plan` / `infra:apply` | Terraform (`deploy/terraform/`), by hand — never from a deploy; a replaced droplet moves its private IP, so the edge's upstream must follow |
+| `mise run deploy:build` | `wasmJsBrowserDistribution` + `installDist`, then both images (`linux/amd64`) |
+| `mise run deploy:push` | pushes both; refuses if either tag exists on Docker Hub |
+| `mise run deploy [version]` | the whole path below |
+| `mise run deploy:status` | `ACT_VERSION` and `docker compose ps` on the droplet |
+
+`deploy`: refuses a dirty tree; runs `:server:test` and `:app:shared:wasmJsTest`; builds and pushes; copies
+`docker-compose.yml` and writes the droplet's `.env` over `ssh -J $EDGE_SSH deploy@<terraform output private_ip>`;
+`pull`, `up -d`, waits for both healthchecks; prunes images other than the current and previous version; then smoke-tests
+through the edge (`deploy/scripts/smoke.sh`: the SPA fallback, `/webApp.js` is JS, `/privacy`, a bogus-bearer call to
+`/mal/v2/anime` is MAL's **401** — an anonymous one is 403 — and no COOP anywhere).
+
+**Rollback:** on any failure `deploy` prints `mise run deploy <previous-version>` and exits non-zero; it never rolls
+back by itself. A version argument other than `act.version` skips tests, build and push and redeploys that tag.
+
+The relay's trusted proxies in `docker-compose.yml` are the Compose network (pinned to `172.29.0.0/24`) **and** the edge's
+private IP — both hops, as the table under [Commands](#commands) explains.
 
 ## Architecture
 
