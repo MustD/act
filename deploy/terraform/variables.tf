@@ -26,5 +26,5 @@ variable "size" {
 variable "image" {
   type        = string
   default     = "ubuntu-26-04-x64"
-  description = "Falls back to ubuntu-24-04-x64 if 26.04 is not offered in the region."
+  description = "Droplet image slug. Nothing falls back: if the region does not offer it, set ubuntu-24-04-x64."
 }

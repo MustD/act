@@ -4,14 +4,17 @@
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
 require_env DOCKERHUB_USER EDGE_SSH TF_VAR_edge_private_ip
+# Terraform is never run from here (`terraform output` reads local state), so nothing below needs the token.
+unset DIGITALOCEAN_TOKEN
 
 CURRENT="$(act_version)"
 VERSION="${1:-$CURRENT}"
+# It ends up in shell strings run on the droplet and in its .env, so it must be a plain tag and nothing else.
+[[ $VERSION =~ ^[0-9A-Za-z._-]+$ ]] || { echo "Not a version: $VERSION" >&2; exit 1; }
 ROLLBACK=0
 [ "$VERSION" = "$CURRENT" ] || ROLLBACK=1
 
 if [ "$ROLLBACK" = 0 ]; then
-	require_env MAL_CLIENT_ID
 	if [ -n "$(git status --porcelain)" ]; then
 		echo "Working tree is dirty. Commit or stash first — an image tag must name a commit." >&2
 		exit 1
@@ -50,7 +53,8 @@ remote "cd $REMOTE_DIR && docker compose pull && docker compose up -d --remove-o
 
 echo "Waiting for both containers to report healthy..."
 for _ in $(seq 1 40); do
-	states="$(remote "cd $REMOTE_DIR && for s in relay web; do docker inspect --format '{{.State.Health.Status}}' \$(docker compose ps -q \$s); done" | tr '\n' ' ')"
+	# `|| true`: a container not up yet makes docker inspect fail, which is a reason to wait, not to stop.
+	states="$(remote "cd $REMOTE_DIR && for s in relay web; do docker inspect --format '{{.State.Health.Status}}' \$(docker compose ps -q \$s); done" | tr '\n' ' ' || true)"
 	[ "$states" = "healthy healthy " ] && break
 	sleep 3
 done

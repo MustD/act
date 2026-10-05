@@ -10,7 +10,7 @@ fail=0
 check() { # description, ok(0/1)
 	if [ "$2" = 0 ]; then echo "  ok   $1"; else echo "  FAIL $1"; fail=1; fi
 }
-hdr="$(mktemp)"; trap 'rm -f "$hdr"' EXIT
+hdr="$(mktemp)"; trap 'rm -f "$hdr" "$hdr.body"' EXIT
 
 fetch() { curl -sS --max-time 20 -D "$hdr" -o "$hdr.body" "$@"; }
 no_coop() { ! grep -qi '^cross-origin-opener-policy:' "$hdr"; }
@@ -19,6 +19,7 @@ fetch "$ACT_URL/" && grep -q '<html' "$hdr.body"; check "/ serves index.html" $?
 no_coop; check "/ has no Cross-Origin-Opener-Policy" $?
 
 fetch "$ACT_URL/oauth/callback?x=1" && grep -q '<html' "$hdr.body"; check "/oauth/callback?x=1 serves index.html" $?
+grep -qi '^referrer-policy: no-referrer' "$hdr"; check "/oauth/callback sends Referrer-Policy: no-referrer" $?
 no_coop; check "/oauth/callback has no Cross-Origin-Opener-Policy" $?
 
 fetch "$ACT_URL/webApp.js" && grep -qi '^content-type: .*javascript' "$hdr" && ! grep -q '<html' "$hdr.body"
@@ -34,5 +35,4 @@ code="$(fetch -H 'Authorization: Bearer smoke' "$ACT_URL/mal/v2/anime?q=x" -w '%
 [ "$code" = 401 ]; check "/mal/v2/anime?q=x with a bogus token is MAL's 401 (got $code)" $?
 no_coop; check "/mal has no Cross-Origin-Opener-Policy" $?
 
-rm -f "$hdr.body"
 exit "$fail"

@@ -17,6 +17,12 @@
 :80 {
 	root * /srv
 
+	# The app is loaded at /oauth/callback?code=..., so a referrer would carry the authorization code off-site.
+	header {
+		Referrer-Policy no-referrer
+		X-Content-Type-Options nosniff
+	}
+
 	# DO NOT add Cross-Origin-Opener-Policy: same-origin here, or at the edge, or on the relay. The sign-in Redirect
 	# Capture is a popup that posts the redirect back to `window.opener`, and COOP: same-origin severs that reference
 	# the moment the popup navigates to myanimelist.net — the popup completes, posts into nothing, and the login hangs

@@ -3,5 +3,6 @@
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
 require_env EDGE_SSH
+unset DIGITALOCEAN_TOKEN # only Terraform needs it, and `terraform output` reads local state
 DROPLET_IP="$(droplet_ip)"
 remote "cd $REMOTE_DIR && grep -E '^(ACT_VERSION)=' .env && docker compose ps"

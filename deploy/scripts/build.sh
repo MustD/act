@@ -2,7 +2,8 @@
 # Builds both images for the current act.version. Gradle never sees the deploy env.
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
-require_env MAL_CLIENT_ID DOCKERHUB_USER
+# No MAL_CLIENT_ID check: :core:requireMalClientId fails the bundle itself, and also accepts -Pmal.clientId.
+require_env DOCKERHUB_USER
 VERSION="$(act_version)"
 
 gradle :app:webApp:wasmJsBrowserDistribution :server:installDist
