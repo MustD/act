@@ -13,16 +13,17 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 
-/** Bound to loopback only: the relay forwards credentials upstream and is a dev tool. */
-private const val PORT = 18010
-
+/** Loopback unless `ACT_RELAY_HOST` says otherwise: the relay forwards credentials upstream. */
 fun main() {
-    embeddedServer(Netty, port = PORT, host = "127.0.0.1", module = Application::module)
-        .start(wait = true)
+    val config = RelayConfig.fromEnv()
+    embeddedServer(Netty, port = config.port, host = config.host) {
+        module(config = config)
+    }.start(wait = true)
 }
 
 fun Application.module(
     relayClient: HttpClient = HttpClient(CIO) { expectSuccess = false },
+    config: RelayConfig = RelayConfig(),
 ) {
     // Load-bearing even though relay calls are same-origin: browsers send `Origin` on every
     // POST and PATCH, and behind a reverse proxy this plugin cannot tell that origin is the
@@ -34,11 +35,11 @@ fun Application.module(
         allowMethod(HttpMethod.Patch)
         allowHeader(HttpHeaders.ContentType)
         allowHeader(HttpHeaders.Authorization)
-        allowHost("act.io-workshop.localhost", schemes = listOf("https"))
-        allowHost("act.io-workshop.net", schemes = listOf("https"))
-        listOf(18020, 18030).forEach { port ->
-            allowHost("localhost:$port")
-            allowHost("127.0.0.1:$port")
+        config.corsOrigins.forEach { origin ->
+            allowHost(
+                origin.substringAfter("://"),
+                schemes = listOf(origin.substringBefore("://")),
+            )
         }
     }
     routing {

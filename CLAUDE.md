@@ -22,6 +22,15 @@ Build / run:
 blocking, so without it Gradle finishes (`BUILD SUCCESSFUL` in well under a second) and takes the dev server down with
 it, leaving nothing on the port.
 
+`:server` reads its configuration from the environment (`RelayConfig`, parsed once in `main()` and passed to
+`Application.module`); with nothing set it is `127.0.0.1:18010` and the localhost CORS list, as above:
+
+| Variable                 | Meaning                                                              |
+|--------------------------|----------------------------------------------------------------------|
+| `ACT_RELAY_HOST`         | bind address, default `127.0.0.1`                                    |
+| `ACT_RELAY_PORT`         | port, default `18010`                                                |
+| `ACT_RELAY_CORS_ORIGINS` | comma-separated full origins (`https://host[:port]`) replacing the defaults |
+
 The web target needs `:server` running as well — see [MAL authentication](#mal-authentication).
 
 ### Ports
