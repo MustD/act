@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "io.challenge_workshop.mal_ui"
-version = "1.0.0"
+version = providers.gradleProperty("act.version").get()
 application {
     mainClass = "io.challenge_workshop.mal_ui.ApplicationKt"
 }

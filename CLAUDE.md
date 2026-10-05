@@ -315,6 +315,7 @@ Four things in `app/androidApp/src/main/AndroidManifest.xml` are each a silent f
 
 ## Conventions
 
+- **The product version is `act.version` in `gradle.properties`** — `:server`'s `version` and Android's `versionName` read it via `providers.gradleProperty`. Shell tasks read it without Gradle: `grep '^act.version=' gradle.properties | cut -d= -f2`. `versionCode` is separate.
 - **All dependency and plugin versions live in `gradle/libs.versions.toml`.** Build scripts reference `libs.*` aliases only — never inline a version string in a `build.gradle.kts`.
 - Java toolchain is 21 (auto-provisioned via the foojay resolver / `gradle/gradle-daemon-jvm.properties`); Android and Android-KMP modules compile to **JVM target 11**.
 - Gradle configuration cache and build cache are enabled in `gradle.properties`. Build logic that reads state at execution time will fail configuration-cache validation.
