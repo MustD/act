@@ -182,7 +182,10 @@ verbatim, with no underscore-to-dot conversion, so that name sets `mal_clientId`
 dotted `ORG_GRADLE_PROJECT_mal.clientId` does work (a shell cannot assign that name, but `env` and most CI secret UIs
 can); `MAL_CLIENT_ID` is the straightforward route for CI.
 
-Set nowhere it is `""` and the app prompts; **a missing value is never a build failure.** Every step is a lazy
+Set nowhere it is `""` and the app prompts; **a missing value does not fail a dev run or a test.**
+The exception is a release artifact: `:app:webApp:wasmJsBrowserDistribution` depends on `:core:requireMalClientId`,
+which fails naming the three sources, because that bundle ships to users who cannot be prompted for a build-time
+default. Android release reuses the same task (play-release 05) rather than adding a second check. Every step is a lazy
 `Provider` and the value is declared with `inputs.property`, which is what keeps the task configuration-cache-safe and
 still invalidated when the value changes — reading `local.properties` with `Properties().load(...)` at configuration
 time is exactly the trap the Conventions section warns about.

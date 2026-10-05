@@ -70,7 +70,8 @@ kotlin {
  * The build-time default Client ID, in precedence order: a `mal.clientId` Gradle property (so it can
  * live in `~/.gradle/gradle.properties`, outside the repo entirely), then a `MAL_CLIENT_ID`
  * environment variable, then a `mal.clientId=` line in the gitignored `local.properties`. Absent
- * everywhere, it is `""` and the app prompts — a missing value is never a build failure.
+ * everywhere, it is `""` and the app prompts — a missing value is not a build failure, except for the
+ * release artifacts that [requireMalClientId] guards.
  *
  * Not `ORG_GRADLE_PROJECT_mal_clientId`: Gradle maps that name to the project property `mal_clientId`
  * verbatim, with no underscore-to-dot conversion, so nothing reads it. `MAL_CLIENT_ID` is the CI route.
@@ -156,3 +157,28 @@ val generateMalBuildConfig by tasks.registering {
 }
 
 kotlin.sourceSets.commonMain { kotlin.srcDir(generateMalBuildConfig) }
+
+/**
+ * Fails when no build-time Client ID resolved. Release artifacts — the production web bundle today,
+ * the Android release build via play-release 05 — `dependsOn(":core:requireMalClientId")` rather than
+ * re-implementing the check, so the message and the three sources it names live in one place. Dev runs
+ * and tests do not depend on it, and keep "empty → prompt".
+ *
+ * Declares no outputs, so it runs every time; the check is a string comparison. The `Provider` is
+ * captured, not read at configuration time, which keeps it configuration-cache-safe.
+ */
+val requireMalClientId by tasks.registering {
+    val clientId = malClientId
+    inputs.property("clientId", clientId)
+    doLast {
+        if (clientId.get().isEmpty()) {
+            throw GradleException(
+                "No Client ID resolved, and this build ships to users who cannot type one in. Set one of:\n" +
+                    "  -Pmal.clientId=<id>            (or in ~/.gradle/gradle.properties)\n" +
+                    "  MAL_CLIENT_ID=<id>             (environment variable)\n" +
+                    "  mal.clientId=<id>              (a line in local.properties)\n" +
+                    "Register an app of type `other` at myanimelist.net/apiconfig to get one.",
+            )
+        }
+    }
+}

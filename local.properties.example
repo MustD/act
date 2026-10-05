@@ -15,7 +15,7 @@
 #   3. the line below.
 #
 # An empty value at any step falls through to the next, so `-Pmal.clientId=` cannot hide the others.
-# Set nowhere, it is empty and the app asks for one — never a build failure. A Client ID typed into
+# Set nowhere, it is empty and the app asks for one — not a build failure for dev runs or tests (a production web build does fail). A Client ID typed into
 # the app is remembered on that device and wins over this default.
 mal.clientId=
 

@@ -36,3 +36,9 @@ kotlin {
         }
     }
 }
+
+// The production bundle ships with a Client ID baked in; the dev run (`wasmJsBrowserDevelopmentRun`)
+// keeps "empty → prompt". The check itself lives in :core so Android release can reuse it.
+tasks.matching { it.name == "wasmJsBrowserDistribution" }.configureEach {
+    dependsOn(":core:requireMalClientId")
+}
