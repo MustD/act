@@ -172,13 +172,13 @@ which is why there is no BuildKonfig dependency. Resolution, highest precedence 
 
 1. a `mal.clientId` Gradle property — `-Pmal.clientId=...`, or `~/.gradle/gradle.properties` (outside the repo
    entirely),
-2. the `MAL_CLIENT_ID` environment variable,
-3. a `mal.clientId=` line in the gitignored `local.properties` — see `local.properties.example`.
+2. the `MAL_CLIENT_ID` environment variable — which `mise run run:*` and `deploy:build` load from the gitignored
+   `.secure.build.env`.
 
 A **set-but-empty** value at any step falls through to the next rather than short-circuiting, so `-Pmal.clientId=` cannot
-silently hide the two sources below it. That order is resolution precedence; the *privacy* preference is the other way
-round — `~/.gradle/gradle.properties` keeps the value out of the repo tree entirely, `local.properties` keeps it out of
-git, and an environment variable ends up in shell history.
+silently hide the source below it. That order is resolution precedence; the *privacy* preference is the other way
+round — `~/.gradle/gradle.properties` keeps the value out of the repo tree entirely, `.secure.build.env` keeps it out of
+git, and an environment variable typed in a shell ends up in shell history.
 
 **`ORG_GRADLE_PROJECT_mal_clientId` does not work** — Gradle maps `ORG_GRADLE_PROJECT_x` to the project property `x`
 verbatim, with no underscore-to-dot conversion, so that name sets `mal_clientId` and nothing reads it. Verified. The
@@ -187,10 +187,10 @@ can); `MAL_CLIENT_ID` is the straightforward route for CI.
 
 Set nowhere it is `""` and the app prompts; **a missing value does not fail a dev run or a test** (nor a build of anything but a release artifact).
 The exception is a release artifact: `:app:webApp:wasmJsBrowserDistribution` depends on `:core:requireMalClientId`,
-which fails naming the three sources, because that bundle ships to users who cannot be prompted for a build-time
+which fails naming the two sources, because that bundle ships to users who cannot be prompted for a build-time
 default. Android release reuses the same task (play-release 05) rather than adding a second check. Every step is a lazy
 `Provider` and the value is declared with `inputs.property`, which is what keeps the task configuration-cache-safe and
-still invalidated when the value changes — reading `local.properties` with `Properties().load(...)` at configuration
+still invalidated when the value changes — reading a file with `Properties().load(...)` at configuration
 time is exactly the trap the Conventions section warns about.
 
 `appModule` is the only place that reads `MAL_CLIENT_ID`. `:core` keeps `MalAuthConfig.clientId` a required parameter on
@@ -218,18 +218,22 @@ so a tag is immutable. `deploy/` holds the Dockerfiles, the Caddyfile, `docker-c
 bring the original failure back; the edge must pass `/mal` through with `PATCH` and `Authorization`, and must not add
 `Cross-Origin-Opener-Policy` (see [the popup](#web-sign-in-the-popup-and-two-things-that-must-not-change)).
 
-**Secrets:** `.secure.env` (gitignored; `.secure.env.example` lists every key). Each mise task loads it for its own
-process only — no global `[env]` — so `DIGITALOCEAN_TOKEN` never reaches Gradle or an interactive shell; Gradle gets
-`MAL_CLIENT_ID` and nothing else. `docker login` is done once by hand. The Client ID ends up in plain text in a public
-image, deliberately: it is equally public in `webApp.js`.
+**Env files:** two, gitignored (`.secure.*.env`), each with a committed `.example` listing every key.
+`.secure.build.env` holds `MAL_CLIENT_ID` and `DOCKERHUB_USER`; `.secure.deploy.env` holds `DIGITALOCEAN_TOKEN`,
+`EDGE_SSH` and the `TF_VAR_*`. **mise reads them, per task** (`env = { _ = { file = ... } }` in `mise.toml`) — never a
+global `[env]` — so the DO token reaches only `infra:*` and `deploy*`, and the deploy scripts strip it (and `EDGE_SSH`)
+from Gradle's environment even then. Gradle picks `MAL_CLIENT_ID` up from the environment itself, so the `run:*` tasks
+are prefilled with it; plain `./gradlew` outside mise does not read these files. `docker login` is done once by hand.
+The Client ID ends up in plain text in a public image, deliberately: it is equally public in `webApp.js`.
 
-| Task | Does |
-|------|------|
-| `mise run infra:plan` / `infra:apply` | Terraform (`deploy/terraform/`), by hand — never from a deploy; a replaced droplet moves its private IP, so the edge's upstream must follow |
-| `mise run deploy:build` | `wasmJsBrowserDistribution` + `installDist`, then both images (`linux/amd64`) |
-| `mise run deploy:push` | pushes both; refuses if either tag exists on Docker Hub |
-| `mise run deploy [version]` | the whole path below |
-| `mise run deploy:status` | `ACT_VERSION` and `docker compose ps` on the droplet |
+| Task                                              | Does                                                                                                                                        |
+|---------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| `mise run run:desktop` / `run:server` / `run:web` | the Commands above, with `.secure.build.env` loaded                                                                                         |
+| `mise run infra:plan` / `infra:apply`             | Terraform (`deploy/terraform/`), by hand — never from a deploy; a replaced droplet moves its private IP, so the edge's upstream must follow |
+| `mise run deploy:build`                           | `wasmJsBrowserDistribution` + `installDist`, then both images (`linux/amd64`)                                                               |
+| `mise run deploy:push`                            | pushes both; refuses if either tag exists on Docker Hub                                                                                     |
+| `mise run deploy [version]`                       | the whole path below                                                                                                                        |
+| `mise run deploy:status`                          | `ACT_VERSION` and `docker compose ps` on the droplet                                                                                        |
 
 `deploy`: refuses a dirty tree; runs `:server:test` and `:app:shared:wasmJsTest`; builds and pushes; copies
 `docker-compose.yml` and writes the droplet's `.env` over `ssh -J $EDGE_SSH deploy@<terraform output private_ip>`;

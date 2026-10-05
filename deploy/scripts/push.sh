@@ -2,7 +2,7 @@
 # Pushes <act.version> of both images. Tags are immutable: an existing tag is refused, and `latest` is never pushed.
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
-load_env DOCKERHUB_USER
+require_env DOCKERHUB_USER
 VERSION="$(act_version)"
 
 # Checks both before pushing either, so a refusal never leaves one image pushed and the other not.

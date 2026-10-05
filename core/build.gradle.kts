@@ -69,7 +69,7 @@ kotlin {
 /**
  * The build-time default Client ID, in precedence order: a `mal.clientId` Gradle property (so it can
  * live in `~/.gradle/gradle.properties`, outside the repo entirely), then a `MAL_CLIENT_ID`
- * environment variable, then a `mal.clientId=` line in the gitignored `local.properties`. Absent
+ * environment variable (which `mise run` fills from the gitignored `.secure.build.env`). Absent
  * everywhere, it is `""` and the app prompts — a missing value is not a build failure, except for the
  * release artifacts that [requireMalClientId] guards.
  *
@@ -78,26 +78,15 @@ kotlin {
  *
  * A public client's ID is not a secret, so the goal is convenience and not-in-git — see CONTEXT.md.
  *
- * **Every step is a lazy `Provider`, and every step treats blank as absent.** A `Properties().load(...)`
- * of `local.properties` here would be an untracked configuration-time read: the generated constant
+ * **Every step is a lazy `Provider`, and every step treats blank as absent.** Reading a file with
+ * `Properties().load(...)` here would be an untracked configuration-time read: the generated constant
  * would then go stale instead of invalidating when the file changed. And `-Pmal.clientId=` — set but
- * empty — has to fall through rather than short-circuit, or an empty override silently hides the two
- * lower-precedence sources.
+ * empty — has to fall through rather than short-circuit, or an empty override silently hides the
+ * lower-precedence source.
  */
 val malClientId: Provider<String> =
     providers.gradleProperty("mal.clientId").notBlank()
         .orElse(providers.environmentVariable("MAL_CLIENT_ID").notBlank())
-        .orElse(
-            providers.fileContents(layout.settingsDirectory.file("local.properties"))
-                .asText
-                .map { text ->
-                    text.lineSequence()
-                        .firstOrNull { it.trimStart().startsWith("mal.clientId=") }
-                        ?.substringAfter('=')
-                        .orEmpty()
-                }
-                .notBlank(),
-        )
         .orElse("")
 
 /** Trimmed, with blank treated as absent — the same rule `JsonTokenStore.readClientId` applies. */
@@ -145,8 +134,8 @@ val generateMalBuildConfig by tasks.registering {
             |/**
             | * The Client ID this build was configured with, or `""` when it was configured with none.
             | *
-            | * Set it with a `mal.clientId` Gradle property, a `MAL_CLIENT_ID` environment variable, or a
-            | * `mal.clientId=` line in `local.properties` — see `local.properties.example`. Only a
+            | * Set it with a `mal.clientId` Gradle property or a `MAL_CLIENT_ID` environment variable
+            | * (`.secure.build.env`, via `mise run`). Only a
             | * build-time *default*: a Client ID the user typed is remembered per device and wins.
             | */
             |const val MAL_CLIENT_ID: String = "$literal"
@@ -161,7 +150,7 @@ kotlin.sourceSets.commonMain { kotlin.srcDir(generateMalBuildConfig) }
 /**
  * Fails when no build-time Client ID resolved. Release artifacts — the production web bundle today,
  * the Android release build via play-release 05 — `dependsOn(":core:requireMalClientId")` rather than
- * re-implementing the check, so the message and the three sources it names live in one place. Dev runs
+ * re-implementing the check, so the message and the two sources it names live in one place. Dev runs
  * and tests do not depend on it, and keep "empty → prompt".
  *
  * Declares no outputs, so it runs every time; the check is a string comparison. The `Provider` is
@@ -176,7 +165,6 @@ val requireMalClientId by tasks.registering {
                 "No Client ID resolved, and this build ships to users who cannot type one in. Set one of:\n" +
                     "  -Pmal.clientId=<id>            (or in ~/.gradle/gradle.properties)\n" +
                     "  MAL_CLIENT_ID=<id>             (environment variable)\n" +
-                    "  mal.clientId=<id>              (a line in local.properties)\n" +
                     "Register an app of type `other` at myanimelist.net/apiconfig to get one.",
             )
         }

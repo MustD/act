@@ -3,7 +3,7 @@
 # (rollback) and skips the tests, build and push. Never rolls back by itself.
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
-load_env DOCKERHUB_USER EDGE_SSH MAL_CLIENT_ID TF_VAR_edge_private_ip DIGITALOCEAN_TOKEN
+require_env DOCKERHUB_USER EDGE_SSH MAL_CLIENT_ID TF_VAR_edge_private_ip DIGITALOCEAN_TOKEN
 
 CURRENT="$(act_version)"
 VERSION="${1:-$CURRENT}"

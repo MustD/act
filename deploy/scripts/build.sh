@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Builds both images for the current act.version. Gradle sees MAL_CLIENT_ID and nothing else from .secure.env.
+# Builds both images for the current act.version. Gradle never sees the deploy env.
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
-load_env MAL_CLIENT_ID DOCKERHUB_USER
+require_env MAL_CLIENT_ID DOCKERHUB_USER
 VERSION="$(act_version)"
 
 env -u DIGITALOCEAN_TOKEN -u EDGE_SSH \

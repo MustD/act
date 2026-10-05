@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2034
-# Sourced by the deploy tasks. Loads .secure.env for this process only and checks what the caller needs.
+# Sourced by the deploy tasks. Reads what mise loaded and checks what the caller needs.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -9,15 +9,12 @@ cd "$ROOT"
 ACT_URL="${ACT_URL:-https://act.io-workshop.net}"
 REMOTE_DIR=act
 
-load_env() {
-	[ -f .secure.env ] || { echo "No .secure.env — copy .secure.env.example and fill it in." >&2; exit 1; }
-	set -a
-	# shellcheck disable=SC1091
-	. ./.secure.env
-	set +a
+# mise loads .secure.build.env / .secure.deploy.env per task (see mise.toml); this only checks that what the caller
+# needs arrived, so an unfilled file fails here and not three steps in.
+require_env() {
 	local v
 	for v in "$@"; do
-		[ -n "${!v:-}" ] || { echo ".secure.env: $v is empty." >&2; exit 1; }
+		[ -n "${!v:-}" ] || { echo "$v is empty — set it in .secure.build.env or .secure.deploy.env (run through mise)." >&2; exit 1; }
 	done
 }
 

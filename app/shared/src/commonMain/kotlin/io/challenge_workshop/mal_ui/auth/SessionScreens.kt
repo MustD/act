@@ -99,7 +99,7 @@ fun SignInScreen(
             supportingText = {
                 Text(
                     "From myanimelist.net/apiconfig. Prefilled from the last one used on this " +
-                        "device, or from the build's `mal.clientId` — see local.properties.example.",
+                            "device, or from the build's `mal.clientId`.",
                 )
             },
         )
