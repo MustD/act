@@ -148,9 +148,9 @@ val generateMalBuildConfig by tasks.registering {
 kotlin.sourceSets.commonMain { kotlin.srcDir(generateMalBuildConfig) }
 
 /**
- * Fails when no build-time Client ID resolved. Release artifacts — the production web bundle today,
- * the Android release build via play-release 05 — `dependsOn(":core:requireMalClientId")` rather than
- * re-implementing the check, so the message and the two sources it names live in one place. Dev runs
+ * Fails when no build-time Client ID resolved. Release artifacts `dependsOn(":core:requireMalClientId")`
+ * rather than re-implementing the check — the production web bundle today, and the Android release build
+ * once play-release 05 lands, so the message and the two sources it names live in one place. Dev runs
  * and tests do not depend on it, and keep "empty → prompt".
  *
  * Declares no outputs, so it runs every time; the check is a string comparison. The `Provider` is

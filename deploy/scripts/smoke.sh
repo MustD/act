@@ -2,6 +2,9 @@
 # The spec's smoke test, through the edge: proves TLS, the proxying, Caddy's routing and relay -> MAL.
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
+# Every check runs and reports, pass or fail, and the exit code is decided at the end. lib.sh's errexit would instead
+# end the script silently at the first failing grep or `[`.
+set +e
 
 fail=0
 check() { # description, ok(0/1)
@@ -26,9 +29,10 @@ fetch "$ACT_URL/privacy" && grep -qi 'privacy policy' "$hdr.body"; check "/priva
 no_coop; check "/privacy has no Cross-Origin-Opener-Policy" $?
 
 # An anonymous call is 403 from MAL; a bogus bearer token gets the 401 that proves relay -> MAL.
-fetch -H 'Authorization: Bearer smoke' "$ACT_URL/mal/v2/anime?q=x" -w '%{http_code}' >"$hdr.code" || true
-[ "$(cat "$hdr.code")" = 401 ]; check "/mal/v2/anime?q=x with a bogus token is MAL's 401 (got $(cat "$hdr.code"))" $?
+code="$(fetch -H 'Authorization: Bearer smoke' "$ACT_URL/mal/v2/anime?q=x" -w '%{http_code}')"
+# Read into a variable first: a $(...) in check's description would reset $? before check sees it.
+[ "$code" = 401 ]; check "/mal/v2/anime?q=x with a bogus token is MAL's 401 (got $code)" $?
 no_coop; check "/mal has no Cross-Origin-Opener-Policy" $?
 
-rm -f "$hdr.body" "$hdr.code"
+rm -f "$hdr.body"
 exit "$fail"

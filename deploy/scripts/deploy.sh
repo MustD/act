@@ -3,7 +3,7 @@
 # (rollback) and skips the tests, build and push. Never rolls back by itself.
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
-require_env DOCKERHUB_USER EDGE_SSH MAL_CLIENT_ID TF_VAR_edge_private_ip DIGITALOCEAN_TOKEN
+require_env DOCKERHUB_USER EDGE_SSH TF_VAR_edge_private_ip
 
 CURRENT="$(act_version)"
 VERSION="${1:-$CURRENT}"
@@ -11,12 +11,12 @@ ROLLBACK=0
 [ "$VERSION" = "$CURRENT" ] || ROLLBACK=1
 
 if [ "$ROLLBACK" = 0 ]; then
+	require_env MAL_CLIENT_ID
 	if [ -n "$(git status --porcelain)" ]; then
 		echo "Working tree is dirty. Commit or stash first — an image tag must name a commit." >&2
 		exit 1
 	fi
-	env -u DIGITALOCEAN_TOKEN -u EDGE_SSH MAL_CLIENT_ID="$MAL_CLIENT_ID" \
-		./gradlew :server:test :app:shared:wasmJsTest
+	gradle :server:test :app:shared:wasmJsTest
 	"$ROOT/deploy/scripts/build.sh"
 	"$ROOT/deploy/scripts/push.sh"
 fi

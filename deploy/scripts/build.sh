@@ -5,8 +5,7 @@
 require_env MAL_CLIENT_ID DOCKERHUB_USER
 VERSION="$(act_version)"
 
-env -u DIGITALOCEAN_TOKEN -u EDGE_SSH \
-	./gradlew :app:webApp:wasmJsBrowserDistribution :server:installDist
+gradle :app:webApp:wasmJsBrowserDistribution :server:installDist
 
 docker build --platform linux/amd64 -f deploy/web.Dockerfile --build-context deploy=deploy \
 	-t "$DOCKERHUB_USER/act-web:$VERSION" app/webApp/build/dist/wasmJs/productionExecutable

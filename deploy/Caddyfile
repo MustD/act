@@ -40,9 +40,21 @@
 		reverse_proxy {$RELAY_UPSTREAM:relay:18010}
 	}
 
-	# Source maps are not shipped (the image strips them); answer 404 rather than the SPA fallback's index.html.
-	@maps path *.map
-	handle @maps {
+	# The wasm files are content-hashed and never change. Matched only when the file exists: a hash this bundle does not
+	# have (a page loaded before the rollout) falls to the 404 below, not to an index.html cached for a year.
+	@wasm {
+		path *.wasm
+		file
+	}
+	handle @wasm {
+		header Cache-Control "max-age=31536000, immutable"
+		file_server
+	}
+
+	# Source maps are not shipped (the image strips them), and a missing wasm is the case above. Both answer 404 rather
+	# than the SPA fallback's index.html.
+	@notFound path *.map *.wasm
+	handle @notFound {
 		respond 404
 	}
 
@@ -54,14 +66,9 @@
 	}
 
 	handle {
-		# Stable names, so revalidate by ETag on every load. The wasm files are content-hashed and never change.
-		@wasm path *.wasm
-		header @wasm Cache-Control "max-age=31536000, immutable"
-
-		# Everything that is not a hashed wasm — including the index.html that the SPA fallback answers deep links
-		# with (/oauth/callback) — revalidates by ETag.
-		@revalidate not path *.wasm
-		header @revalidate Cache-Control no-cache
+		# Stable names, so revalidate by ETag on every load — including the index.html that the SPA fallback answers
+		# deep links with (/oauth/callback).
+		header Cache-Control no-cache
 
 		try_files {path} /index.html
 		file_server

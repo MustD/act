@@ -18,6 +18,16 @@ require_env() {
 	done
 }
 
+# Gradle with nothing from .secure.deploy.env: the DigitalOcean token, the edge's SSH address and every TF_VAR_*.
+# The deploy tasks load that file, and Gradle — with its daemon, plugins and build scans — has no use for any of it.
+gradle() {
+	local strip=(-u DIGITALOCEAN_TOKEN -u EDGE_SSH) v
+	for v in $(compgen -e); do
+		if [[ $v == TF_VAR_* ]]; then strip+=(-u "$v"); fi
+	done
+	env "${strip[@]}" ./gradlew "$@"
+}
+
 act_version() { grep '^act.version=' gradle.properties | cut -d= -f2; }
 
 droplet_ip() { (cd deploy/terraform && terraform output -raw private_ip); }

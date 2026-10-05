@@ -172,8 +172,8 @@ which is why there is no BuildKonfig dependency. Resolution, highest precedence 
 
 1. a `mal.clientId` Gradle property — `-Pmal.clientId=...`, or `~/.gradle/gradle.properties` (outside the repo
    entirely),
-2. the `MAL_CLIENT_ID` environment variable — which `mise run run:*` and `deploy:build` load from the gitignored
-   `.secure.build.env`.
+2. the `MAL_CLIENT_ID` environment variable — which `mise run run:desktop`, `run:web` and `deploy:build` load from the
+   gitignored `.secure.build.env`.
 
 A **set-but-empty** value at any step falls through to the next rather than short-circuiting, so `-Pmal.clientId=` cannot
 silently hide the source below it. That order is resolution precedence; the *privacy* preference is the other way
@@ -188,7 +188,8 @@ can); `MAL_CLIENT_ID` is the straightforward route for CI.
 Set nowhere it is `""` and the app prompts; **a missing value does not fail a dev run or a test** (nor a build of anything but a release artifact).
 The exception is a release artifact: `:app:webApp:wasmJsBrowserDistribution` depends on `:core:requireMalClientId`,
 which fails naming the two sources, because that bundle ships to users who cannot be prompted for a build-time
-default. Android release reuses the same task (play-release 05) rather than adding a second check. Every step is a lazy
+default. The Android release build is to reuse the same task (play-release 05) rather than add a second check; it
+does not depend on it yet. Every step is a lazy
 `Provider` and the value is declared with `inputs.property`, which is what keeps the task configuration-cache-safe and
 still invalidated when the value changes — reading a file with `Properties().load(...)` at configuration
 time is exactly the trap the Conventions section warns about.
@@ -221,14 +222,15 @@ bring the original failure back; the edge must pass `/mal` through with `PATCH` 
 **Env files:** two, gitignored (`.secure.*.env`), each with a committed `.example` listing every key.
 `.secure.build.env` holds `MAL_CLIENT_ID` and `DOCKERHUB_USER`; `.secure.deploy.env` holds `DIGITALOCEAN_TOKEN`,
 `EDGE_SSH` and the `TF_VAR_*`. **mise reads them, per task** (`env = { _ = { file = ... } }` in `mise.toml`) — never a
-global `[env]` — so the DO token reaches only `infra:*` and `deploy*`, and the deploy scripts strip it (and `EDGE_SSH`)
-from Gradle's environment even then. Gradle picks `MAL_CLIENT_ID` up from the environment itself, so the `run:*` tasks
-are prefilled with it; plain `./gradlew` outside mise does not read these files. `docker login` is done once by hand.
+global `[env]` — so the DO token reaches only `infra:*` and `deploy*`, and the deploy scripts run Gradle through
+`lib.sh`'s `gradle`, which strips the token, `EDGE_SSH` and every `TF_VAR_*` even then. Gradle picks `MAL_CLIENT_ID` up
+from the environment itself, so `run:desktop` and `run:web` are prefilled with it (`run:server` loads nothing); plain
+`./gradlew` outside mise does not read these files. `docker login` is done once by hand.
 The Client ID ends up in plain text in a public image, deliberately: it is equally public in `webApp.js`.
 
 | Task                                              | Does                                                                                                                                        |
 |---------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
-| `mise run run:desktop` / `run:server` / `run:web` | the Commands above, with `.secure.build.env` loaded                                                                                         |
+| `mise run run:desktop` / `run:server` / `run:web` | the Commands above; the two clients with `.secure.build.env` loaded                                                                         |
 | `mise run infra:plan` / `infra:apply`             | Terraform (`deploy/terraform/`), by hand — never from a deploy; a replaced droplet moves its private IP, so the edge's upstream must follow |
 | `mise run deploy:build`                           | `wasmJsBrowserDistribution` + `installDist`, then both images (`linux/amd64`)                                                               |
 | `mise run deploy:push`                            | pushes both; refuses if either tag exists on Docker Hub                                                                                     |
@@ -241,7 +243,8 @@ The Client ID ends up in plain text in a public image, deliberately: it is equal
 through the edge (`deploy/scripts/smoke.sh`: the SPA fallback, `/webApp.js` is JS, `/privacy`, a bogus-bearer call to
 `/mal/v2/anime` is MAL's **401** — an anonymous one is 403 — and no COOP anywhere).
 
-**Rollback:** on any failure `deploy` prints `mise run deploy <previous-version>` and exits non-zero; it never rolls
+**Rollback:** on any failure once it reaches the droplet, `deploy` prints `mise run deploy <previous-version>` and
+exits non-zero (a failure in the tests, build or push has deployed nothing, and just exits non-zero); it never rolls
 back by itself. A version argument other than `act.version` skips tests, build and push and redeploys that tag.
 
 The relay's trusted proxies in `docker-compose.yml` are the Compose network (pinned to `172.29.0.0/24`) **and** the edge's
@@ -395,8 +398,8 @@ Four things in `app/androidApp/src/main/AndroidManifest.xml` are each a silent f
 
 ### Issue tracker
 
-Issues live as markdown files under `.scratch/<feature>/` — this repo has no git remote. See
-`docs/agents/issue-tracker.md`.
+Issues live as markdown files under `.scratch/<feature>/`, not on GitHub — the remote (`github.com/MustD/act`) hosts
+the code, and its public Issues page is only the privacy policy's contact. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
