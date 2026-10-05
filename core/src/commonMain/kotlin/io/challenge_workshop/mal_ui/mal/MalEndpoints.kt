@@ -11,7 +11,7 @@ data class MalEndpoints(
  *
  * Both routes that reach it use this prefix, so the browser always sees the relay on its
  * own origin:
- *  - Caddy routes this prefix on `mal-ui.localhost` to the Ktor server.
+ *  - Caddy routes this prefix on `act.io-workshop.localhost` to the Ktor server.
  *  - The webpack dev server proxies this prefix to the Ktor server for direct-port access.
  *
  * Changing it means changing both of those too.
@@ -19,7 +19,7 @@ data class MalEndpoints(
 const val MAL_RELAY_PATH_PREFIX: String = "/mal"
 
 /**
- * Relay endpoints for a browser [origin] such as `https://mal-ui.localhost` or
+ * Relay endpoints for a browser [origin] such as `https://act.io-workshop.localhost` or
  * `http://localhost:18020`.
  *
  * Derived from the live origin rather than hardcoded, so the same build works behind the
@@ -99,7 +99,7 @@ const val ANDROID_REDIRECT_SCHEME: String = "io.challenge-workshop.malui"
 const val ANDROID_REDIRECT_URI: String = "$ANDROID_REDIRECT_SCHEME://oauth/callback"
 
 /**
- * The browser Redirect URI for a page served from [origin], such as `https://mal-ui.localhost` or
+ * The browser Redirect URI for a page served from [origin], such as `https://act.io-workshop.localhost` or
  * `http://localhost:18020`.
  *
  * Derived from the live origin for the same reason [relayEndpointsFor] is: one build has to work

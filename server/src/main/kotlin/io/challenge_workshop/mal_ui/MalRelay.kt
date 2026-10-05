@@ -15,16 +15,24 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import io.ktor.http.parseUrlEncodedParameters
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.ApplicationStopped
-import io.ktor.server.request.receiveParameters
-import io.ktor.server.request.receiveText
+import io.ktor.server.application.install
+import io.ktor.server.plugins.ratelimit.RateLimit
+import io.ktor.server.plugins.ratelimit.RateLimitName
+import io.ktor.server.plugins.ratelimit.rateLimit
+import io.ktor.server.request.contentLength
+import io.ktor.server.request.receiveChannel
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
+import io.ktor.utils.io.readRemaining
+import kotlin.time.Duration.Companion.minutes
+import kotlinx.io.readByteArray
 
 /**
  * A minimal relay that lets the **web** target complete the MAL login.
@@ -37,56 +45,101 @@ import io.ktor.server.routing.post
  * and the one write the Anime Page needs, `PATCH /v2/anime/{id}/my_list_status`, are
  * reachable, and the upstream hosts are hardcoded rather than taken from the request, so this cannot be turned into an open forwarding proxy.
  *
- * It does pass client secrets and bearer tokens through to MAL, which is fine on
- * localhost but means this should not be exposed publicly without authentication of
- * its own.
+ * It passes bearer tokens and the token exchange through to MAL, so it is built to sit behind a
+ * trusted reverse proxy rather than to be exposed bare. What protects it: the client IP is the
+ * socket peer unless that peer is a configured trusted proxy ([clientIp]); each IP is rate
+ * limited (429) separately on the token exchange and on `/v2`; token and `PATCH` bodies are
+ * capped (413) without reading past the cap; the CORS list names the page origins; and
+ * nothing here logs tokens or bodies. It has no authentication of its own — MAL's own token
+ * check is the authorisation.
  */
-fun Application.malRelay(route: Route, client: HttpClient) {
+fun Application.malRelay(route: Route, client: HttpClient, config: RelayConfig = RelayConfig()) {
     monitor.subscribe(ApplicationStopped) { client.close() }
+
+    install(RateLimit) {
+        val key: (ApplicationCall) -> Any = { call ->
+            val forwardedFor = call.request.headers[HttpHeaders.XForwardedFor]
+            rateLimitKey(clientIp(call.request.local.remoteAddress, forwardedFor, config.trustedProxies))
+        }
+        register(TOKEN_LIMIT) {
+            rateLimiter(limit = config.tokenLimitPerMinute, refillPeriod = 1.minutes)
+            requestKey(key)
+        }
+        register(API_LIMIT) {
+            rateLimiter(limit = config.apiLimitPerMinute, refillPeriod = 1.minutes)
+            requestKey(key)
+        }
+    }
 
     with(route) {
         // The prefix is the one `platformMalEndpoints()` puts on every web request.
-        post("$MAL_RELAY_PATH_PREFIX/oauth2/token") {
-            val form = call.receiveParameters()
-            val upstream = client.submitForm(
-                url = MalAuthConfig.DEFAULT_TOKEN_ENDPOINT,
-                formParameters = form,
-            )
-            call.respondWith(upstream)
+        rateLimit(TOKEN_LIMIT) {
+            post("$MAL_RELAY_PATH_PREFIX/oauth2/token") {
+                val body = call.receiveCapped(config.maxBodyBytes) ?: return@post
+                val form = body.parseUrlEncodedParameters()
+                val upstream = client.submitForm(
+                    url = MalAuthConfig.DEFAULT_TOKEN_ENDPOINT,
+                    formParameters = form,
+                )
+                call.respondWith(upstream)
+            }
         }
 
-        // The only write route, and only this path: `{id}` must be numeric, so nothing else under
-        // `/v2` can be reached with a PATCH.
-        patch(Regex("$MAL_RELAY_PATH_PREFIX/v2/anime/(?<id>\\d+)/my_list_status")) {
-            val id = call.parameters["id"]
-            val upstream = client.patch("${MalAuthConfig.DEFAULT_API_BASE_URL}/anime/$id/my_list_status") {
-                call.request.headers[HttpHeaders.Authorization]?.let {
-                    header(HttpHeaders.Authorization, it)
+        rateLimit(API_LIMIT) {
+            // The only write route, and only this path: `{id}` must be numeric, so nothing else under
+            // `/v2` can be reached with a PATCH.
+            patch(Regex("$MAL_RELAY_PATH_PREFIX/v2/anime/(?<id>\\d+)/my_list_status")) {
+                val id = call.parameters["id"]
+                val body = call.receiveCapped(config.maxBodyBytes) ?: return@patch
+                val upstream = client.patch("${MalAuthConfig.DEFAULT_API_BASE_URL}/anime/$id/my_list_status") {
+                    call.request.headers[HttpHeaders.Authorization]?.let {
+                        header(HttpHeaders.Authorization, it)
+                    }
+                    contentType(ContentType.Application.FormUrlEncoded)
+                    setBody(body)
                 }
-                contentType(ContentType.Application.FormUrlEncoded)
-                setBody(call.receiveText())
+                call.respondWith(upstream)
             }
-            call.respondWith(upstream)
-        }
 
-        get("$MAL_RELAY_PATH_PREFIX/v2/{path...}") {
-            val path = call.parameters.getAll("path")?.joinToString("/").orEmpty()
-            if (path.isEmpty()) {
-                call.respondText("Missing API path", status = HttpStatusCode.BadRequest)
-                return@get
-            }
-            val upstream = client.get("${MalAuthConfig.DEFAULT_API_BASE_URL}/$path") {
-                // The browser holds the token; the relay only forwards it.
-                call.request.headers[HttpHeaders.Authorization]?.let {
-                    header(HttpHeaders.Authorization, it)
+            get("$MAL_RELAY_PATH_PREFIX/v2/{path...}") {
+                val path = call.parameters.getAll("path")?.joinToString("/").orEmpty()
+                if (path.isEmpty()) {
+                    call.respondText("Missing API path", status = HttpStatusCode.BadRequest)
+                    return@get
                 }
-                call.request.queryParameters.forEach { key, values ->
-                    values.forEach { parameter(key, it) }
+                val upstream = client.get("${MalAuthConfig.DEFAULT_API_BASE_URL}/$path") {
+                    // The browser holds the token; the relay only forwards it.
+                    call.request.headers[HttpHeaders.Authorization]?.let {
+                        header(HttpHeaders.Authorization, it)
+                    }
+                    call.request.queryParameters.forEach { key, values ->
+                        values.forEach { parameter(key, it) }
+                    }
                 }
+                call.respondWith(upstream)
             }
-            call.respondWith(upstream)
         }
     }
+}
+
+private val TOKEN_LIMIT = RateLimitName("token")
+private val API_LIMIT = RateLimitName("api")
+
+/**
+ * The request body as text, or null after answering 413. A declared `Content-Length` over the cap
+ * is refused before reading; otherwise at most one byte past the cap is read, so a chunked
+ * upload cannot make the relay buffer more than that.
+ */
+private suspend fun ApplicationCall.receiveCapped(max: Int): String? {
+    val declared = request.contentLength()
+    val bytes = if (declared != null && declared > max) null
+    else receiveChannel().readRemaining(max.toLong() + 1).readByteArray().takeIf { it.size <= max }
+    if (bytes == null) {
+        // Either way part of the body is unread, and it must not be parsed as a next request.
+        response.headers.append(HttpHeaders.Connection, "close")
+        respondText("Request body too large", status = HttpStatusCode.PayloadTooLarge)
+    }
+    return bytes?.decodeToString()
 }
 
 /** Hands MAL's answer back as it came: body, content type and status, a 4xx or 5xx included. */

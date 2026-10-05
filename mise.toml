@@ -1,0 +1,56 @@
+# Operator tasks. mise loads the env files per task — never a global [env] — so DIGITALOCEAN_TOKEN reaches only the
+# infra and deploy tasks, not Gradle or an interactive shell. See CLAUDE.md, "Deployment".
+#   .secure.build.env   MAL_CLIENT_ID, DOCKERHUB_USER   (run:desktop, run:web, build, push, deploy)
+#   .secure.deploy.env  DIGITALOCEAN_TOKEN, EDGE_SSH, TF_VAR_*   (infra, deploy)
+[tools]
+terraform = "1.15.9" # inside versions.tf's "~> 1.15"
+
+# --- run locally -------------------------------------------------------------------------------------------------
+
+[tasks."run:desktop"]
+description = "Desktop app, with the Client ID from .secure.build.env"
+env = { _ = { file = ".secure.build.env" } }
+run = "./gradlew :app:desktopApp:run"
+
+[tasks."run:server"]
+description = "Ktor relay on :18010"
+run = "./gradlew :server:run"
+
+[tasks."run:web"]
+description = "Web dev server on :18020 (needs run:server too)"
+env = { _ = { file = ".secure.build.env" } }
+run = "./gradlew :app:webApp:wasmJsBrowserDevelopmentRun --continuous"
+
+# --- infrastructure ----------------------------------------------------------------------------------------------
+
+[tasks."infra:plan"]
+description = "terraform plan"
+env = { _ = { file = ".secure.deploy.env" } }
+run = "deploy/scripts/infra.sh plan"
+
+[tasks."infra:apply"]
+description = "terraform apply (by hand, never from a deploy)"
+env = { _ = { file = ".secure.deploy.env" } }
+run = "deploy/scripts/infra.sh apply"
+
+# --- build and deploy --------------------------------------------------------------------------------------------
+
+[tasks."deploy:build"]
+description = "Build the act-web and act-relay images for act.version"
+env = { _ = { file = ".secure.build.env" } }
+run = "deploy/scripts/build.sh"
+
+[tasks."deploy:push"]
+description = "Push act.version of both images; refuses an existing tag, never pushes latest"
+env = { _ = { file = ".secure.build.env" } }
+run = "deploy/scripts/push.sh"
+
+[tasks.deploy]
+description = "Test, build, push and deploy act.version; `deploy <older-version>` redeploys that tag"
+env = { _ = { file = [".secure.build.env", ".secure.deploy.env"] } }
+run = "deploy/scripts/deploy.sh"
+
+[tasks."deploy:status"]
+description = "What is running on the droplet"
+env = { _ = { file = ".secure.deploy.env" } }
+run = "deploy/scripts/status.sh"

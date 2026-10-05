@@ -359,7 +359,7 @@ class ScreenStateSourceTest {
         )
 
         assertEquals(false, routingFor(MalAuthConfig.DEFAULT_TOKEN_ENDPOINT).usesRelay)
-        assertEquals(true, routingFor("https://mal-ui.localhost/mal/oauth2/token").usesRelay)
+        assertEquals(true, routingFor("https://act.io-workshop.localhost/mal/oauth2/token").usesRelay)
     }
 
     /**
@@ -373,7 +373,7 @@ class ScreenStateSourceTest {
             endpoints = MalEndpoints(tokenEndpoint = tokenEndpoint, apiBaseUrl = "unused"),
             redirectUri = REDIRECT_URI,
         )
-        val relayed = routing("https://mal-ui.localhost/mal/oauth2/token")
+        val relayed = routing("https://act.io-workshop.localhost/mal/oauth2/token")
         val direct = routing(MalAuthConfig.DEFAULT_TOKEN_ENDPOINT)
 
         assertEquals(true, relayed.suggestsDeadRelay("Failed to fetch"))

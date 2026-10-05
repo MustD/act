@@ -49,14 +49,35 @@ class MalRelayTest {
 
         val response: HttpResponse = client.request("/mal/oauth2/token") {
             method = HttpMethod.Options
-            header(HttpHeaders.Origin, "https://mal-ui.localhost")
+            header(HttpHeaders.Origin, "https://act.io-workshop.localhost")
             header(HttpHeaders.AccessControlRequestMethod, "POST")
         }
 
         assertEquals(
-            "https://mal-ui.localhost",
+            "https://act.io-workshop.localhost",
             response.headers[HttpHeaders.AccessControlAllowOrigin],
         )
+    }
+
+    @Test
+    fun relayAllowsTheActHostnamesOnTheirOwnPost() = testApplication {
+        application {
+            module(HttpClient(MockEngine { respond("{}", HttpStatusCode.OK) }))
+        }
+
+        // Not a preflight: the token exchange is a same-origin POST that still carries `Origin`,
+        // and an unlisted one is answered with an empty 403 before the relay ever runs.
+        listOf("https://act.io-workshop.localhost", "https://act.io-workshop.net").forEach { origin ->
+            val response: HttpResponse = client.request("/mal/oauth2/token") {
+                method = HttpMethod.Post
+                header(HttpHeaders.Origin, origin)
+                contentType(ContentType.Application.FormUrlEncoded)
+                setBody("grant_type=authorization_code")
+            }
+
+            assertEquals(HttpStatusCode.OK, response.status, origin)
+            assertEquals(origin, response.headers[HttpHeaders.AccessControlAllowOrigin], origin)
+        }
     }
 
     @Test
@@ -66,7 +87,7 @@ class MalRelayTest {
         // The proxy sets HSTS, so http:// is never a legitimate origin for this host.
         val response: HttpResponse = client.request("/mal/oauth2/token") {
             method = HttpMethod.Options
-            header(HttpHeaders.Origin, "http://mal-ui.localhost")
+            header(HttpHeaders.Origin, "http://act.io-workshop.localhost")
             header(HttpHeaders.AccessControlRequestMethod, "POST")
         }
 

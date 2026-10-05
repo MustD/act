@@ -1,0 +1,42 @@
+# Runs on the droplet, next to the .env that `mise run deploy` writes (ACT_VERSION, DOCKERHUB_USER, PRIVATE_IP,
+# EDGE_PRIVATE_IP). Only act-web is published, and only on the VPC address: the edge reaches it there, nothing else can.
+services:
+  relay:
+    image: ${DOCKERHUB_USER}/act-relay:${ACT_VERSION}
+    restart: unless-stopped
+    mem_limit: 384m
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      ACT_RELAY_CORS_ORIGINS: https://act.io-workshop.net
+      # Every hop in front of the relay: Caddy (the Compose network) and the edge in front of Caddy. The client IP is
+      # the right-most X-Forwarded-For entry that is not trusted, so a missing hop turns the per-IP rate limit global.
+      ACT_RELAY_TRUSTED_PROXIES: ${ACT_COMPOSE_SUBNET:-172.29.0.0/24},${EDGE_PRIVATE_IP}
+    networks: [act]
+
+  web:
+    image: ${DOCKERHUB_USER}/act-web:${ACT_VERSION}
+    restart: unless-stopped
+    mem_limit: 128m
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    # The caddy binary binds :80 as non-root through its file capability, which needs this left in the bounding set.
+    cap_add: [NET_BIND_SERVICE]
+    depends_on:
+      relay:
+        condition: service_healthy
+    environment:
+      EDGE_PRIVATE_IP: ${EDGE_PRIVATE_IP}
+    ports:
+      - "${PRIVATE_IP}:80:80"
+    networks: [act]
+
+networks:
+  act:
+    ipam:
+      config:
+        - subnet: ${ACT_COMPOSE_SUBNET:-172.29.0.0/24}

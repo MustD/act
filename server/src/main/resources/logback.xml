@@ -4,7 +4,12 @@
             <pattern>%d{YYYY-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
-    <root level="trace">
+    <!--
+        INFO, not trace: the privacy policy says the relay logs no tokens or bodies, and RelayLoggingTest
+        holds it to that. Ktor's routing logs request paths and queries below INFO, and the Authorization
+        header and the token POST body must never be added to any message at any level.
+    -->
+    <root level="info">
         <appender-ref ref="STDOUT"/>
     </root>
     <logger name="org.eclipse.jetty" level="INFO"/>

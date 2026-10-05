@@ -1,7 +1,8 @@
 # Issue tracker: Local Markdown
 
-Issues and specs for this repo live as markdown files in `.scratch/`. This repo has no git remote, so there is no hosted
-tracker to file against. `.scratch/` is gitignored — issue files are local working notes, not repo history.
+Issues and specs for this repo live as markdown files in `.scratch/`, not in the Issues of the GitHub remote
+(`github.com/MustD/act`) — those are public, and are the privacy policy's contact for users, not a tracker for this
+work. `.scratch/` is gitignored — issue files are local working notes, not repo history.
 
 ## Conventions
 

@@ -1,0 +1,82 @@
+# The act-web Caddyfile. Baked into the image next to the bundle, so the routing is versioned with what it routes.
+#
+# TLS is the edge's job: it terminates https://act.io-workshop.net and forwards *everything* (not a redirect, which
+# would change the origin) over the VPC to this port. EDGE_PRIVATE_IP is the edge's private address, passed in so the
+# image stays generic; RELAY_UPSTREAM is the relay service on the Compose network.
+{
+	auto_https off
+	admin off
+
+	servers {
+		# Believe X-Forwarded-For only from the edge, so the real client IP survives into the header sent on to the relay
+		# (reverse_proxy appends the peer it saw). The relay trusts this hop and the edge in turn.
+		trusted_proxies static {$EDGE_PRIVATE_IP}
+	}
+}
+
+:80 {
+	root * /srv
+
+	# The app is loaded at /oauth/callback?code=..., so a referrer would carry the authorization code off-site.
+	header {
+		Referrer-Policy no-referrer
+		X-Content-Type-Options nosniff
+	}
+
+	# DO NOT add Cross-Origin-Opener-Policy: same-origin here, or at the edge, or on the relay. The sign-in Redirect
+	# Capture is a popup that posts the redirect back to `window.opener`, and COOP: same-origin severs that reference
+	# the moment the popup navigates to myanimelist.net — the popup completes, posts into nothing, and the login hangs
+	# with no error anywhere. If cross-origin isolation is ever needed, `same-origin-allow-popups` preserves the popup.
+
+	# Caddy's default match skips application/wasm, which is 13 MB of the payload.
+	encode zstd gzip {
+		match {
+			header Content-Type text/*
+			header Content-Type application/javascript*
+			header Content-Type application/json*
+			header Content-Type application/wasm*
+			header Content-Type image/svg+xml*
+		}
+	}
+
+	# Matched first, so the relay is never swallowed by the SPA fallback below. Same-origin is the point: MAL sends no
+	# CORS headers, so the relay must not move to its own hostname.
+	@relay path /mal /mal/*
+	handle @relay {
+		reverse_proxy {$RELAY_UPSTREAM:relay:18010}
+	}
+
+	# The wasm files are content-hashed and never change. Matched only when the file exists: a hash this bundle does not
+	# have (a page loaded before the rollout) falls to the 404 below, not to an index.html cached for a year.
+	@wasm {
+		path *.wasm
+		file
+	}
+	handle @wasm {
+		header Cache-Control "max-age=31536000, immutable"
+		file_server
+	}
+
+	# Source maps are not shipped (the image strips them), and a missing wasm is the case above. Both answer 404 rather
+	# than the SPA fallback's index.html.
+	@notFound path *.map *.wasm
+	handle @notFound {
+		respond 404
+	}
+
+	@privacy path /privacy /privacy/
+	handle @privacy {
+		rewrite * /privacy.html
+		header Cache-Control no-cache
+		file_server
+	}
+
+	handle {
+		# Stable names, so revalidate by ETag on every load — including the index.html that the SPA fallback answers
+		# deep links with (/oauth/callback).
+		header Cache-Control no-cache
+
+		try_files {path} /index.html
+		file_server
+	}
+}

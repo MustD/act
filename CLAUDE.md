@@ -22,6 +22,25 @@ Build / run:
 blocking, so without it Gradle finishes (`BUILD SUCCESSFUL` in well under a second) and takes the dev server down with
 it, leaving nothing on the port.
 
+`:server` reads its configuration from the environment (`RelayConfig`, parsed once in `main()` and passed to
+`Application.module`); with nothing set it binds `127.0.0.1:18010` and allows `RelayConfig.DEFAULT_CORS_ORIGINS` —
+`https://act.io-workshop.localhost`, `https://act.io-workshop.net`, and `http://` `localhost`/`127.0.0.1` on 18020 and
+18030. A malformed value fails startup rather than falling back:
+
+| Variable                 | Meaning                                                              |
+|--------------------------|----------------------------------------------------------------------|
+| `ACT_RELAY_HOST`         | bind address, default `127.0.0.1`                                    |
+| `ACT_RELAY_PORT`         | port, default `18010`                                                |
+| `ACT_RELAY_CORS_ORIGINS` | comma-separated origins (`http(s)://host[:port]`, no path) replacing the defaults |
+| `ACT_RELAY_TRUSTED_PROXIES` | comma-separated CIDRs or bare IPs whose `X-Forwarded-For` is believed; default none (socket address is the client) |
+| `ACT_RELAY_TOKEN_LIMIT_PER_MIN` / `ACT_RELAY_API_LIMIT_PER_MIN` | per-client-IP rate limits, defaults 10 on the token POST and 120 on `/mal/v2/*`; 429 beyond |
+| `ACT_RELAY_MAX_BODY_BYTES` | cap on the token POST and PATCH bodies, default 16384; 413 beyond |
+
+**Every hop in front of the relay must be in `ACT_RELAY_TRUSTED_PROXIES`**, not only the one it talks to. The client
+IP is the right-most `X-Forwarded-For` entry that is not trusted, and behind Caddy behind the edge that header reads
+`client, edge` — so with only the Compose network trusted, the edge's private IP is every user's, and the per-IP rate
+limit becomes one global limit. In prod: the Compose network's CIDR **and** the edge's private IP.
+
 The web target needs `:server` running as well — see [MAL authentication](#mal-authentication).
 
 ### Ports
@@ -31,7 +50,7 @@ unallocated.
 
 | Port  | Service                                              |
 |-------|------------------------------------------------------|
-| 18010 | `:server` — Ktor, MAL relay, loopback only           |
+| 18010 | `:server` — Ktor, MAL relay, loopback unless `ACT_RELAY_HOST` says otherwise |
 | 18020 | `:app:webApp` dev server                             |
 | 18040 | Desktop OAuth callback on `127.0.0.1` — `LoopbackRedirectListener`, bound only while signing in |
 
@@ -43,15 +62,19 @@ listener uses `com.sun.net.httpserver`, which is why `:app:desktopApp` declares
 `nativeDistributions { modules("jdk.httpserver") }` — Compose's default runtime modules do not include it, and the gap
 only shows up in a packaged build.
 
+Production is `https://act.io-workshop.net` — see [Deployment](#deployment). It is not a port; it is the same web
+bundle and relay, one origin, behind an edge proxy.
+
 The port is set in `app/webApp/build.gradle.kts`; everything else about the dev server (host binding, `allowedHosts`,
 the `/mal` proxy, and the `historyApiFallback` that serves the app on `/oauth/callback`) is in
 `app/webApp/webpack.config.d/devserver.js`.
 
-Optionally reachable as `https://mal-ui.localhost` through a local reverse proxy that routes `/mal` to 18010 and everything else to the dev server. Same-origin
-routing is required, not cosmetic — see below. That config lives outside this repo; in Caddy terms it is:
+Optionally reachable as `https://act.io-workshop.localhost` through a local reverse proxy that routes `/mal` to 18010
+and everything else to the dev server. Same-origin routing is required, not cosmetic — see below. That config lives
+outside this repo; in Caddy terms it is:
 
 ```caddyfile
-mal-ui.localhost {
+act.io-workshop.localhost {
 	handle /mal /mal/* {       # first, so the relay is never swallowed by the SPA fallback below
 		reverse_proxy 127.0.0.1:18010
 	}
@@ -65,6 +88,11 @@ The dev server's own `historyApiFallback` covers the SPA deep link on both paths
 its own — but it does need `/mal` matched **first**, or `/mal/...` reaches the dev server and comes back as
 `index.html`. If the app is ever served from a static bundle instead of the dev server, that side needs
 `try_files {path} /index.html` added.
+
+The proxy's origin must also be in `:server`'s CORS allow-list (`RelayConfig.DEFAULT_CORS_ORIGINS`, or
+`ACT_RELAY_CORS_ORIGINS` where that is set), even though relay calls are same-origin: browsers send `Origin` on every
+`POST` and `PATCH`, Ktor's CORS plugin cannot tell a proxied request is same-origin, and an unlisted origin gets an
+empty 403 — the login succeeds and the token exchange then fails.
 
 Tests — there is no single aggregate target that covers everything; each platform has its own task:
 
@@ -144,22 +172,26 @@ which is why there is no BuildKonfig dependency. Resolution, highest precedence 
 
 1. a `mal.clientId` Gradle property — `-Pmal.clientId=...`, or `~/.gradle/gradle.properties` (outside the repo
    entirely),
-2. the `MAL_CLIENT_ID` environment variable,
-3. a `mal.clientId=` line in the gitignored `local.properties` — see `local.properties.example`.
+2. the `MAL_CLIENT_ID` environment variable — which `mise run run:desktop`, `run:web` and `deploy:build` load from the
+   gitignored `.secure.build.env`.
 
 A **set-but-empty** value at any step falls through to the next rather than short-circuiting, so `-Pmal.clientId=` cannot
-silently hide the two sources below it. That order is resolution precedence; the *privacy* preference is the other way
-round — `~/.gradle/gradle.properties` keeps the value out of the repo tree entirely, `local.properties` keeps it out of
-git, and an environment variable ends up in shell history.
+silently hide the source below it. That order is resolution precedence; the *privacy* preference is the other way
+round — `~/.gradle/gradle.properties` keeps the value out of the repo tree entirely, `.secure.build.env` keeps it out of
+git, and an environment variable typed in a shell ends up in shell history.
 
 **`ORG_GRADLE_PROJECT_mal_clientId` does not work** — Gradle maps `ORG_GRADLE_PROJECT_x` to the project property `x`
 verbatim, with no underscore-to-dot conversion, so that name sets `mal_clientId` and nothing reads it. Verified. The
 dotted `ORG_GRADLE_PROJECT_mal.clientId` does work (a shell cannot assign that name, but `env` and most CI secret UIs
 can); `MAL_CLIENT_ID` is the straightforward route for CI.
 
-Set nowhere it is `""` and the app prompts; **a missing value is never a build failure.** Every step is a lazy
+Set nowhere it is `""` and the app prompts; **a missing value does not fail a dev run or a test** (nor a build of anything but a release artifact).
+The exception is a release artifact: `:app:webApp:wasmJsBrowserDistribution` depends on `:core:requireMalClientId`,
+which fails naming the two sources, because that bundle ships to users who cannot be prompted for a build-time
+default. The Android release build is to reuse the same task (play-release 05) rather than add a second check; it
+does not depend on it yet. Every step is a lazy
 `Provider` and the value is declared with `inputs.property`, which is what keeps the task configuration-cache-safe and
-still invalidated when the value changes — reading `local.properties` with `Properties().load(...)` at configuration
+still invalidated when the value changes — reading a file with `Properties().load(...)` at configuration
 time is exactly the trap the Conventions section warns about.
 
 `appModule` is the only place that reads `MAL_CLIENT_ID`. `:core` keeps `MalAuthConfig.clientId` a required parameter on
@@ -170,6 +202,54 @@ List's Layout, `mal.layout.v1`), and `JsonTokenStore.clear()` does **not** drop 
 app, not the user, so signing out must not turn the next sign-in into a retyping exercise. It is written when a
 sign-in actually starts (`beginAuthorization`), not on every keystroke. Neither preference is durable on the web
 targets, where the store is `sessionStorage` and goes with the tab.
+
+## Deployment
+
+The web target ships to `https://act.io-workshop.net`: the production Wasm bundle at `/`, the Relay at `/mal` and
+`privacy.html` at `/privacy`, one origin. Everything is run from the developer's machine; there is no CI. The decisions
+are in `.scratch/web-deploy/spec.md`.
+
+**Path:** browser → the **edge** (existing, outside this repo; terminates TLS and reverse-proxies *everything*, not a
+redirect, to the droplet's private VPC IP over HTTP) → **Caddy** in the `act-web` container (`${PRIVATE_IP}:80`, the only
+published port) → `/mal` to the **relay** container, everything else static with the SPA fallback. Images are
+`$DOCKERHUB_USER/act-web` and `act-relay`, tagged with `act.version` only — no `latest`, and an existing tag is refused,
+so a tag is immutable. `deploy/` holds the Dockerfiles, the Caddyfile, `docker-compose.yml`, `terraform/` and `scripts/`.
+
+**`/mal` must stay same-origin in production too.** MAL sends no CORS headers, so the relay on its own hostname would
+bring the original failure back; the edge must pass `/mal` through with `PATCH` and `Authorization`, and must not add
+`Cross-Origin-Opener-Policy` (see [the popup](#web-sign-in-the-popup-and-two-things-that-must-not-change)).
+
+**Env files:** two, gitignored (`.secure.*.env`), each with a committed `.example` listing every key.
+`.secure.build.env` holds `MAL_CLIENT_ID` and `DOCKERHUB_USER`; `.secure.deploy.env` holds `DIGITALOCEAN_TOKEN`,
+`EDGE_SSH` and the `TF_VAR_*`. **mise reads them, per task** (`env = { _ = { file = ... } }` in `mise.toml`) — never a
+global `[env]` — so the DO token reaches only `infra:*` and `deploy*`; `deploy` and `deploy:status` load the file for
+`EDGE_SSH` and `unset` the token at once (`terraform output` reads local state), and the deploy scripts run Gradle
+through `lib.sh`'s `gradle`, which strips `EDGE_SSH` and every `TF_VAR_*` as well. Gradle picks `MAL_CLIENT_ID` up
+from the environment itself, so `run:desktop` and `run:web` are prefilled with it (`run:server` loads nothing); plain
+`./gradlew` outside mise does not read these files. `docker login` is done once by hand.
+The Client ID ends up in plain text in a public image, deliberately: it is equally public in `webApp.js`.
+
+| Task                                              | Does                                                                                                                                        |
+|---------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| `mise run run:desktop` / `run:server` / `run:web` | the Commands above; the two clients with `.secure.build.env` loaded                                                                         |
+| `mise run infra:plan` / `infra:apply`             | Terraform (`deploy/terraform/`), by hand — never from a deploy; a replaced droplet moves its private IP, so the edge's upstream must follow |
+| `mise run deploy:build`                           | `wasmJsBrowserDistribution` + `installDist`, then both images (`linux/amd64`)                                                               |
+| `mise run deploy:push`                            | pushes both; refuses if either tag exists on Docker Hub                                                                                     |
+| `mise run deploy [version]`                       | the whole path below                                                                                                                        |
+| `mise run deploy:status`                          | `ACT_VERSION` and `docker compose ps` on the droplet                                                                                        |
+
+`deploy`: refuses a dirty tree; runs `:server:test` and `:app:shared:wasmJsTest`; builds and pushes; copies
+`docker-compose.yml` and writes the droplet's `.env` over `ssh -J $EDGE_SSH deploy@<terraform output private_ip>`;
+`pull`, `up -d`, waits for both healthchecks; prunes images other than the current and previous version; then smoke-tests
+through the edge (`deploy/scripts/smoke.sh`: the SPA fallback, `/webApp.js` is JS, `/privacy`, a bogus-bearer call to
+`/mal/v2/anime` is MAL's **401** — an anonymous one is 403 — and no COOP anywhere).
+
+**Rollback:** on any failure once it reaches the droplet, `deploy` prints `mise run deploy <previous-version>` and
+exits non-zero (a failure in the tests, build or push has deployed nothing, and just exits non-zero); it never rolls
+back by itself. A version argument other than `act.version` skips tests, build and push and redeploys that tag.
+
+The relay's trusted proxies in `docker-compose.yml` are the Compose network (pinned to `172.29.0.0/24`) **and** the edge's
+private IP — both hops, as the table under [Commands](#commands) explains.
 
 ## Architecture
 
@@ -310,6 +390,7 @@ Four things in `app/androidApp/src/main/AndroidManifest.xml` are each a silent f
 
 ## Conventions
 
+- **The product version is `act.version` in `gradle.properties`** — `:server`'s `version` and Android's `versionName` read it via `providers.gradleProperty`. Shell tasks read it without Gradle: `grep '^act.version=' gradle.properties | cut -d= -f2`. `versionCode` is separate.
 - **All dependency and plugin versions live in `gradle/libs.versions.toml`.** Build scripts reference `libs.*` aliases only — never inline a version string in a `build.gradle.kts`.
 - Java toolchain is 21 (auto-provisioned via the foojay resolver / `gradle/gradle-daemon-jvm.properties`); Android and Android-KMP modules compile to **JVM target 11**.
 - Gradle configuration cache and build cache are enabled in `gradle.properties`. Build logic that reads state at execution time will fail configuration-cache validation.
@@ -318,8 +399,8 @@ Four things in `app/androidApp/src/main/AndroidManifest.xml` are each a silent f
 
 ### Issue tracker
 
-Issues live as markdown files under `.scratch/<feature>/` — this repo has no git remote. See
-`docs/agents/issue-tracker.md`.
+Issues live as markdown files under `.scratch/<feature>/`, not on GitHub — the remote (`github.com/MustD/act`) hosts
+the code, and its public Issues page is only the privacy policy's contact. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

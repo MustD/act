@@ -13,31 +13,33 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 
-/** Bound to loopback only: the relay forwards credentials upstream and is a dev tool. */
-private const val PORT = 18010
-
+/** Loopback unless `ACT_RELAY_HOST` says otherwise: the relay forwards credentials upstream. */
 fun main() {
-    embeddedServer(Netty, port = PORT, host = "127.0.0.1", module = Application::module)
-        .start(wait = true)
+    val config = RelayConfig.fromEnv()
+    embeddedServer(Netty, port = config.port, host = config.host) {
+        module(config = config)
+    }.start(wait = true)
 }
 
 fun Application.module(
     relayClient: HttpClient = HttpClient(CIO) { expectSuccess = false },
+    config: RelayConfig = RelayConfig(),
 ) {
-    // Not load-bearing in normal use: both the reverse proxy and the webpack dev server
-    // route `/mal` to this server on the page's own origin, so relay calls are same-origin.
-    // Kept as a fallback for hitting the relay directly from another origin.
+    // Load-bearing even though relay calls are same-origin: browsers send `Origin` on every
+    // POST and PATCH, and behind a reverse proxy this plugin cannot tell that origin is the
+    // page's own, so it answers an unlisted one with an empty 403. Every hostname the app is
+    // served on must be listed here, or the token exchange fails after a successful login.
     install(CORS) {
         allowMethod(HttpMethod.Get)
         allowMethod(HttpMethod.Post)
         allowMethod(HttpMethod.Patch)
         allowHeader(HttpHeaders.ContentType)
         allowHeader(HttpHeaders.Authorization)
-        allowHost("mal-ui.localhost", schemes = listOf("https"))
-        allowHost("js.mal-ui.localhost", schemes = listOf("https"))
-        listOf(18020, 18030).forEach { port ->
-            allowHost("localhost:$port")
-            allowHost("127.0.0.1:$port")
+        config.corsOrigins.forEach { origin ->
+            allowHost(
+                origin.substringAfter("://"),
+                schemes = listOf(origin.substringBefore("://")),
+            )
         }
     }
     routing {
@@ -46,6 +48,6 @@ fun Application.module(
         get("/") {
             call.respondText("mal_ui relay")
         }
-        malRelay(this, relayClient)
+        malRelay(this, relayClient, config)
     }
 }

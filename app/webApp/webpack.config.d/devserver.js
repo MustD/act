@@ -11,11 +11,11 @@ if (config.devServer) {
 
     // A leading dot allows the host and all its subdomains. Without this the dev server
     // answers `Invalid Host header` to anything but localhost, so requests arriving via
-    // https://mal-ui.localhost never reach the app.
+    // https://act.io-workshop.localhost never reach the app.
     config.devServer.allowedHosts = ['.localhost'];
 
     // Keep the MAL relay same-origin when the app is opened on the dev-server port
-    // directly, mirroring what Caddy does for mal-ui.localhost. MyAnimeList sends no
+    // directly, mirroring what Caddy does for act.io-workshop.localhost. MyAnimeList sends no
     // CORS headers, so anything cross-origin is blocked by the browser before it is sent.
     // Harmless behind the proxy: Caddy claims /mal before it reaches the dev server.
     config.devServer.proxy = [
@@ -44,6 +44,9 @@ if (config.devServer) {
     config.devServer.historyApiFallback = {
         index: '/index.html',
         disableDotRule: false,
+        // /privacy is the static privacy.html. Extension-less like the callback, so without this the
+        // fallback answers it with the app's index.html. Prod does the same in the Caddyfile.
+        rewrites: [{ from: /^\/privacy\/?$/, to: '/privacy.html' }],
     };
 
     // DO NOT add Cross-Origin-Opener-Policy: same-origin here, or to :server, or to the reverse
