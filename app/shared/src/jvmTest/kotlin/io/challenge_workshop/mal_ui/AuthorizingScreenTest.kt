@@ -3,6 +3,9 @@
 package io.challenge_workshop.mal_ui
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
@@ -112,6 +115,25 @@ class AuthorizingScreenTest {
                 )
             }
 
+            onNodeWithText("Complete sign-in").assertIsDisplayed()
+        }
+    }
+
+    /** The normal case at runtime: the page is already up, the user closed the section, and a new error arrives. */
+    @Test
+    fun the_trouble_section_reopens_when_a_different_error_replaces_one_already_seen() {
+        runComposeUiTest {
+            var state by mutableStateOf(authorizing())
+            setContent { SessionRoute(state, RecordedActions().actions) }
+            onNodeWithText("Complete sign-in").assertDoesNotExist()
+
+            state = authorizing(signIn = SignInState(phase = SignInPhase.Failed("The sign-in timed out")))
+            onNodeWithText("Complete sign-in").assertIsDisplayed()
+
+            onNodeWithText("Having trouble?").performClick()
+            onNodeWithText("Complete sign-in").assertDoesNotExist()
+
+            state = authorizing(signIn = SignInState(phase = SignInPhase.Failed("Port 18040 is taken")))
             onNodeWithText("Complete sign-in").assertIsDisplayed()
         }
     }

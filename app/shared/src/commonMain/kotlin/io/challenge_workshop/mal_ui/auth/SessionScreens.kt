@@ -88,8 +88,9 @@ fun AuthorizingScreen(
     modifier: Modifier = Modifier,
 ) {
     var troubleOpen by rememberSaveable { mutableStateOf(false) }
-    val hasError = state.signInError != null
-    LaunchedEffect(hasError) { if (hasError) troubleOpen = true }
+    // Keyed on the error itself, not on whether there is one: a different error replacing one the
+    // user already closed the section on reopens it.
+    LaunchedEffect(state.signInError) { if (state.signInError != null) troubleOpen = true }
 
     ScreenColumn(modifier) {
         Text("Waiting for MyAnimeList…", style = MaterialTheme.typography.headlineSmall)
