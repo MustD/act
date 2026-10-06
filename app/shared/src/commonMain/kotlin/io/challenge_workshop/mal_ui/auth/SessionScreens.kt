@@ -36,6 +36,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,12 +69,17 @@ fun RestoringScreen(modifier: Modifier = Modifier) {
 }
 
 /**
- * The user is away on myanimelist.net.
+ * The waiting page: the user is away on myanimelist.net.
  *
- * Paste-the-code stays visible throughout rather than appearing only on failure. It is the one
- * mechanism that works headless, behind a blocked popup, and with no Custom-Tabs browser, so it is a
- * modelled path — and the authorization URL has to be reachable by hand because no platform's
- * browser-opening call reliably reports whether it worked.
+ * Paste-the-code is collapsed under "Having trouble?" because it is needed only when the Redirect
+ * Capture fails, and it is still always reachable. It is the one mechanism that works headless,
+ * behind a blocked popup, and with no Custom-Tabs browser, so it is a modelled path — and the
+ * authorization URL has to be reachable by hand because no platform's browser-opening call reliably
+ * reports whether it worked.
+ *
+ * Open or closed is this composable's own state, not [ScreenState]'s. It opens by itself whenever a
+ * sign-in error is shown, including a capture that failed outright (desktop port 18040 taken), since
+ * that is exactly when the fallback is wanted.
  */
 @Composable
 fun AuthorizingScreen(
@@ -81,59 +87,70 @@ fun AuthorizingScreen(
     actions: AuthorizingActions,
     modifier: Modifier = Modifier,
 ) {
+    var troubleOpen by rememberSaveable { mutableStateOf(false) }
+    val hasError = state.signInError != null
+    LaunchedEffect(hasError) { if (hasError) troubleOpen = true }
+
     ScreenColumn(modifier) {
         Text("Waiting for MyAnimeList…", style = MaterialTheme.typography.headlineSmall)
+        LinearProgressIndicator(Modifier.fillMaxWidth())
         Text(
-            "Approve access in the browser. If you land on a page that will not load, copy the whole " +
-                "address from the address bar and paste it below.",
+            "Finish signing in in the browser window that opened.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        LinearProgressIndicator(Modifier.fillMaxWidth())
-
-        @Suppress("DEPRECATION")
-        // `LocalClipboard` supersedes this, but its `ClipEntry` has no common constructor from text
-        // in Compose 1.11 — a copy button through it would need three actuals to write a string.
-        val clipboard = LocalClipboardManager.current
-        OutlinedTextField(
-            value = state.authorizationUrl,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text("Authorization URL") },
-            modifier = Modifier.fillMaxWidth(),
-            supportingText = { Text("Didn't open? Copy this and paste it into a browser.") },
-            // Selecting a long URL out of a text field by hand is exactly the friction that makes
-            // people give up on the fallback, and the fallback is the only mechanism that always
-            // works. Never logged: under `plain` PKCE the code verifier is inside this string.
-            trailingIcon = {
-                TextButton(onClick = { clipboard.setText(AnnotatedString(state.authorizationUrl)) }) {
-                    Text("Copy")
-                }
-            },
-        )
-
-        HorizontalDivider()
-
-        OutlinedTextField(
-            value = state.signIn.pastedRedirect,
-            onValueChange = actions.onPastedRedirectChange,
-            label = { Text("Redirect URL or authorization code") },
-            enabled = !state.signIn.busy,
-            minLines = 2,
-            modifier = Modifier.fillMaxWidth(),
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Button(onClick = actions.onCompleteSignIn, enabled = state.signIn.canComplete) {
-                Text("Complete sign-in")
-            }
             TextButton(onClick = actions.onCancelSignIn, enabled = !state.signIn.busy) { Text("Cancel") }
             if (state.signIn.busy) CircularProgressIndicator(Modifier.padding(4.dp))
         }
 
         state.signInError?.let { ErrorCard("Could not complete the sign-in", it.withRelayAdvice()) }
+
+        HorizontalDivider()
+        TextButton(onClick = { troubleOpen = !troubleOpen }) { Text("Having trouble?") }
+        if (troubleOpen) {
+            Text(
+                "If you land on a page that will not load, copy the whole address from the address bar " +
+                    "and paste it below.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            @Suppress("DEPRECATION")
+            // `LocalClipboard` supersedes this, but its `ClipEntry` has no common constructor from text
+            // in Compose 1.11 — a copy button through it would need three actuals to write a string.
+            val clipboard = LocalClipboardManager.current
+            OutlinedTextField(
+                value = state.authorizationUrl,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Authorization URL") },
+                modifier = Modifier.fillMaxWidth(),
+                supportingText = { Text("Didn't open? Copy this and paste it into a browser.") },
+                // Selecting a long URL out of a text field by hand is exactly the friction that makes
+                // people give up on the fallback, and the fallback is the only mechanism that always
+                // works. Never logged: under `plain` PKCE the code verifier is inside this string.
+                trailingIcon = {
+                    TextButton(onClick = { clipboard.setText(AnnotatedString(state.authorizationUrl)) }) {
+                        Text("Copy")
+                    }
+                },
+            )
+            OutlinedTextField(
+                value = state.signIn.pastedRedirect,
+                onValueChange = actions.onPastedRedirectChange,
+                label = { Text("Redirect URL or authorization code") },
+                enabled = !state.signIn.busy,
+                minLines = 2,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Button(onClick = actions.onCompleteSignIn, enabled = state.signIn.canComplete) {
+                Text("Complete sign-in")
+            }
+        }
     }
 }
 

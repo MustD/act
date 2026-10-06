@@ -131,9 +131,11 @@ class WelcomeScreenTest {
                     opened.toList() == listOf(authorizationUrl)
                 }
 
-                // Paste-the-code stays reachable throughout: the URL is on screen to copy by hand,
-                // since no platform's browser-opening call reliably reports whether it worked.
+                // Paste-the-code is collapsed but always reachable: one tap puts the URL on screen to
+                // copy by hand, since no platform's browser-opening call reliably reports whether it
+                // worked.
                 onNodeWithTag(SessionScreenTag.Authorizing.tag).assertIsDisplayed()
+                onNodeWithText("Having trouble?").performClick()
                 onNodeWithText(authorizationUrl).assertIsDisplayed()
                 onNodeWithText("Redirect URL or authorization code").assertIsDisplayed()
 
