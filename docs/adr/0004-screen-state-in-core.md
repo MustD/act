@@ -77,7 +77,7 @@ the same one-implementation seam that kept a `(PendingAuthorization) -> String` 
   Anime Page history later
   made it seven ([ADR-0006](0006-anime-page-history-in-screen-state.md)).
 - The rendering tests build their state as a literal. The one exception is
-  `SignInScreenTest.signing_in_arms_this_targets_capture_and_still_offers_paste_the_code`, which binds 18040 on purpose
+  `WelcomeScreenTest.signing_in_arms_this_targets_capture_and_still_offers_paste_the_code`, which binds 18040 on purpose
   because the stack is what it asserts.
 - `ScreenState::class.sealedSubclasses` is jvm-only reflection, so the *enumeration* against `SessionState` lives in
   `:core`'s `jvmTest` while the mapping it guards runs on all three Targets.
