@@ -89,20 +89,13 @@ fun SignInScreen(
             modifier = Modifier.testTag(SIGNED_OUT_REASON_TAG),
         )
 
-        OutlinedTextField(
-            value = state.signIn.clientId,
-            onValueChange = actions.onClientIdChange,
-            label = { Text("Client ID") },
-            singleLine = true,
-            enabled = !state.signIn.busy,
-            modifier = Modifier.fillMaxWidth(),
-            supportingText = {
-                Text(
-                    "From myanimelist.net/apiconfig. Prefilled from the last one used on this " +
-                            "device, or from the build's `mal.clientId`.",
-                )
-            },
-        )
+        if (state.signIn.clientIdMissing) {
+            Text(
+                "This build has no Client ID, so signing in is unavailable.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
 
         if (state.routing.usesRelay) {
             Text(

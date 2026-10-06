@@ -1,5 +1,6 @@
 package io.challenge_workshop.mal_ui.auth
 
+import io.challenge_workshop.mal_ui.mal.MalAuthConfig
 import io.challenge_workshop.mal_ui.session.FakeKeyValueStore
 import io.challenge_workshop.mal_ui.session.FakeMal
 import io.challenge_workshop.mal_ui.session.JsonTokenStore
@@ -193,7 +194,7 @@ class SignInTest {
         channel.deliver(AuthRedirectResult.Received("$REDIRECT_URI?code=the-code&state=${pending.state}"))
 
         awaitSignedIn()
-        assertEquals(SignInState(clientId = TEST_CONFIG.clientId), signIn.state.value)
+        assertEquals(SignInState(), signIn.state.value)
     }
 
     @Test
@@ -361,12 +362,8 @@ class SignInTest {
     // ---- the form ----
 
     @Test
-    fun a_failure_is_cleared_by_the_next_keystroke_paste_or_start() = signInTest {
+    fun a_failure_is_cleared_by_the_next_paste_or_start() = signInTest {
         fun fail() = signIn.start(RecordingAuthRedirectChannel(armResult = ArmResult.Failed("no")), openUri = {})
-
-        fail()
-        signIn.setClientId("typed")
-        assertEquals(SignInPhase.Idle, signIn.state.value.phase)
 
         fail()
         signIn.setPastedRedirect("x")
@@ -378,36 +375,18 @@ class SignInTest {
     }
 
     @Test
-    fun the_client_id_field_is_prefilled_from_the_build_time_default() = signInTest {
-        assertEquals(TEST_CONFIG.clientId, signIn.state.value.clientId)
+    fun a_build_with_a_client_id_can_start_signing_in() = signInTest {
+        assertFalse(signIn.state.value.clientIdMissing)
+        assertTrue(signIn.state.value.canStart)
     }
 
     @Test
-    fun a_client_id_remembered_from_a_previous_launch_replaces_the_prefill() = signInTest(
-        seed = { store.writeClientId("remembered-on-this-device") },
-    ) {
-        // Read from the store, so it cannot be in the config when this object is constructed — the
-        // field has to be re-synced once `restore()` has settled it.
-        assertEquals("remembered-on-this-device", signIn.state.value.clientId)
-    }
-
-    @Test
-    fun editing_the_client_id_reaches_the_repository_config() = signInTest {
-        signIn.setClientId("  typed-by-hand  ")
-
-        assertEquals("typed-by-hand", repository.config.value.clientId)
-    }
-
-    @Test
-    fun signing_in_is_blocked_until_a_client_id_is_present() = signInTest {
-        signIn.setClientId("")
+    fun signing_in_is_blocked_when_the_build_has_no_client_id() = signInTest(config = TEST_CONFIG.copy(clientId = "")) {
+        assertTrue(signIn.state.value.clientIdMissing)
         assertFalse(signIn.state.value.canStart)
 
         signIn.start(RecordingAuthRedirectChannel(), openUri = {})
         assertEquals(SignInPhase.Idle, signIn.state.value.phase, "start() without a Client ID must do nothing")
-
-        signIn.setClientId("something")
-        assertTrue(signIn.state.value.canStart)
     }
 
     // ---- startup ----
@@ -519,6 +498,7 @@ class SignInTest {
         holdExchange: Boolean,
         malConnectionDrops: Int = 0,
         tokenResponse: RefreshResponse = RefreshResponse.Rotated("fresh-access", "fresh-refresh"),
+        config: MalAuthConfig = TEST_CONFIG,
     ) {
         val store = JsonTokenStore(FakeKeyValueStore())
 
@@ -526,7 +506,7 @@ class SignInTest {
         val releaseExchange = CompletableDeferred<Unit>().also { if (!holdExchange) it.complete(Unit) }
         val repository = MalSessionRepository(
             store = store,
-            initialConfig = TEST_CONFIG,
+            initialConfig = config,
             clientFactory = FakeMal(
                 refreshResponse = tokenResponse,
                 releaseRefresh = releaseExchange,
@@ -577,6 +557,7 @@ class SignInTest {
     }
 
     private fun signInTest(
+        config: MalAuthConfig = TEST_CONFIG,
         seed: suspend Fixture.() -> Unit = {},
         startup: (Fixture.() -> LaunchRedirect?)? = null,
         holdExchange: Boolean = false,
@@ -584,7 +565,7 @@ class SignInTest {
         tokenResponse: RefreshResponse = RefreshResponse.Rotated("fresh-access", "fresh-refresh"),
         block: suspend Fixture.() -> Unit,
     ) = runTest {
-        val fixture = Fixture(this, holdExchange, malConnectionDrops, tokenResponse)
+        val fixture = Fixture(this, holdExchange, malConnectionDrops, tokenResponse, config)
         try {
             fixture.seed()
             fixture.launch(startup)

@@ -71,7 +71,7 @@ internal val TEST_ROUTING = MalRouting(
 internal fun signedOut(
     reason: SignedOutReason = SignedOutReason.NeverSignedIn,
     error: String? = null,
-    signIn: SignInState = SignInState(clientId = "a-client-id"),
+    signIn: SignInState = SignInState(),
     errorRelayHint: Boolean = false,
     signInRelayHint: Boolean = false,
 ) = ScreenState.SignedOut(
@@ -84,7 +84,7 @@ internal fun signedOut(
 
 internal fun authorizing(
     authorizationUrl: String = TEST_AUTHORIZATION_URL,
-    signIn: SignInState = SignInState(clientId = "a-client-id"),
+    signIn: SignInState = SignInState(),
     relayHint: Boolean = false,
 ) = ScreenState.Authorizing(
     authorizationUrl = authorizationUrl,
@@ -184,7 +184,6 @@ internal const val TEST_AUTHORIZATION_URL: String =
  */
 internal class RecordedActions {
     val calls: MutableList<String> = mutableListOf()
-    val clientIds: MutableList<String> = mutableListOf()
     val pastes: MutableList<String> = mutableListOf()
     val watchStatuses: MutableList<WatchStatus?> = mutableListOf()
     val sortOrders: MutableList<AnimeListSortOrder> = mutableListOf()
@@ -196,7 +195,6 @@ internal class RecordedActions {
 
     val actions: ScreenActions = ScreenActions(
         signIn = SignInActions(
-            onClientIdChange = { clientIds += it; calls += "clientIdChange" },
             onSignIn = { calls += "signIn" },
         ),
         authorizing = AuthorizingActions(

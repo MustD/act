@@ -100,11 +100,6 @@ class MalSessionRepository(
 
     private fun authenticatedApi() = MalAuthClient(_config.value, authenticatedHttp, ownsHttpClient = false)
 
-    /** Replaces the Client ID, which the user types at runtime. */
-    fun useClientId(clientId: String) {
-        _config.update { it.copy(clientId = clientId.trim()) }
-    }
-
     /**
      * Reads the store and settles on a state. Optimistic by design — **never an eager refresh**.
      *
@@ -122,11 +117,9 @@ class MalSessionRepository(
      * ```
      */
     suspend fun restore() {
-        // Before any state is settled, because the Client ID is what every path out of here needs:
-        // resuming an authorization, and minting a new one. Precedence is remembered-then-build-time,
-        // and `readClientId` has already discarded a blank, so a device with nothing remembered keeps
-        // whatever the build put in [initialConfig].
-        store.readClientId()?.let { remembered -> _config.update { it.copy(clientId = remembered) } }
+        // A Client ID remembered by an earlier build would otherwise sit in the store for good, read
+        // by nothing. Removing an absent key is a no-op, so this needs no "already done" marker.
+        store.discardLegacyClientId()
 
         val pending = store.readPending()
         if (pending != null) {
@@ -149,16 +142,11 @@ class MalSessionRepository(
      * destroy memory — Android process death while parked behind a browser, and the web full-page
      * redirect — and the previous in-memory version failed silently when either happened.
      *
-     * The Client ID is also remembered here, so the next launch prefills it. This is the first moment
-     * it is committed to rather than merely typed, and it is deliberately not written on every
-     * keystroke: a value the user never got as far as signing in with is not worth carrying forward.
-     *
      * @return the authorization URL to send the user to. Never logged: under `plain` PKCE the code
      * verifier travels inside it.
      */
     suspend fun beginAuthorization(): String {
         val request = tokenApi().beginAuthorization()
-        store.writeClientId(_config.value.clientId)
         val pending = store.writePending(
             codeVerifier = request.codeVerifier,
             state = request.state,

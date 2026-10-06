@@ -61,7 +61,7 @@ class AuthorizingScreenTest {
         runComposeUiTest {
             setContent {
                 SessionRoute(
-                    authorizing(signIn = SignInState(clientId = "a-client-id", pastedRedirect = "half a")),
+                    authorizing(signIn = SignInState(pastedRedirect = "half a")),
                     actions.actions,
                 )
             }

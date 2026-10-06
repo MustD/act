@@ -205,66 +205,21 @@ class JsonTokenStoreTest {
         val store = store(kv)
         store.writeSession(TOKENS, USER)
         store.writePending("v", "s", "r", "c")
-        store.writeClientId("a-client-id")
         store.writeLayout(AnimeListLayout.List)
 
         assertTrue(kv.entries.keys.all { it.endsWith(".v1") }, "keys were ${kv.entries.keys}")
     }
 
     @Test
-    fun a_client_id_round_trips_unchanged() = runTest {
-        val store = store(FakeKeyValueStore())
-
-        store.writeClientId("a-client-id")
-
-        assertEquals("a-client-id", store.readClientId())
-    }
-
-    @Test
-    fun a_blank_client_id_is_written_as_absent() = runTest {
-        val kv = FakeKeyValueStore()
+    fun discarding_the_legacy_client_id_removes_the_old_record_and_nothing_else() = runTest {
+        val kv = FakeKeyValueStore(mutableMapOf(JsonTokenStore.CLIENT_ID_KEY to "\"typed-by-the-user\""))
         val store = store(kv)
-        store.writeClientId("a-client-id")
+        store.writeLayout(AnimeListLayout.List)
 
-        // Clearing the field is how a user drops a remembered Client ID, and an empty string
-        // remembered as a value would then beat the build-time default forever.
-        store.writeClientId("   ")
+        store.discardLegacyClientId()
 
-        assertNull(store.readClientId())
         assertTrue(JsonTokenStore.CLIENT_ID_KEY !in kv.entries)
-    }
-
-    @Test
-    fun a_blank_stored_client_id_reads_as_absent() = runTest {
-        // Nothing this store writes can be blank, but a hand-edited desktop file or an older build
-        // could leave one, and a blank that read as a value would beat the build-time default.
-        val kv = FakeKeyValueStore(mutableMapOf(JsonTokenStore.CLIENT_ID_KEY to "\"  \""))
-
-        assertNull(store(kv).readClientId())
-    }
-
-    @Test
-    fun a_corrupt_client_id_blob_is_treated_as_absent_and_removed() = runTest {
-        val kv = FakeKeyValueStore(mutableMapOf(JsonTokenStore.CLIENT_ID_KEY to "{not json"))
-        val store = store(kv)
-
-        assertNull(store.readClientId())
-        assertTrue(JsonTokenStore.CLIENT_ID_KEY !in kv.entries)
-    }
-
-    @Test
-    fun clear_keeps_the_client_id() = runTest {
-        val kv = FakeKeyValueStore()
-        val store = store(kv)
-        store.writeSession(TOKENS, USER)
-        store.writePending("v", "s", "r", "c")
-        store.writeClientId("a-client-id")
-
-        store.clear()
-
-        // The Client ID identifies the *app*, not the user: signing out, or a rejected refresh,
-        // must not make the next sign-in a retyping exercise.
-        assertEquals("a-client-id", store.readClientId())
+        assertEquals(AnimeListLayout.List, store.readLayout())
     }
 
     @Test

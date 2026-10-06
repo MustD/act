@@ -28,13 +28,14 @@ sealed interface SignInPhase {
 }
 
 /**
- * The ephemeral half of signing in: what is typed, and where the attempt is.
+ * The ephemeral half of signing in: what is pasted, and where the attempt is.
  *
  * Held by the process-scoped [SignIn], so a configuration change keeps it (ADR-0005). Losing it to
  * process death is correct — everything durable belongs to `MalSessionRepository`.
  */
 data class SignInState(
-    val clientId: String = "",
+    /** The build carries no Client ID, so a Sign-in cannot start; the welcome page says why. */
+    val clientIdMissing: Boolean = false,
     val pastedRedirect: String = "",
     val phase: SignInPhase = SignInPhase.Idle,
 ) {
@@ -45,10 +46,10 @@ data class SignInState(
     val error: String? get() = (phase as? SignInPhase.Failed)?.message
 
     /**
-     * Signing in needs a Client ID and nothing else in flight. Allowed during
+     * Signing in needs the build's Client ID and nothing else in flight. Allowed during
      * [SignInPhase.AwaitingRedirect]: starting again ends the first attempt.
      */
-    val canStart: Boolean get() = clientId.isNotBlank() && !busy
+    val canStart: Boolean get() = !clientIdMissing && !busy
 
     /** Paste-the-code needs something pasted and nothing else in flight. */
     val canComplete: Boolean get() = pastedRedirect.isNotBlank() && !busy

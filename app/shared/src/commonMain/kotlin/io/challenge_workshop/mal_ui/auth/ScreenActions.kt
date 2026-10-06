@@ -46,7 +46,6 @@ data class ScreenActions(
  */
 @Immutable
 data class SignInActions(
-    val onClientIdChange: (String) -> Unit,
     val onSignIn: () -> Unit,
 )
 
@@ -133,7 +132,6 @@ internal fun screenActions(
     openUri: (String) -> Unit,
 ): ScreenActions = ScreenActions(
     signIn = SignInActions(
-        onClientIdChange = signIn::setClientId,
         // Straight through, with no `launch` between the click and the channel: a web popup's user
         // activation is a timestamp window and WebKit's is one second wide.
         onSignIn = { signIn.start(channel, openUri) },

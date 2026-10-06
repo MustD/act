@@ -142,8 +142,9 @@ class ScreenStateSourceTest {
     /**
      * The Pending Authorization's own Client ID wins over whatever is in the config now.
      *
-     * A user who mistyped a Client ID, went to MAL and came back to correct it would otherwise be
-     * offered a URL for the *new* one — which MAL would reject against a code minted under the old.
+     * A user who started signing in, updated the app to a build with another Client ID and came
+     * back would otherwise be offered a URL for the *new* one — which MAL would reject against a code
+     * minted under the old.
      */
     @Test
     fun the_authorization_url_uses_the_client_id_the_sign_in_started_with() {
@@ -284,7 +285,7 @@ class ScreenStateSourceTest {
      */
     @Test
     fun each_screen_reads_its_own_input() {
-        signIn.value = SignInState(clientId = "typed", phase = SignInPhase.Failed("boom"))
+        signIn.value = SignInState(phase = SignInPhase.Failed("boom"))
         controls.value = SessionControlsState(operation = SessionOperation.Failed("sign-out broke"))
 
         session.value = SessionState.SignedOut(SignedOutReason.NeverSignedIn)
@@ -308,14 +309,14 @@ class ScreenStateSourceTest {
      * available while the user is away — that is a rule in the type.
      */
     @Test
-    fun a_blank_client_id_blocks_signing_in_and_a_blank_paste_blocks_completing_it() {
+    fun a_missing_client_id_blocks_signing_in_and_a_blank_paste_blocks_completing_it() {
         val busy = listOf(SignInPhase.Arming, SignInPhase.Exchanging)
         val free = listOf(SignInPhase.Idle, SignInPhase.AwaitingRedirect, SignInPhase.Failed("x"))
 
-        assertEquals(false, SignInState(clientId = "  ").canStart)
-        assertEquals(true, SignInState(clientId = "a").canStart)
-        busy.forEach { assertEquals(false, SignInState(clientId = "a", phase = it).canStart, "$it") }
-        free.forEach { assertEquals(true, SignInState(clientId = "a", phase = it).canStart, "$it") }
+        assertEquals(false, SignInState(clientIdMissing = true).canStart)
+        assertEquals(true, SignInState().canStart)
+        busy.forEach { assertEquals(false, SignInState(phase = it).canStart, "$it") }
+        free.forEach { assertEquals(true, SignInState(phase = it).canStart, "$it") }
 
         assertEquals(false, SignInState(pastedRedirect = " ").canComplete)
         assertEquals(true, SignInState(pastedRedirect = "x").canComplete)

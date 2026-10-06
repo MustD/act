@@ -170,19 +170,6 @@ class SignInScreenTest {
         }
     }
 
-    /** The Client ID field is the source of truth for the Client ID, and it reaches the Sign-in. */
-    @Test
-    fun the_client_id_field_reports_what_is_typed_into_it() {
-        val actions = RecordedActions()
-        runComposeUiTest {
-            setContent { SessionRoute(signedOut(), actions.actions) }
-
-            onNodeWithText("a-client-id").performTextReplacement("another-client-id")
-
-            assertEquals(listOf("another-client-id"), actions.clientIds)
-        }
-    }
-
     /** `:core` decides the failure looks like a dead relay; the screen appends the advice. */
     @Test
     fun the_relay_advice_appears_only_when_the_state_says_so() {
@@ -206,7 +193,7 @@ class SignInScreenTest {
                 SessionRoute(
                     signedOut(
                         error = "invalid_grant",
-                        signIn = SignInState(clientId = "a-client-id", phase = SignInPhase.Failed("Failed to fetch")),
+                        signIn = SignInState(phase = SignInPhase.Failed("Failed to fetch")),
                         signInRelayHint = true,
                     ),
                     RecordedActions().actions,

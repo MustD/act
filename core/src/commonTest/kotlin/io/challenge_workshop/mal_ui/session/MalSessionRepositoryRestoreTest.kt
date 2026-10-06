@@ -221,17 +221,7 @@ class MalSessionRepositoryRestoreTest {
     }
 
     @Test
-    fun a_remembered_client_id_replaces_the_build_time_default_on_restore() = runTest {
-        val f = Fixture(MalAuthConfig(clientId = "from-the-build"))
-        f.store.writeClientId("typed-by-the-user")
-
-        f.repository.restore()
-
-        assertEquals("typed-by-the-user", f.repository.config.value.clientId)
-    }
-
-    @Test
-    fun with_nothing_remembered_the_build_time_default_survives_restore() = runTest {
+    fun restore_keeps_the_build_time_client_id() = runTest {
         val f = Fixture(MalAuthConfig(clientId = "from-the-build"))
 
         f.repository.restore()
@@ -240,14 +230,13 @@ class MalSessionRepositoryRestoreTest {
     }
 
     @Test
-    fun a_remembered_client_id_survives_a_restore_that_finds_no_session() = runTest {
-        // The Client ID identifies the app, not the user: it outlives every Session on the device.
-        val f = Fixture()
-        f.store.writeClientId("typed-by-the-user")
+    fun restore_ignores_and_removes_a_client_id_an_earlier_build_remembered() = runTest {
+        val f = Fixture(MalAuthConfig(clientId = "from-the-build"))
+        f.kv.write(JsonTokenStore.CLIENT_ID_KEY, "\"typed-by-the-user\"")
 
         f.repository.restore()
 
-        assertEquals(SessionState.SignedOut(SignedOutReason.NeverSignedIn), f.repository.state.value)
-        assertEquals("typed-by-the-user", f.repository.config.value.clientId)
+        assertEquals("from-the-build", f.repository.config.value.clientId)
+        assertTrue(JsonTokenStore.CLIENT_ID_KEY !in f.kv.entries)
     }
 }
