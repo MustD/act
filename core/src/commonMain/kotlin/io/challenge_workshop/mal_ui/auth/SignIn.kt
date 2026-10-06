@@ -43,7 +43,7 @@ class SignIn(
 ) {
 
     /**
-     * The form. The Client ID is the build's `mal.clientId` and nothing else; a build without one is
+     * What the welcome page's button and the waiting page show. The Client ID is the build's `mal.clientId` and nothing else; a build without one is
      * reported as [SignInState.clientIdMissing] rather than prompted for.
      *
      * There is deliberately no Client Secret field. `MalAuthConfig.clientSecret` stays, because it is

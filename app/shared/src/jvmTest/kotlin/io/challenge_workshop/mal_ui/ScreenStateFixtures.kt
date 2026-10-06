@@ -56,8 +56,8 @@ import io.challenge_workshop.mal_ui.session.SignedOutReason
  * nothing to assert about it that a literal could stand in for.
  *
  * **What is *not* here is as deliberate.** Nothing in this file decides anything. Which screen a
- * Session produces, what a filter or a Sort Order change produces, and what the four Signed Out
- * Reasons say are all `ScreenStateSourceTest`'s, in `:core`, on every Target. These fixtures only
+ * Session produces, what a filter or a Sort Order change produces, and what each Signed Out
+ * Reason says — `NeverSignedIn` nothing — are all `ScreenStateSourceTest`'s, in `:core`, on every Target. These fixtures only
  * say what a screen is handed.
  */
 internal val TEST_ROUTING = MalRouting(

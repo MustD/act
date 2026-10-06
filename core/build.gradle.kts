@@ -89,7 +89,7 @@ val malClientId: Provider<String> =
         .orElse(providers.environmentVariable("MAL_CLIENT_ID").notBlank())
         .orElse("")
 
-/** Trimmed, with blank treated as absent — the same rule `JsonTokenStore.readClientId` applies. */
+/** Trimmed, with blank treated as absent, so a set-but-empty value falls through to the next source. */
 fun Provider<String>.notBlank(): Provider<String> = map { it.trim() }.filter { it.isNotEmpty() }
 
 /**

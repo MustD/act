@@ -34,9 +34,9 @@ out the closest candidates.
   (`mal.layout.v1`, ticket 08). `JsonTokenStore.clear()` deliberately drops the first two and **keeps** the last: the
   Layout is a device preference, so signing out must not reset how the list is drawn. (A fourth, the Client ID
   `mal.clientId.v1`, existed until the Client ID became build-time only; startup removes it.)
-  The two preferences also differ from the two credentials in how a bad value reads — absent, corrupt or unknown gives
-  the default Layout rather than a failure, because a preference is never worth a crash loop. **On the web targets they
-  are not durable**, and that is this ADR's `sessionStorage` choice reaching a record it was not argued for: a Layout
+  The preference also differs from the two credentials in how a bad value reads — absent, corrupt or unknown gives
+  the default Layout rather than a failure, because a preference is never worth a crash loop. **On the web targets it is
+  not durable**, and that is this ADR's `sessionStorage` choice reaching a record it was not argued for: a Layout
   survives a reload there and not a closed tab. Deliberately not split — a preference kept somewhere the Session is not
   would be a second persistence rule to keep in step across four targets, for a record whose worst failure is a first
   screen in the shipped default. [ADR-0001](0001-refresh-token-in-web-session-storage.md) is where that would be

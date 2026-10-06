@@ -73,8 +73,9 @@ Both processes are required:
 ./gradlew :app:webApp:wasmJsBrowserDevelopmentRun --continuous   # app on :18020
 ```
 
-Forgetting the relay reproduces a `Failed to fetch`. The login screen names the relay URL and the command to start it,
-both up front on web builds and in the error text.
+Forgetting the relay reproduces a `Failed to fetch`. The app does not say so: what the user is shown is "Couldn't
+reach the server. Please try again later.", since a shipped build has no Gradle to point at, so this page is where the
+cause is written down.
 
 `--continuous` is required: the run task starts webpack-dev-server without blocking, so without it Gradle reports
 `BUILD SUCCESSFUL` in under a second and takes the dev server down with it. The symptom is a 502 from the reverse proxy
