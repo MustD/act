@@ -219,10 +219,16 @@ bring the original failure back; the edge must pass `/mal` through with `PATCH` 
 
 **Env files:** two, gitignored (`.secure.*.env`), each with a committed `.example` listing every key.
 `.secure.build.env` holds `MAL_CLIENT_ID` and `DOCKERHUB_USER`; `.secure.deploy.env` holds `DIGITALOCEAN_TOKEN`,
-`EDGE_SSH` and the `TF_VAR_*`. **mise reads them, per task** (`env = { _ = { file = ... } }` in `mise.toml`) — never a
-global `[env]` — so the DO token reaches only `infra:*` and `deploy*`; `deploy` and `deploy:status` load the file for
-`EDGE_SSH` and `unset` the token at once (`terraform output` reads local state), and the deploy scripts run Gradle
-through `lib.sh`'s `gradle`, which strips `EDGE_SSH` and every `TF_VAR_*` as well. Gradle picks `MAL_CLIENT_ID` up
+`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`, `EDGE_SSH` and the `TF_VAR_*`. **mise reads them, per task**
+(`env = { _ = { file = ... } }` in `mise.toml`) — never a global `[env]` — so the DO token reaches only `infra:*` and
+`deploy*`; `deploy` and `deploy:status` load the file for `EDGE_SSH` and `unset` the token at once (`terraform output`
+reads the S3 state with the Spaces key alone), and the deploy scripts run Gradle through `lib.sh`'s `gradle`, which
+strips the Spaces key, `EDGE_SSH` and every `TF_VAR_*` as well.
+
+**Terraform state** is not local: it lives in the shared `io-workshop-tfstate` Spaces bucket (owned by the
+`io-workshop-hub` stack) under `act/web.tfstate`, via the `backend "s3"` block in `deploy/terraform/versions.tf`, and
+the `AWS_*` pair is a Spaces key scoped to that bucket. There is **no state locking** — Spaces ignores the conditional
+writes `use_lockfile` relies on — so never run two `infra:apply`s at once. Gradle picks `MAL_CLIENT_ID` up
 from the environment itself, so `run:desktop` and `run:web` are prefilled with it (`run:server` loads nothing); plain
 `./gradlew` outside mise does not read these files. `docker login` is done once by hand.
 The Client ID ends up in plain text in a public image, deliberately: it is equally public in `webApp.js`.

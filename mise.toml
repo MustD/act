@@ -1,7 +1,7 @@
 # Operator tasks. mise loads the env files per task — never a global [env] — so DIGITALOCEAN_TOKEN reaches only the
 # infra and deploy tasks, not Gradle or an interactive shell. See CLAUDE.md, "Deployment".
 #   .secure.build.env   MAL_CLIENT_ID, DOCKERHUB_USER   (run:desktop, run:web, build, push, deploy)
-#   .secure.deploy.env  DIGITALOCEAN_TOKEN, EDGE_SSH, TF_VAR_*   (infra, deploy)
+#   .secure.deploy.env  DIGITALOCEAN_TOKEN, AWS_* (state bucket), EDGE_SSH, TF_VAR_*   (infra, deploy)
 [tools]
 terraform = "1.15.9" # inside versions.tf's "~> 1.15"
 

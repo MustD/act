@@ -3,8 +3,9 @@
 # (rollback) and skips the tests, build and push. Never rolls back by itself.
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
-require_env DOCKERHUB_USER EDGE_SSH TF_VAR_edge_private_ip
-# Terraform is never run from here (`terraform output` reads local state), so nothing below needs the token.
+require_env DOCKERHUB_USER EDGE_SSH TF_VAR_edge_private_ip AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
+# Terraform is never run from here; `terraform output` reads the S3 state with the Spaces key alone, so nothing below
+# needs the token.
 unset DIGITALOCEAN_TOKEN
 
 CURRENT="$(act_version)"
