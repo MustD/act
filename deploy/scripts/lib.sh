@@ -31,6 +31,20 @@ gradle() {
 
 act_version() { grep '^act.version=' gradle.properties | cut -d= -f2; }
 
+# Whether <image>:<tag> is on Docker Hub: 0 if it is, 1 if it is not. Anything else — not logged in, offline — is
+# neither answer, so it exits rather than let the caller guess.
+tag_exists() {
+	local ref="$DOCKERHUB_USER/$1:$2" out
+	if out="$(docker manifest inspect "$ref" 2>&1)"; then
+		return 0
+	elif grep -qiE 'no such manifest|not found|manifest unknown' <<<"$out"; then
+		return 1
+	fi
+	echo "Could not check whether $ref exists (not logged in? offline?):" >&2
+	echo "$out" >&2
+	exit 1
+}
+
 droplet_ip() { (cd deploy/terraform && terraform output -raw private_ip); }
 
 # ssh/scp through the edge as a jump host, so a recreated droplet needs no ~/.ssh/config edit.

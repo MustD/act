@@ -7,13 +7,9 @@ VERSION="$(act_version)"
 
 # Checks both before pushing either, so a refusal never leaves one image pushed and the other not.
 for image in act-web act-relay; do
-	ref="$DOCKERHUB_USER/$image:$VERSION"
-	if out="$(docker manifest inspect "$ref" 2>&1)"; then
-		echo "$ref already exists on Docker Hub. Tags are immutable — bump act.version in gradle.properties." >&2
-		exit 1
-	elif ! grep -qiE 'no such manifest|not found|manifest unknown' <<<"$out"; then
-		echo "Could not check whether $ref exists (not logged in? offline?):" >&2
-		echo "$out" >&2
+	if tag_exists "$image" "$VERSION"; then
+		echo "$DOCKERHUB_USER/$image:$VERSION already exists on Docker Hub. Tags are immutable — bump act.version in" \
+			"gradle.properties, or \`mise run deploy $VERSION\` to redeploy it as it is." >&2
 		exit 1
 	fi
 done

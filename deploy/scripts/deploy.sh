@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# deploy [version]: no argument builds, pushes and deploys the current act.version; a version redeploys that tag
-# (rollback) and skips the tests, build and push. Never rolls back by itself.
+# deploy [version]: no argument builds, pushes and deploys the current act.version; a version redeploys that tag as it is
+# on Docker Hub and skips the tests, build and push — a rollback, or the roll forward after one, which is why the
+# current act.version is accepted too. Never rolls back by itself.
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
 require_env DOCKERHUB_USER EDGE_SSH TF_VAR_edge_private_ip AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
@@ -8,14 +9,20 @@ require_env DOCKERHUB_USER EDGE_SSH TF_VAR_edge_private_ip AWS_ACCESS_KEY_ID AWS
 # needs the token.
 unset DIGITALOCEAN_TOKEN
 
-CURRENT="$(act_version)"
-VERSION="${1:-$CURRENT}"
+# Whether an argument was given, not whether it equals act.version: `deploy <act.version>` after a rollback must
+# redeploy the pushed tag, and building it again would only be refused by push.sh.
+REDEPLOY=0
+[ $# = 0 ] || REDEPLOY=1
+VERSION="${1:-$(act_version)}"
 # It ends up in shell strings run on the droplet and in its .env, so it must be a plain tag and nothing else.
 [[ $VERSION =~ ^[0-9A-Za-z._-]+$ ]] || { echo "Not a version: $VERSION" >&2; exit 1; }
-ROLLBACK=0
-[ "$VERSION" = "$CURRENT" ] || ROLLBACK=1
 
-if [ "$ROLLBACK" = 0 ]; then
+if [ "$REDEPLOY" = 1 ]; then
+	# Before the droplet is touched, so a mistyped or never-pushed version fails here and not as a failed pull.
+	for image in act-web act-relay; do
+		tag_exists "$image" "$VERSION" || { echo "$DOCKERHUB_USER/$image:$VERSION is not on Docker Hub." >&2; exit 1; }
+	done
+else
 	if [ -n "$(git status --porcelain)" ]; then
 		echo "Working tree is dirty. Commit or stash first — an image tag must name a commit." >&2
 		exit 1

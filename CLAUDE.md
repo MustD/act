@@ -239,7 +239,7 @@ The Client ID ends up in plain text in a public image, deliberately: it is equal
 | `mise run infra:plan` / `infra:apply`             | Terraform (`deploy/terraform/`), by hand — never from a deploy; a replaced droplet moves its private IP, so the edge's upstream must follow |
 | `mise run deploy:build`                           | `wasmJsBrowserDistribution` + `installDist`, then both images (`linux/amd64`)                                                               |
 | `mise run deploy:push`                            | pushes both; refuses if either tag exists on Docker Hub                                                                                     |
-| `mise run deploy [version]`                       | the whole path below                                                                                                                        |
+| `mise run deploy [version]`                       | the whole path below; with a version, only redeploys that pushed tag                                                                        |
 | `mise run deploy:status`                          | `ACT_VERSION` and `docker compose ps` on the droplet                                                                                        |
 
 `deploy`: refuses a dirty tree; runs `:server:test` and `:app:shared:wasmJsTest`; builds and pushes; copies
@@ -250,7 +250,8 @@ through the edge (`deploy/scripts/smoke.sh`: the SPA fallback, `/webApp.js` is J
 
 **Rollback:** on any failure once it reaches the droplet, `deploy` prints `mise run deploy <previous-version>` and
 exits non-zero (a failure in the tests, build or push has deployed nothing, and just exits non-zero); it never rolls
-back by itself. A version argument other than `act.version` skips tests, build and push and redeploys that tag.
+back by itself. Any version argument — `act.version` included, which is how you roll forward again after a rollback — skips tests,
+build and push and redeploys that tag as it is on Docker Hub, after checking both images exist there.
 
 The relay's trusted proxies in `docker-compose.yml` are the Compose network (pinned to `172.29.0.0/24`) **and** the edge's
 private IP — both hops, as the table under [Commands](#commands) explains.

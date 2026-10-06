@@ -46,7 +46,7 @@ env = { _ = { file = ".secure.build.env" } }
 run = "deploy/scripts/push.sh"
 
 [tasks.deploy]
-description = "Test, build, push and deploy act.version; `deploy <older-version>` redeploys that tag"
+description = "Test, build, push and deploy act.version; `deploy <version>` redeploys that pushed tag"
 env = { _ = { file = [".secure.build.env", ".secure.deploy.env"] } }
 run = "deploy/scripts/deploy.sh"
 
