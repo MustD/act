@@ -103,8 +103,7 @@ class AppGraphTest {
     @Test
     fun the_repository_starts_from_the_build_time_client_id() {
         // The graph is the only place that may name the build-time default, and it must not hardcode a
-        // literal: a build configured with `mal.clientId` has to reach the repository, and the
-        // remembered value then overrides it in `restore()`.
+        // literal: a build configured with `mal.clientId` has to reach the repository.
         //
         // Honest about its reach: in a build configured with no Client ID this compares "" to "" and
         // cannot fail. It bites in a build that sets one — `./gradlew :app:shared:jvmTest

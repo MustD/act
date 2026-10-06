@@ -29,9 +29,9 @@ import kotlinx.coroutines.launch
  * **One redirect parser, one set of errors.** A captured redirect and a paste both go through
  * [MalSessionRepository.completeAuthorization]; `error=access_denied` reads the same either way.
  *
- * Construction restores the Session, seeds the Client ID from what that settled, and only then takes
- * the [StartupRedirect] — in that order in code, because `restore()` settles the state from the
- * store and a redirect completed before it would have its `SignedIn` overwritten a moment later.
+ * Construction restores the Session and only then takes the [StartupRedirect] — in that order in
+ * code, because `restore()` settles the state from the store and a redirect completed before it
+ * would have its `SignedIn` overwritten a moment later.
  *
  * @param scope where every attempt runs. Production uses `Dispatchers.Main.immediate`, which is
  * load-bearing on web: see [start].
@@ -43,14 +43,13 @@ class SignIn(
 ) {
 
     /**
-     * The form, prefilled so the Client ID reads as an override rather than a mandatory step: the one
-     * the device remembers, else the build-time `mal.clientId`. It is seeded twice, because a
-     * remembered value comes out of the store and so is not in the config until `restore()` returns.
+     * What the welcome page's button and the waiting page show. The Client ID is the build's `mal.clientId` and nothing else; a build without one is
+     * reported as [SignInState.clientIdMissing] rather than prompted for.
      *
      * There is deliberately no Client Secret field. `MalAuthConfig.clientSecret` stays, because it is
      * correct for a `web`-type app, but offering it in the UI only creates a way to mis-register.
      */
-    private val _state = MutableStateFlow(SignInState(clientId = repository.config.value.clientId))
+    private val _state = MutableStateFlow(SignInState(clientIdMissing = repository.config.value.clientId.isBlank()))
     val state: StateFlow<SignInState> = _state.asStateFlow()
 
     /** The attempt that arms, opens and awaits — alive for as long as the user is away. */
@@ -65,8 +64,6 @@ class SignIn(
         scope.launch {
             guarded {
                 repository.restore()
-                // Safe to overwrite: nothing can have been typed yet, the Restoring screen has no field.
-                _state.update { it.copy(clientId = repository.config.value.clientId) }
                 startupRedirect.consume()?.let { launch ->
                     // The one place the rule lives: a redirect is completed while a sign-in is pending,
                     // and otherwise only when the platform says a stale one is worth reporting.
@@ -76,11 +73,6 @@ class SignIn(
                 }
             }
         }
-    }
-
-    fun setClientId(value: String) {
-        _state.update { it.copy(clientId = value, phase = it.phase.clearingFailure()) }
-        repository.useClientId(value)
     }
 
     fun setPastedRedirect(value: String) {
@@ -109,7 +101,6 @@ class SignIn(
     fun start(channel: AuthRedirectChannel, openUri: (String) -> Unit) {
         if (!_state.value.canStart) return
         endAttempt()
-        repository.useClientId(_state.value.clientId)
         _state.update { it.copy(phase = SignInPhase.Arming) }
         // One coroutine for the whole attempt, including the wait. An armed channel that is never
         // awaited can never be released, so nothing may come between arming it and awaiting it.

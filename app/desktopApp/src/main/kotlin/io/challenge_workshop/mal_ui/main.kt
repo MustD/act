@@ -12,7 +12,7 @@ fun main() {
 private fun ui() = application {
     Window(
         onCloseRequest = ::exitApplication,
-        title = "mal_ui",
+        title = "ACT",
     ) {
         App()
     }

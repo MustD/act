@@ -64,9 +64,9 @@ RFC 8252 §8.12, not merely discouraged
 
 **Client ID**:
 The public identifier of this app's registration on myanimelist.net, sent with every authorization and token request.
-Not a secret — it travels in the authorization URL, visible in the user's own address bar — so it is remembered for
-convenience rather than protected: the one last signed in with on this device, else the build's `mal.clientId` default,
-else the user is asked. It identifies the *app*, so signing out does not forget it. _Avoid_: API key, app key, client
+Not a secret — it travels in the authorization URL, visible in the user's own address bar. It identifies the *app*,
+not the user, so it is fixed when the app is built (`mal.clientId`) and the user never sees, types or overrides it; a
+build without one cannot start a Sign-in. _Avoid_: API key, app key, client
 secret (a public client has no secret, and `MalAuthConfig.clientSecret` exists only for a `web`-type app)
 
 **Signed Out Reason**:
@@ -137,7 +137,7 @@ easy to confuse as **Watch Status** and **Airing Status**, and for the same reas
 the mapping between them looks like a rename. See [ADR-0004](docs/adr/0004-screen-state-in-core.md)
 
 **Actions record**:
-The callbacks one screen can invoke, held apart from its **Screen State** rather than inside it — `SignInActions`,
+The callbacks one screen can invoke, held apart from its **Screen State** rather than inside it — `WelcomeActions`,
 `AuthorizingActions`, `SignedInActions`. Separate because Compose skips on `equals` and a `data class` holding a
 `() -> Unit` is neither equal nor stable, so folding them in would recompose the signed-in screen, grid included, on
 every emission. _Avoid_: Callbacks, handlers, events (nothing here is dispatched or queued)

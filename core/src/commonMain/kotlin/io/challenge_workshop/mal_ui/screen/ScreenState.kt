@@ -43,11 +43,12 @@ sealed interface ScreenState {
      * enum is the *copy* — an expired Session must not read like a deliberate sign-out — and a
      * variant carrying the enum would let a screen be asserted without ever comparing what it says.
      * That is display copy in `:core`, which the Sort Order labels deliberately are not; the
-     * difference is that this text is the state, and the tests that hold the four apart are the
-     * reason the state exists.
+     * difference is that this text is the state, and the tests that hold the reasons apart are the
+     * reason the state exists. `null` for [SignedOutReason.NeverSignedIn]: a first visit has nothing
+     * to explain, and the welcome page shows no line for it.
      */
     data class SignedOut(
-        val explanation: String,
+        val explanation: String?,
         /** What went wrong on the way out, if the Session ended in a failure rather than a choice. */
         val error: ShownError?,
         val signIn: SignInState,
@@ -149,13 +150,12 @@ data class MalRouting(
 /**
  * Why a Session is absent, in words — the whole reason [SignedOutReason] is carried at all.
  *
- * Here rather than in a composable so that "these four say different things" is an
- * assertion over a value on every Target instead of four renderings on jvm.
+ * Here rather than in a composable so that "these say different things" is an
+ * assertion over a value on every Target instead of renderings on jvm. `null` when there is nothing
+ * to explain: [SignedOutReason.NeverSignedIn].
  */
-fun explain(reason: SignedOutReason): String = when (reason) {
-    SignedOutReason.NeverSignedIn ->
-        "MAL has no password grant, so nothing is typed here — you approve access on " +
-            "myanimelist.net and come straight back."
+fun explain(reason: SignedOutReason): String? = when (reason) {
+    SignedOutReason.NeverSignedIn -> null
 
     SignedOutReason.UserSignedOut ->
         "Signed out. Your tokens have been deleted from this device."

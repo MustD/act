@@ -44,8 +44,7 @@ val appModule: Module = module {
         MalSessionRepository(
             store = get(),
             clock = get(),
-            // The build-time default only. A Client ID the user typed is remembered per device and
-            // replaces this in `restore()`; with neither, the sign-in screen prompts for one. This is
+            // The build's Client ID, and the only one: a build without one disables Sign-in. This is
             // the only place the generated constant is read — `:core` keeps `clientId` a required
             // parameter so its own tests cannot pick up whatever this machine's build was configured
             // with.

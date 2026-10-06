@@ -18,8 +18,8 @@ import kotlinx.coroutines.launch
  * It owns exactly the piece of state that is *not* the pager's. A Layout change re-draws the entries
  * already loaded and issues no request, which is why the pager has never heard of it.
  *
- * The stored record has not moved: it is still `JsonTokenStore`'s `mal.layout.v1`, still one of the
- * two preferences `clear()` deliberately keeps. What changed is who reads it.
+ * The stored record has not moved: it is still `JsonTokenStore`'s `mal.layout.v1`, still the one
+ * preference `clear()` deliberately keeps. What changed is who reads it.
  *
  * @param scope the scope the startup read and every write run in. Process-scoped, like the store it
  * reads: this outlives any one composition, and a read cancelled by a screen going away would leave

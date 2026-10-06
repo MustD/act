@@ -19,7 +19,7 @@ import io.challenge_workshop.mal_ui.auth.SignIn
 import io.challenge_workshop.mal_ui.auth.RestoringScreen
 import io.challenge_workshop.mal_ui.auth.ScreenActions
 import io.challenge_workshop.mal_ui.auth.SessionScreenTag
-import io.challenge_workshop.mal_ui.auth.SignInScreen
+import io.challenge_workshop.mal_ui.auth.WelcomeScreen
 import io.challenge_workshop.mal_ui.auth.SignedInScreen
 import io.challenge_workshop.mal_ui.auth.rememberAuthRedirectChannel
 import io.challenge_workshop.mal_ui.auth.screenActions
@@ -139,7 +139,7 @@ internal fun SessionRoute(state: ScreenState, actions: ScreenActions) {
             RestoringScreen(Modifier.testTag(SessionScreenTag.Restoring.tag))
 
         is ScreenState.SignedOut ->
-            SignInScreen(state, actions.signIn, Modifier.testTag(SessionScreenTag.SignIn.tag))
+            WelcomeScreen(state, actions.signIn, Modifier.testTag(SessionScreenTag.SignIn.tag))
 
         is ScreenState.Authorizing ->
             AuthorizingScreen(state, actions.authorizing, Modifier.testTag(SessionScreenTag.Authorizing.tag))

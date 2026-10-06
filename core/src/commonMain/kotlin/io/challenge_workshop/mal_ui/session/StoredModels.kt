@@ -31,8 +31,8 @@ data class StoredSession(
  * full-page-redirect fallback. Losing [codeVerifier] or [state] makes the eventual token
  * exchange impossible.
  *
- * [clientId] is carried because it is entered at runtime today, and without it the token call
- * cannot be rebuilt after a restart.
+ * [clientId] is carried so that an authorization started before an app update exchanges against the
+ * ID it was started with, not the new build's.
  */
 @Serializable
 data class PendingAuthorization(

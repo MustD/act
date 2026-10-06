@@ -110,26 +110,12 @@ class MalSessionAuthorizationTest {
     }
 
     @Test
-    fun beginning_an_authorization_remembers_the_client_id_for_the_next_launch() = runTest {
+    fun beginning_an_authorization_writes_no_client_id_record() = runTest {
         val f = Fixture()
 
         f.repository.beginAuthorization()
 
-        // Remembered here rather than on every keystroke: this is the first moment the value is
-        // committed to, and one the user never has to reach twice.
-        assertEquals(TEST_CONFIG.clientId, f.store.readClientId())
-        f.repository.close()
-    }
-
-    @Test
-    fun a_client_id_typed_over_the_remembered_one_replaces_it() = runTest {
-        val f = Fixture()
-        f.store.writeClientId("an-older-client-id")
-
-        f.repository.useClientId("a-newer-client-id")
-        f.repository.beginAuthorization()
-
-        assertEquals("a-newer-client-id", f.store.readClientId())
+        assertTrue(JsonTokenStore.CLIENT_ID_KEY !in f.kv.entries)
         f.repository.close()
     }
 
@@ -378,13 +364,12 @@ class MalSessionAuthorizationTest {
 
     @Test
     fun the_exchange_reuses_the_client_id_and_redirect_uri_from_the_pending_record() = runTest {
-        // Not from the live config: matching is byte-exact, and the live config may have been edited
+        // Not from the live config: matching is byte-exact, and the build may have been updated
         // while the user was away in the browser.
         val fake = Fake()
         val f = Fixture(fake)
         f.repository.beginAuthorization()
         val pending = assertNotNull(f.store.readPending())
-        f.repository.useClientId("edited-since")
 
         f.repository.completeAuthorization(redirect("the-code", pending.state))
 

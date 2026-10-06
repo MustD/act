@@ -30,7 +30,7 @@ import io.challenge_workshop.mal_ui.auth.DiagnosticsActions
 import io.challenge_workshop.mal_ui.auth.SESSION_MENU_BUTTON_TAG
 import io.challenge_workshop.mal_ui.auth.SignInState
 import io.challenge_workshop.mal_ui.auth.ScreenActions
-import io.challenge_workshop.mal_ui.auth.SignInActions
+import io.challenge_workshop.mal_ui.auth.WelcomeActions
 import io.challenge_workshop.mal_ui.auth.SignedInActions
 import io.challenge_workshop.mal_ui.mal.DESKTOP_REDIRECT_URI
 import io.challenge_workshop.mal_ui.mal.MalAuthConfig
@@ -51,13 +51,13 @@ import io.challenge_workshop.mal_ui.session.SignedOutReason
  * repository. A screen takes a value now, so a case is a `copy()`.
  *
  * The one test that still builds the real stack is
- * `SignInScreenTest.signing_in_arms_this_targets_capture_and_still_offers_paste_the_code`, which is
+ * `WelcomeScreenTest.signing_in_arms_this_targets_capture_and_still_offers_paste_the_code`, which is
  * about that stack: it is the seam between a click and this Target's Redirect Capture, and there is
  * nothing to assert about it that a literal could stand in for.
  *
  * **What is *not* here is as deliberate.** Nothing in this file decides anything. Which screen a
- * Session produces, what a filter or a Sort Order change produces, and what the four Signed Out
- * Reasons say are all `ScreenStateSourceTest`'s, in `:core`, on every Target. These fixtures only
+ * Session produces, what a filter or a Sort Order change produces, and what each Signed Out
+ * Reason says — `NeverSignedIn` nothing — are all `ScreenStateSourceTest`'s, in `:core`, on every Target. These fixtures only
  * say what a screen is handed.
  */
 internal val TEST_ROUTING = MalRouting(
@@ -71,7 +71,7 @@ internal val TEST_ROUTING = MalRouting(
 internal fun signedOut(
     reason: SignedOutReason = SignedOutReason.NeverSignedIn,
     error: String? = null,
-    signIn: SignInState = SignInState(clientId = "a-client-id"),
+    signIn: SignInState = SignInState(),
     errorRelayHint: Boolean = false,
     signInRelayHint: Boolean = false,
 ) = ScreenState.SignedOut(
@@ -84,7 +84,7 @@ internal fun signedOut(
 
 internal fun authorizing(
     authorizationUrl: String = TEST_AUTHORIZATION_URL,
-    signIn: SignInState = SignInState(clientId = "a-client-id"),
+    signIn: SignInState = SignInState(),
     relayHint: Boolean = false,
 ) = ScreenState.Authorizing(
     authorizationUrl = authorizationUrl,
@@ -184,7 +184,6 @@ internal const val TEST_AUTHORIZATION_URL: String =
  */
 internal class RecordedActions {
     val calls: MutableList<String> = mutableListOf()
-    val clientIds: MutableList<String> = mutableListOf()
     val pastes: MutableList<String> = mutableListOf()
     val watchStatuses: MutableList<WatchStatus?> = mutableListOf()
     val sortOrders: MutableList<AnimeListSortOrder> = mutableListOf()
@@ -195,8 +194,7 @@ internal class RecordedActions {
     val openedRelated: MutableList<RelatedAnime> = mutableListOf()
 
     val actions: ScreenActions = ScreenActions(
-        signIn = SignInActions(
-            onClientIdChange = { clientIds += it; calls += "clientIdChange" },
+        signIn = WelcomeActions(
             onSignIn = { calls += "signIn" },
         ),
         authorizing = AuthorizingActions(

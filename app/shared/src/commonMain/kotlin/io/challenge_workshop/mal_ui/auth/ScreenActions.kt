@@ -30,13 +30,13 @@ import io.challenge_workshop.mal_ui.session.SessionControls
  */
 @Immutable
 data class ScreenActions(
-    val signIn: SignInActions,
+    val signIn: WelcomeActions,
     val authorizing: AuthorizingActions,
     val signedIn: SignedInActions,
 )
 
 /**
- * The sign-in screen.
+ * The welcome screen.
  *
  * [onSignIn] takes no arguments: the [AuthRedirectChannel] is bound where the modules are, above
  * the routing `when`, so the channel never appears in a screen's interface. It has to be bound there
@@ -45,8 +45,7 @@ data class ScreenActions(
  * authorizing one would take that launcher with it.
  */
 @Immutable
-data class SignInActions(
-    val onClientIdChange: (String) -> Unit,
+data class WelcomeActions(
     val onSignIn: () -> Unit,
 )
 
@@ -132,8 +131,7 @@ internal fun screenActions(
     channel: AuthRedirectChannel,
     openUri: (String) -> Unit,
 ): ScreenActions = ScreenActions(
-    signIn = SignInActions(
-        onClientIdChange = signIn::setClientId,
+    signIn = WelcomeActions(
         // Straight through, with no `launch` between the click and the channel: a web popup's user
         // activation is a timestamp window and WebKit's is one second wide.
         onSignIn = { signIn.start(channel, openUri) },

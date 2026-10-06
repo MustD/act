@@ -7,7 +7,7 @@ import kotlinx.serialization.json.Json
 import kotlin.time.Clock
 
 /**
- * The Session, the Pending Authorization and the two device preferences, as JSON in a
+ * The Session, the Pending Authorization and the Layout preference, as JSON in a
  * [KeyValueStore].
  *
  * Two policies live here rather than in callers:
@@ -17,7 +17,7 @@ import kotlin.time.Clock
  *  - **A corrupt value reads as absent, and is deleted.** Throwing would give a crash loop
  *    that no amount of restarting escapes; leaving the bad value would re-read it on every
  *    launch. Discarding is safe for every record here: the two about the user are recoverable
- *    by signing in again, and the two preferences fall back to a default the user can re-pick.
+ *    by signing in again, and the preference falls back to a default the user can re-pick.
  *
  * [clock] is injected, and stamps [StoredSession.obtainedAtEpochMs] /
  * [PendingAuthorization.startedAtEpochMs] here rather than at call sites, so no caller can
@@ -31,6 +31,7 @@ class JsonTokenStore(
     companion object {
         const val SESSION_KEY: String = "mal.session.v1"
         const val PENDING_KEY: String = "mal.pending.v1"
+        /** Only so [discardLegacyClientId] can name the old record; nothing reads or writes it. */
         const val CLIENT_ID_KEY: String = "mal.clientId.v1"
         const val LAYOUT_KEY: String = "mal.layout.v1"
     }
@@ -86,26 +87,11 @@ class JsonTokenStore(
     suspend fun clearPending() = kv.remove(PENDING_KEY)
 
     /**
-     * The Client ID the user last signed in with, or null if they never have on this device.
-     *
-     * Remembered so the field is a prefilled override rather than a mandatory step — a public
-     * client's ID is not a secret (it is visible in the user's own address bar), so this is
-     * convenience, not credential storage. The build-time default covers a device that has none.
-     *
-     * A blank value reads as absent, so callers get one rule instead of two: nothing here writes a
-     * blank one, but a hand-edited desktop file could hold one, and a blank that read as a value
-     * would win the precedence and hide the build-time default.
+     * Removes the record an earlier build kept for the Client ID the user typed. The Client ID is now
+     * fixed at build time, and a leftover would make this device answer "what does this app store"
+     * differently from every other.
      */
-    suspend fun readClientId(): String? =
-        readOrDiscard<String>(CLIENT_ID_KEY)?.trim()?.takeIf { it.isNotEmpty() }
-
-    /** Writes the Client ID, treating a blank one as "forget it" — see [readClientId]. */
-    suspend fun writeClientId(clientId: String) {
-        val trimmed = clientId.trim()
-        // A remembered empty string would win the precedence and hide the build-time default
-        // forever, so clearing the field has to remove the record rather than store nothing.
-        if (trimmed.isEmpty()) kv.remove(CLIENT_ID_KEY) else write(CLIENT_ID_KEY, trimmed)
-    }
+    suspend fun discardLegacyClientId() = kv.remove(CLIENT_ID_KEY)
 
     /**
      * How the user last chose to read their Anime List, or [AnimeListLayout.Cards] if they never
@@ -126,10 +112,8 @@ class JsonTokenStore(
     /**
      * Everything this store owns **about the user**. Used when a refresh is rejected and on sign-out.
      *
-     * Deliberately not the Client ID: that identifies the *app*, not the user, so a sign-out that
-     * dropped it would turn the next sign-in into a retyping exercise. Deliberately not the Layout
-     * either, on the same terms: it is a device preference, and one that reset on every sign-out
-     * would be a choice the user has to make again for no reason they can see.
+     * Deliberately not the Layout: it is a device preference, and one that reset on every
+     * sign-out would be a choice the user has to make again for no reason they can see.
      */
     suspend fun clear() {
         clearSession()

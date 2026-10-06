@@ -3,24 +3,29 @@
 package io.challenge_workshop.mal_ui
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.v2.runComposeUiTest
 import io.challenge_workshop.mal_ui.mal.DESKTOP_REDIRECT_URI
+import io.challenge_workshop.mal_ui.auth.SignInPhase
 import io.challenge_workshop.mal_ui.auth.SignInState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * The authorizing screen — the user is away on myanimelist.net — which is Paste-the-code's screen.
+ * The waiting page — the user is away on myanimelist.net — and Paste-the-code behind "Having trouble?".
  *
- * Paste-the-code stays visible throughout rather than appearing only on failure. It is the one
- * mechanism that works headless, behind a blocked popup and with no Custom-Tabs browser, so it is a
- * modelled path; and the authorization URL has to be reachable by hand because no platform's
- * browser-opening call reliably reports whether it worked.
+ * Paste-the-code is collapsed because it is needed only when the Redirect Capture fails, and it is
+ * still always one tap away: it is the one mechanism that works headless, behind a blocked popup and
+ * with no Custom-Tabs browser, and the authorization URL has to be reachable by hand because no
+ * platform's browser-opening call reliably reports whether it worked.
  */
 class AuthorizingScreenTest {
 
@@ -40,6 +45,7 @@ class AuthorizingScreenTest {
                 }
             }
 
+            onNodeWithText("Having trouble?").performClick()
             onNodeWithText("Copy").performClick()
 
             assertEquals(TEST_AUTHORIZATION_URL, clipboard.getText()?.text)
@@ -61,11 +67,12 @@ class AuthorizingScreenTest {
         runComposeUiTest {
             setContent {
                 SessionRoute(
-                    authorizing(signIn = SignInState(clientId = "a-client-id", pastedRedirect = "half a")),
+                    authorizing(signIn = SignInState(pastedRedirect = "half a")),
                     actions.actions,
                 )
             }
 
+            onNodeWithText("Having trouble?").performClick()
             onNodeWithText("half a").performTextReplacement(pasted)
             onNodeWithText("Complete sign-in").performClick()
             onNodeWithText("Cancel").performClick()
@@ -77,6 +84,57 @@ class AuthorizingScreenTest {
                 listOf("completeSignIn", "cancelSignIn"),
                 actions.calls.filterNot { it == "pastedRedirectChange" },
             )
+        }
+    }
+
+    @Test
+    fun the_trouble_section_is_collapsed_by_default_and_opens_on_tap() {
+        runComposeUiTest {
+            setContent { SessionRoute(authorizing(), RecordedActions().actions) }
+
+            onNodeWithText("Waiting for MyAnimeList…").assertIsDisplayed()
+            onNodeWithText("Cancel").assertIsDisplayed()
+            onNodeWithText("Complete sign-in").assertDoesNotExist()
+            onNodeWithText("Copy").assertDoesNotExist()
+
+            onNodeWithText("Having trouble?").performClick()
+
+            onNodeWithText("Complete sign-in").assertIsDisplayed()
+            onNodeWithText("Copy").assertIsDisplayed()
+        }
+    }
+
+    /** Including a capture that failed outright, such as desktop port 18040 being taken. */
+    @Test
+    fun the_trouble_section_opens_by_itself_when_an_error_is_shown() {
+        runComposeUiTest {
+            setContent {
+                SessionRoute(
+                    authorizing(signIn = SignInState(phase = SignInPhase.Failed("Port 18040 is taken"))),
+                    RecordedActions().actions,
+                )
+            }
+
+            onNodeWithText("Complete sign-in").assertIsDisplayed()
+        }
+    }
+
+    /** The normal case at runtime: the page is already up, the user closed the section, and a new error arrives. */
+    @Test
+    fun the_trouble_section_reopens_when_a_different_error_replaces_one_already_seen() {
+        runComposeUiTest {
+            var state by mutableStateOf(authorizing())
+            setContent { SessionRoute(state, RecordedActions().actions) }
+            onNodeWithText("Complete sign-in").assertDoesNotExist()
+
+            state = authorizing(signIn = SignInState(phase = SignInPhase.Failed("The sign-in timed out")))
+            onNodeWithText("Complete sign-in").assertIsDisplayed()
+
+            onNodeWithText("Having trouble?").performClick()
+            onNodeWithText("Complete sign-in").assertDoesNotExist()
+
+            state = authorizing(signIn = SignInState(phase = SignInPhase.Failed("Port 18040 is taken")))
+            onNodeWithText("Complete sign-in").assertIsDisplayed()
         }
     }
 }
