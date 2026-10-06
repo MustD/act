@@ -30,7 +30,7 @@ import io.challenge_workshop.mal_ui.auth.DiagnosticsActions
 import io.challenge_workshop.mal_ui.auth.SESSION_MENU_BUTTON_TAG
 import io.challenge_workshop.mal_ui.auth.SignInState
 import io.challenge_workshop.mal_ui.auth.ScreenActions
-import io.challenge_workshop.mal_ui.auth.SignInActions
+import io.challenge_workshop.mal_ui.auth.WelcomeActions
 import io.challenge_workshop.mal_ui.auth.SignedInActions
 import io.challenge_workshop.mal_ui.mal.DESKTOP_REDIRECT_URI
 import io.challenge_workshop.mal_ui.mal.MalAuthConfig
@@ -51,7 +51,7 @@ import io.challenge_workshop.mal_ui.session.SignedOutReason
  * repository. A screen takes a value now, so a case is a `copy()`.
  *
  * The one test that still builds the real stack is
- * `SignInScreenTest.signing_in_arms_this_targets_capture_and_still_offers_paste_the_code`, which is
+ * `WelcomeScreenTest.signing_in_arms_this_targets_capture_and_still_offers_paste_the_code`, which is
  * about that stack: it is the seam between a click and this Target's Redirect Capture, and there is
  * nothing to assert about it that a literal could stand in for.
  *
@@ -194,7 +194,7 @@ internal class RecordedActions {
     val openedRelated: MutableList<RelatedAnime> = mutableListOf()
 
     val actions: ScreenActions = ScreenActions(
-        signIn = SignInActions(
+        signIn = WelcomeActions(
             onSignIn = { calls += "signIn" },
         ),
         authorizing = AuthorizingActions(

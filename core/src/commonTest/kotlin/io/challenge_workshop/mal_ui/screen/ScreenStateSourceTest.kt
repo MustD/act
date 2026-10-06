@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -87,11 +88,9 @@ class ScreenStateSourceTest {
     }
 
     /**
-     * The four explanations differ from each other — the whole reason [SignedOutReason] is carried
-     * rather than collapsed into a bare "signed out" — and the expired one says so.
-     *
-     * This is the assertion that could not run off jvm before: it was four Compose renderings and a
-     * `testTag`, and it is a `Map` here.
+     * The explanations differ from each other — the whole reason [SignedOutReason] is carried
+     * rather than collapsed into a bare "signed out" — the expired one says so, and a first visit
+     * has none.
      */
     @Test
     fun each_signed_out_reason_explains_itself_differently() {
@@ -100,16 +99,17 @@ class ScreenStateSourceTest {
             assertIs<ScreenState.SignedOut>(state).explanation
         }
 
+        assertNull(explanations.getValue(SignedOutReason.NeverSignedIn))
+        val shown = explanations.filterKeys { it != SignedOutReason.NeverSignedIn }.values
+        assertTrue(shown.all { it != null })
         assertEquals(
-            SignedOutReason.entries.size,
-            explanations.values.toSet().size,
+            SignedOutReason.entries.size - 1,
+            shown.toSet().size,
             "Two reasons share the same copy, which is the bare 'signed out' this enum exists to " +
                 "avoid: $explanations",
         )
-        assertTrue(
-            "expired" in explanations.getValue(SignedOutReason.RefreshRejected).lowercase(),
-            explanations.getValue(SignedOutReason.RefreshRejected),
-        )
+        val expired = explanations.getValue(SignedOutReason.RefreshRejected)
+        assertTrue("expired" in expired.orEmpty().lowercase(), expired)
     }
 
     /**

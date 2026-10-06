@@ -68,64 +68,6 @@ fun RestoringScreen(modifier: Modifier = Modifier) {
 }
 
 /**
- * Sign-in. There is no password field and never will be: MAL supports only the authorization code
- * grant, so the password is typed on myanimelist.net and this app only ever sees a code.
- */
-@Composable
-fun SignInScreen(
-    state: ScreenState.SignedOut,
-    actions: SignInActions,
-    modifier: Modifier = Modifier,
-) {
-    ScreenColumn(modifier) {
-        Text("Sign in to MyAnimeList", style = MaterialTheme.typography.headlineSmall)
-        Text(
-            // The copy is the state's, not this screen's: what separates the four Signed Out Reasons
-            // is exactly what they say, and `:core`'s mapping test compares all four in one place on
-            // every Target.
-            state.explanation,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.testTag(SIGNED_OUT_REASON_TAG),
-        )
-
-        if (state.signIn.clientIdMissing) {
-            Text(
-                "This build has no Client ID, so signing in is unavailable.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
-
-        if (state.routing.usesRelay) {
-            Text(
-                "This build routes token and API calls through ${state.routing.endpoints.tokenEndpoint} " +
-                    "because MAL sends no CORS headers to browsers. Run `./gradlew :server:run` first.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            // Called straight from the click and not out of a `launch { }`: a web popup's user
-            // activation is a timestamp window, and WebKit's is one second wide. A lambda hop is
-            // synchronous, so routing this through an actions record does not spend any of it —
-            // `PopupUserActivationTest` is what holds that to the production dispatcher.
-            Button(onClick = actions.onSignIn, enabled = state.signIn.canStart) {
-                Text("Sign in with MyAnimeList")
-            }
-            if (state.signIn.busy) CircularProgressIndicator(Modifier.padding(4.dp))
-        }
-
-        state.error?.let { ErrorCard("Sign-in failed", it.withRelayAdvice()) }
-        state.signInError?.let { ErrorCard("Sign-in failed", it.withRelayAdvice()) }
-    }
-}
-
-/**
  * The user is away on myanimelist.net.
  *
  * Paste-the-code stays visible throughout rather than appearing only on failure. It is the one
@@ -399,7 +341,7 @@ private fun AnimeListPane(
 }
 
 @Composable
-private fun ScreenColumn(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+internal fun ScreenColumn(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -429,12 +371,11 @@ internal val PANE_MAX_WIDTH = 560.dp
 
 /**
  * On web a dead relay surfaces as a bare "Failed to fetch"; when `:core` says that is the likely
- * cause ([ShownError.relayHint]), name it. The predicate is `:core`'s, the wording is here.
+ * cause ([ShownError.relayHint]), say so in words a user can act on. The predicate is `:core`'s, the wording is here.
  */
 internal fun ShownError.withRelayAdvice(): String =
     if (relayHint) {
-        "$message\n\nThe web target routes MAL calls through the relay because MAL sends no CORS " +
-            "headers. Start it with `./gradlew :server:run`."
+        "$message\n\nCouldn't reach the server. Please try again later."
     } else {
         message
     }

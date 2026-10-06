@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -20,7 +21,11 @@ import io.challenge_workshop.mal_ui.animepage.AnimePageRepository
 import io.challenge_workshop.mal_ui.animelist.LayoutPreference
 import io.challenge_workshop.mal_ui.auth.LoopbackRedirectListener
 import io.challenge_workshop.mal_ui.auth.LoopbackRedirectListenerTest
+import io.challenge_workshop.mal_ui.auth.MAL_HOME_URL
+import io.challenge_workshop.mal_ui.auth.REPORT_ISSUE_URL
 import io.challenge_workshop.mal_ui.auth.SIGNED_OUT_REASON_TAG
+import io.challenge_workshop.mal_ui.auth.SUPPORT_DEVELOPMENT_URL
+import io.challenge_workshop.mal_ui.auth.SUPPORT_MAL_URL
 import io.challenge_workshop.mal_ui.auth.SignIn
 import io.challenge_workshop.mal_ui.auth.SignInPhase
 import io.challenge_workshop.mal_ui.auth.SignInState
@@ -36,6 +41,7 @@ import io.challenge_workshop.mal_ui.session.JsonTokenStore
 import io.challenge_workshop.mal_ui.session.MalSessionRepository
 import io.challenge_workshop.mal_ui.session.SessionControls
 import io.challenge_workshop.mal_ui.session.SessionState
+import io.challenge_workshop.mal_ui.session.SignedOutReason
 import io.challenge_workshop.mal_ui.session.authorizationUrlFor
 import java.util.Collections
 import kotlin.test.Test
@@ -50,13 +56,13 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 
 /**
- * The sign-in screen: what it says, what it reports, and the one seam in this whole test tree that
+ * The welcome screen: what it says, what it reports, and the one seam in this whole test tree that
  * still needs the real stack behind it.
  *
  * MAL supports only the authorization code grant, so there is no password field here and never will
  * be — the password is typed on myanimelist.net and this app only ever sees a code.
  */
-class SignInScreenTest {
+class WelcomeScreenTest {
 
     /**
      * The seam the channel abstraction rests on, exercised for real: `rememberAuthRedirectChannel()`
@@ -155,14 +161,12 @@ class SignInScreenTest {
      * The Signed Out Reason is on screen, in a node of its own, so a person reads why rather than a
      * bare "signed out".
      *
-     * That the four reasons *differ from each other* is `ScreenStateSourceTest`'s, on every Target —
-     * it is a comparison between four strings, and it needed a rendered tree only for as long as the
-     * copy was built inside a composable. What is left here is that the screen draws whichever one it
-     * is handed, which no value can say.
+     * That the reasons *differ from each other* is `ScreenStateSourceTest`'s, on every Target. What is
+     * left here is that the screen draws whichever one it is handed, which no value can say.
      */
     @Test
-    fun the_sign_in_screen_shows_the_signed_out_reason_it_is_given() {
-        val state = signedOut()
+    fun the_welcome_page_shows_the_signed_out_reason_it_is_given() {
+        val state = signedOut(SignedOutReason.RefreshRejected)
         runComposeUiTest {
             setContent { SessionRoute(state, RecordedActions().actions) }
 
@@ -170,18 +174,71 @@ class SignInScreenTest {
         }
     }
 
-    /** `:core` decides the failure looks like a dead relay; the screen appends the advice. */
+    /** A first visit has nothing to explain, so there is no line for it. */
+    @Test
+    fun the_welcome_page_shows_no_reason_for_a_first_visit() {
+        runComposeUiTest {
+            setContent { SessionRoute(signedOut(SignedOutReason.NeverSignedIn), RecordedActions().actions) }
+
+            onNodeWithText("Welcome to ACT").assertIsDisplayed()
+            onNodeWithText("Anime Control Terminal").assertIsDisplayed()
+            onNodeWithTag(SIGNED_OUT_REASON_TAG).assertDoesNotExist()
+        }
+    }
+
+    @Test
+    fun a_build_without_a_client_id_says_so_and_disables_the_button() {
+        runComposeUiTest {
+            setContent {
+                SessionRoute(
+                    signedOut(signIn = SignInState(clientIdMissing = true)),
+                    RecordedActions().actions,
+                )
+            }
+
+            onNodeWithText("This build has no Client ID", substring = true).assertIsDisplayed()
+            onNodeWithText("Sign in with MyAnimeList").assertIsNotEnabled()
+        }
+    }
+
+    @Test
+    fun the_links_open_their_constants_through_the_uri_handler() {
+        val opened = mutableListOf<String>()
+        runComposeUiTest {
+            setContent {
+                CompositionLocalProvider(LocalUriHandler provides RecordingUriHandler(opened)) {
+                    SessionRoute(signedOut(), RecordedActions().actions)
+                }
+            }
+
+            onNodeWithText("Support MyAnimeList").performClick()
+            onNodeWithText("Support development").performClick()
+            onNodeWithText("Report an issue").performClick()
+            onNodeWithText("Anime data provided by MyAnimeList.net").performClick()
+            onNodeWithText("Unofficial", substring = true).assertIsDisplayed()
+
+            assertEquals(
+                listOf(SUPPORT_MAL_URL, SUPPORT_DEVELOPMENT_URL, REPORT_ISSUE_URL, MAL_HOME_URL),
+                opened,
+            )
+            assertEquals("https://patreon.com/MustD", SUPPORT_DEVELOPMENT_URL)
+            assertEquals("https://github.com/MustD/act/issues", REPORT_ISSUE_URL)
+        }
+    }
+
+    /** `:core` decides the failure looks like a dead relay; the screen words it for a user. */
     @Test
     fun the_relay_advice_appears_only_when_the_state_says_so() {
         runComposeUiTest {
             var state by mutableStateOf(signedOut(error = "Failed to fetch"))
             setContent { SessionRoute(state, RecordedActions().actions) }
 
-            onNodeWithText("./gradlew :server:run", substring = true).assertDoesNotExist()
+            onNodeWithText("try again later", substring = true).assertDoesNotExist()
 
             state = signedOut(error = "Failed to fetch", errorRelayHint = true)
 
-            onNodeWithText("./gradlew :server:run", substring = true).assertIsDisplayed()
+            onNodeWithText("try again later", substring = true).assertIsDisplayed()
+            onNodeWithText("gradlew", substring = true).assertDoesNotExist()
         }
     }
 
@@ -202,7 +259,7 @@ class SignInScreenTest {
 
             onNodeWithText("invalid_grant").assertIsDisplayed()
             onNodeWithText("Failed to fetch", substring = true)
-                .assertTextContains("./gradlew :server:run", substring = true)
+                .assertTextContains("try again later", substring = true)
         }
     }
 }
