@@ -206,6 +206,19 @@ class AnimePageEditTest {
     }
 
     @Test
+    fun a_refusal_says_which_fields_the_refused_save_carried() = runTest {
+        val mal = Mal().apply { failNext = true }
+        val h = loadedHarness(mal)
+
+        h.pages.edit(ListEdit.SetScore(1))
+        val failed = h.awaitPage { it.save.error != null }
+
+        assertEquals(1, failed.save.errorFields.score)
+        assertNull(failed.save.errorFields.episodesWatched)
+        assertNull(failed.save.errorFields.watchStatus)
+    }
+
+    @Test
     fun a_refused_edit_leaves_the_list_entry_alone_and_the_next_edit_clears_the_error() = runTest {
         val mal = Mal().apply { failNext = true }
         val h = loadedHarness(mal)

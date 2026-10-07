@@ -122,6 +122,7 @@ fun EpisodeCells(
     total: Int,
     onPick: ((Int) -> Unit)?,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     maxCells: Int = if (onPick != null) 60 else 30,
     cellHeight: Dp = if (onPick != null) 22.dp else 6.dp,
 ) {
@@ -143,7 +144,7 @@ fun EpisodeCells(
                 Box(
                     Modifier.size(w, cellHeight).clip(RoundedCornerShape(1.dp))
                         .background(cellColor(i < watched, i, 10, 250, c.acc, c.ln))
-                        .clickable { onPick(if (i + 1 == watched) i else i + 1) }
+                        .clickable(enabled = enabled) { onPick(if (i + 1 == watched) i else i + 1) }
                         .semantics { contentDescription = "Episode ${i + 1}" },
                 )
             }
@@ -179,7 +180,8 @@ fun ScoreCells(score: Int, enabled: Boolean, onPick: (Int) -> Unit, modifier: Mo
             Box(
                 Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(1.dp))
                     .background(cellColor(on, n - 1, 18, 200, c.acc, c.sf2))
-                    .clickable(enabled = enabled && n != score) { onPick(n) },
+                    .clickable(enabled = enabled && n != score) { onPick(n) }
+                    .semantics { contentDescription = "Score $n" },
                 contentAlignment = Alignment.Center,
             ) { Text("$n", style = Act.type.body, color = if (on) c.onAcc else c.dim, textAlign = TextAlign.Center) }
         }

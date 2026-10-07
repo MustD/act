@@ -176,11 +176,20 @@ val ANIME_LIST_ROW_COLUMN_TAG: String = "$ANIME_LIST_TAG.rowColumn"
  */
 val ANIME_PAGE_TAG: String = "${SessionScreenTag.SignedIn.tag}.animePage"
 
-/** The page's ← button, shown only when there is a page to go back to. */
+/** The page's ← button on a phone, where it also closes the last page; in the side panel, only with a page to go back to. */
 val ANIME_PAGE_BACK_TAG: String = "$ANIME_PAGE_TAG.back"
 
-/** The page's ✕ button, which closes the whole history. */
+/** The side panel's ✕ button, which closes the whole history. */
 val ANIME_PAGE_CLOSE_TAG: String = "$ANIME_PAGE_TAG.close"
+
+/** The page's open-on-myanimelist.net button. */
+val ANIME_PAGE_OPEN_TAG: String = "$ANIME_PAGE_TAG.open"
+
+/** The page's path in its top bar. */
+val ANIME_PAGE_PATH_TAG: String = "$ANIME_PAGE_TAG.path"
+
+/** The score's clear action. */
+val ANIME_PAGE_SCORE_CLEAR_TAG: String = "$ANIME_PAGE_TAG.scoreClear"
 
 /** The placeholder shown while `GET /anime/{id}` is in flight, over what the page opened with. */
 val ANIME_PAGE_LOADING_TAG: String = "$ANIME_PAGE_TAG.loading"

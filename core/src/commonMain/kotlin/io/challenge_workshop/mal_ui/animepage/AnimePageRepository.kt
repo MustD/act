@@ -230,7 +230,7 @@ class AnimePageRepository(
                 throw e
             } catch (e: Exception) {
                 saves.remove(id)
-                publish(id, error = e.message ?: e.toString())
+                publish(id, error = e.message ?: e.toString(), errorFields = update)
                 return
             }
             baseline = target
@@ -242,8 +242,13 @@ class AnimePageRepository(
     }
 
     /** Puts [saves]' word for [animeId] on every open page of it, and MAL's [confirmed] answer if there is one. */
-    private fun publish(animeId: Long, confirmed: ListEntry? = null, error: String? = null) {
-        val save = saves[animeId] ?: PageSave(error = error)
+    private fun publish(
+        animeId: Long,
+        confirmed: ListEntry? = null,
+        error: String? = null,
+        errorFields: ListEntryUpdate = ListEntryUpdate(),
+    ) {
+        val save = saves[animeId] ?: PageSave(error = error, errorFields = errorFields)
         replace(animeId) { it.copy(save = save, listEntry = confirmed ?: it.listEntry) }
     }
 

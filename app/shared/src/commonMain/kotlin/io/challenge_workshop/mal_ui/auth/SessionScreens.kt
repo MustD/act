@@ -1,5 +1,9 @@
 package io.challenge_workshop.mal_ui.auth
 
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -45,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.testTag
@@ -242,35 +247,57 @@ fun SignedInScreen(
     // above this, so it survives the panel opening and closing and a resize across the line.
     BoxWithConstraints(modifier.fillMaxSize().safeContentPadding()) {
         val sideBySide = maxWidth >= SIDE_PANEL_MIN_WIDTH
-        if (page != null && !sideBySide) {
-            // Narrow: an open page is the whole screen, and closing it lands where the list was left.
+        val phoneProgress by animateFloatAsState(
+            if (page != null && !sideBySide) 1f else 0f,
+            tween(SIDE_PANEL_MS, easing = ActEasing),
+            label = "phonePage",
+        )
+        // Held so that closing can run the slide backwards: `page` is already null by then.
+        val heldPhonePage = remember { mutableStateOf(page) }
+        if (page != null) heldPhonePage.value = page
+        else if (phoneProgress == 0f) heldPhonePage.value = null
+        // The list is always laid out; on a phone the page slides in over it and the list steps back.
+        Row(
+            Modifier.fillMaxSize().graphicsLayer {
+                if (!sideBySide) {
+                    translationX = -PHONE_LIST_SHIFT * size.width * phoneProgress
+                    alpha = 1f - (1f - PHONE_LIST_DIM) * phoneProgress
+                }
+            },
+        ) {
+            if (sideBySide) {
+                WideSidebar(state, actions, onShowDiagnostics = { diagnosticsOpen = true })
+            }
+            Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+                SignedInPromptRow(
+                    state = state,
+                    actions = actions,
+                    onShowDiagnostics = { diagnosticsOpen = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    wide = sideBySide,
+                )
+                AnimeListPane(state, actions, gridState, Modifier.weight(1f).fillMaxWidth(), tabs = !sideBySide)
+            }
+            if (sideBySide) {
+                AnimePageSidePanel(page, canGoBack, pageActions)
+            }
+        }
+        val shown = heldPhonePage.value
+        if (!sideBySide && shown != null && (page != null || phoneProgress > 0f)) {
             AnimePageScreen(
-                page = page,
+                page = shown,
                 canGoBack = canGoBack,
                 actions = pageActions,
-                modifier = Modifier.fillMaxSize()
+                open = page != null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { translationX = (1f - phoneProgress) * size.width }
+                    .shadow(24.dp)
+                    .background(Act.colors.bg)
+                    // The list is still underneath: a node that listens for pointers, even to nothing,
+                    // is what stops the page's empty areas letting a tap fall through to it.
+                    .pointerInput(Unit) {},
             )
-        } else {
-            // The screen tag is on this wrapper rather than on the list, because the list carries its
-            // own and a second `testTag` would replace it.
-            Row(Modifier.fillMaxSize()) {
-                if (sideBySide) {
-                    WideSidebar(state, actions, onShowDiagnostics = { diagnosticsOpen = true })
-                }
-                Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    SignedInPromptRow(
-                        state = state,
-                        actions = actions,
-                        onShowDiagnostics = { diagnosticsOpen = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        wide = sideBySide,
-                    )
-                    AnimeListPane(state, actions, gridState, Modifier.weight(1f).fillMaxWidth(), tabs = !sideBySide)
-                }
-                if (sideBySide) {
-                    AnimePageSidePanel(page, canGoBack, pageActions)
-                }
-            }
         }
     }
 
@@ -282,6 +309,10 @@ fun SignedInScreen(
         )
     }
 }
+
+/** How far, as a fraction of its width, the list steps back while a phone's page is over it, and how dim it gets. */
+private const val PHONE_LIST_SHIFT = 0.22f
+private const val PHONE_LIST_DIM = 0.35f
 
 /** The window width from which the Anime Page sits beside the list instead of replacing it. */
 internal val SIDE_PANEL_MIN_WIDTH = 840.dp
@@ -326,6 +357,7 @@ private fun AnimePageSidePanel(
             page = shown,
             canGoBack = canGoBack,
             actions = actions,
+            sidePanel = true,
             modifier = Modifier
                 .wrapContentWidth(Alignment.Start, unbounded = true)
                 .width(SIDE_PANEL_WIDTH)
@@ -334,8 +366,7 @@ private fun AnimePageSidePanel(
                     alpha = progress
                     translationX = (1f - progress) * SIDE_PANEL_SLIDE.toPx()
                 }
-                .testTag(ANIME_PAGE_PANEL_TAG)
-                .padding(16.dp),
+                .testTag(ANIME_PAGE_PANEL_TAG),
         )
     }
 }

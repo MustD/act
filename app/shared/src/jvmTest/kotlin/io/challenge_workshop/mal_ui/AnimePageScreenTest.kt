@@ -18,7 +18,9 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelected
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithTag
@@ -58,6 +60,7 @@ import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_LOADING_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_PANEL_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_RELATED_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_SAVE_ERROR_TAG
+import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_SCORE_CLEAR_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_SCORE_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_START_DATE_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_SYNOPSIS_TAG
@@ -105,8 +108,8 @@ class AnimePageScreenTest {
         runComposeUiTest {
             setContent { Box(Modifier.width(839.dp)) { ThemedSessionRoute(stateWith(page()), RecordedActions().actions) } }
 
-            onNodeWithTag(ANIME_PAGE_TAG).assertIsDisplayed()
-            onAllNodesWithTag(ANIME_LIST_TAG).assertCountEquals(0)
+            // The list stays laid out underneath, stepped back, so closing can slide the page away.
+            onNodeWithTag(ANIME_PAGE_TAG).assertIsDisplayed().assertWidthIsEqualTo(839.dp)
             onAllNodesWithTag(ANIME_PAGE_PANEL_TAG).assertCountEquals(0)
         }
     }
@@ -159,8 +162,8 @@ class AnimePageScreenTest {
 
             width = 500.dp
             waitForIdle()
-            onAllNodesWithTag(ANIME_LIST_TAG).assertCountEquals(0)
             onNodeWithTag(ANIME_PAGE_BACK_TAG).assertIsDisplayed()
+            onAllNodesWithTag(ANIME_PAGE_PANEL_TAG).assertCountEquals(0)
 
             width = 1000.dp
             waitForIdle()
@@ -174,8 +177,9 @@ class AnimePageScreenTest {
         runComposeUiTest {
             setContent { Box(Modifier.width(500.dp)) { ThemedSessionRoute(stateWith(page()), RecordedActions().actions) } }
 
-            onNodeWithText("Cowboy Bebop").assertIsDisplayed()
-            onNodeWithText("/ 26").assertIsDisplayed()
+            // The list is still laid out underneath the phone page; the page is the later one.
+            onAllNodesWithText("Cowboy Bebop").onLast().assertIsDisplayed()
+            onNodeWithText("/ 26", substring = true).assertIsDisplayed()
             onNodeWithTag(ANIME_PAGE_LOADING_TAG).assertIsDisplayed()
             onAllNodesWithTag(ANIME_PAGE_SYNOPSIS_TAG).assertCountEquals(0)
         }
@@ -192,8 +196,8 @@ class AnimePageScreenTest {
             setContent { ThemedSessionRoute(stateWith(loaded), RecordedActions().actions) }
 
             assertEquals("Bounty hunters in space.", onNodeWithTag(ANIME_PAGE_SYNOPSIS_TAG).textContent())
-            onNodeWithText("2024-03", substring = true).assertIsDisplayed()
-            onNodeWithText("2024-04-02", substring = true).assertIsDisplayed()
+            onNodeWithText("2024-03", substring = true).performScrollTo().assertIsDisplayed()
+            onNodeWithText("2024-04-02", substring = true).performScrollTo().assertIsDisplayed()
             onAllNodesWithTag(ANIME_PAGE_LOADING_TAG).assertCountEquals(0)
         }
     }
@@ -283,10 +287,21 @@ class AnimePageScreenTest {
     }
 
     @Test
-    fun the_close_button_closes_and_back_appears_only_with_something_to_go_back_to() {
+    fun back_is_the_phones_button_and_close_is_the_side_panels() {
         runComposeUiTest {
             val recorded = RecordedActions()
-            setContent { ThemedSessionRoute(stateWith(page()), recorded.actions) }
+            setContent { Box(Modifier.width(500.dp)) { ThemedSessionRoute(stateWith(page()), recorded.actions) } }
+
+            waitForIdle() // the page is still sliding in
+            // On a phone ← is always there, and with one page it closes it.
+            onAllNodesWithTag(ANIME_PAGE_CLOSE_TAG).assertCountEquals(0)
+            onNodeWithTag(ANIME_PAGE_BACK_TAG).performClick()
+
+            assertEquals(listOf("animePageBack"), recorded.calls)
+        }
+        runComposeUiTest {
+            val recorded = RecordedActions()
+            setContent { Box(Modifier.width(1000.dp)) { ThemedSessionRoute(stateWith(page()), recorded.actions) } }
 
             onAllNodesWithTag(ANIME_PAGE_BACK_TAG).assertCountEquals(0)
             onNodeWithTag(ANIME_PAGE_CLOSE_TAG).performClick()
@@ -376,12 +391,17 @@ class AnimePageScreenTest {
     }
 
     private val editControls = listOf(
-        ANIME_PAGE_WATCH_STATUS_TAG,
         ANIME_PAGE_EPISODES_MINUS_TAG,
         ANIME_PAGE_EPISODES_PLUS_TAG,
-        ANIME_PAGE_EPISODES_TAG,
-        ANIME_PAGE_SCORE_TAG, ANIME_PAGE_START_DATE_TAG, ANIME_PAGE_FINISH_DATE_TAG,
+        ANIME_PAGE_START_DATE_TAG, ANIME_PAGE_FINISH_DATE_TAG,
     )
+
+    /** The controls that have no tag of their own: a chip, a score cell, an episode cell. */
+    private fun androidx.compose.ui.test.ComposeUiTest.assertCellsEnabled(enabled: Boolean) {
+        for (node in listOf(onNodeWithText("○ completed"), onNodeWithContentDescription("Score 9"), onNodeWithContentDescription("Episode 5"))) {
+            if (enabled) node.assertIsEnabled() else node.assertIsNotEnabled()
+        }
+    }
 
     @Test
     fun the_controls_are_disabled_until_the_fetch_has_succeeded() {
@@ -389,7 +409,8 @@ class AnimePageScreenTest {
             runComposeUiTest {
                 setContent { ThemedSessionRoute(stateWith(page(load = load)), RecordedActions().actions) }
 
-                for (tag in editControls) onNodeWithTag(tag).assertIsNotEnabled()
+                for (tag in editControls) onNodeWithTag(tag).performScrollTo().assertIsNotEnabled()
+                assertCellsEnabled(false)
             }
         }
     }
@@ -399,54 +420,71 @@ class AnimePageScreenTest {
         runComposeUiTest {
             setContent { ThemedSessionRoute(stateWith(page(load = AnimePageLoad.Loaded)), RecordedActions().actions) }
 
-            for (tag in editControls) onNodeWithTag(tag).assertIsEnabled()
+            for (tag in editControls) onNodeWithTag(tag).performScrollTo().assertIsEnabled()
+            assertCellsEnabled(true)
         }
     }
 
     @Test
-    fun plus_and_minus_and_the_number_field_report_edits() {
+    fun plus_and_minus_and_the_cells_report_edits() {
         runComposeUiTest {
             val recorded = RecordedActions()
             setContent { ThemedSessionRoute(stateWith(page(load = AnimePageLoad.Loaded)), recorded.actions) }
 
             onNodeWithTag(ANIME_PAGE_EPISODES_PLUS_TAG).performClick()
             onNodeWithTag(ANIME_PAGE_EPISODES_MINUS_TAG).performClick()
-            onNodeWithTag(ANIME_PAGE_EPISODES_TAG).performTextClearance()
-            onNodeWithTag(ANIME_PAGE_EPISODES_TAG).performTextInput("12")
-            assertEquals(2, recorded.edits.size, "typing alone saves nothing")
-            onNodeWithTag(ANIME_PAGE_EPISODES_TAG).performImeAction()
+            onNodeWithContentDescription("Episode 12").performScrollTo().performClick()
+            // Three episodes are watched: the third cell is the last, and tapping it takes one back.
+            onNodeWithContentDescription("Episode 3").performScrollTo().performClick()
 
             assertEquals(
-                listOf(ListEdit.AddEpisodes(1), ListEdit.AddEpisodes(-1), ListEdit.SetEpisodes(12)),
+                listOf(ListEdit.AddEpisodes(1), ListEdit.AddEpisodes(-1), ListEdit.SetEpisodes(12), ListEdit.SetEpisodes(2)),
                 recorded.edits,
             )
         }
     }
 
     @Test
-    fun the_score_picker_offers_mals_labels_and_no_score() {
+    fun a_long_or_unknown_run_is_a_bar_with_its_caption() {
         runComposeUiTest {
-            val recorded = RecordedActions()
-            setContent { ThemedSessionRoute(stateWith(page(load = AnimePageLoad.Loaded)), recorded.actions) }
+            val long = page(load = AnimePageLoad.Loaded, listEntry = ListEntry(WatchStatus.Watching, 8, 30, null, null, null))
+                .let { it.copy(anime = it.anime.copy(totalEpisodes = 100)) }
+            setContent { ThemedSessionRoute(stateWith(long), RecordedActions().actions) }
 
-            onNodeWithTag(ANIME_PAGE_SCORE_TAG).assertTextContains("8 – Very Good")
-            onNodeWithTag(ANIME_PAGE_SCORE_TAG).performClick()
-            for (label in listOf("10 – Masterpiece", "1 – Appalling", "No score")) onNodeWithText(label).assertExists()
-            onNodeWithText("10 – Masterpiece").performClick()
+            onNodeWithText("30% watched").performScrollTo().assertIsDisplayed()
+            onAllNodesWithContentDescription("Episode 1").assertCountEquals(0)
+        }
+        runComposeUiTest {
+            val unknown = page(load = AnimePageLoad.Loaded).let { it.copy(anime = it.anime.copy(totalEpisodes = 0)) }
+            setContent { ThemedSessionRoute(stateWith(unknown), RecordedActions().actions) }
 
-            assertEquals(listOf<ListEdit>(ListEdit.SetScore(10)), recorded.edits)
+            onNodeWithText("still airing — total unknown").performScrollTo().assertIsDisplayed()
+            onNodeWithText("episode count unknown").assertIsDisplayed()
         }
     }
 
     @Test
-    fun the_watch_status_picker_reports_the_choice() {
+    fun the_score_cells_report_the_pick_under_mals_label_and_clear_sets_zero() {
         runComposeUiTest {
             val recorded = RecordedActions()
             setContent { ThemedSessionRoute(stateWith(page(load = AnimePageLoad.Loaded)), recorded.actions) }
 
-            onNodeWithTag(ANIME_PAGE_WATCH_STATUS_TAG).performClick()
-            // "On hold" is also a filter chip in the list beside the page; the menu item is drawn last.
-            onAllNodesWithText("On hold").onLast().performClick()
+            onNodeWithTag(ANIME_PAGE_SCORE_TAG).performScrollTo().assertTextContains("8 — Very Good")
+            onNodeWithContentDescription("Score 10").performClick()
+            onNodeWithTag(ANIME_PAGE_SCORE_CLEAR_TAG).performClick()
+
+            assertEquals(listOf<ListEdit>(ListEdit.SetScore(10), ListEdit.SetScore(0)), recorded.edits)
+        }
+    }
+
+    @Test
+    fun the_watch_status_chips_report_the_choice() {
+        runComposeUiTest {
+            val recorded = RecordedActions()
+            setContent { ThemedSessionRoute(stateWith(page(load = AnimePageLoad.Loaded)), recorded.actions) }
+
+            onNodeWithText("● watching").performScrollTo().assertIsDisplayed()
+            onNodeWithText("○ on_hold").performClick()
 
             assertEquals(listOf<ListEdit>(ListEdit.SetWatchStatus(WatchStatus.OnHold)), recorded.edits)
         }
@@ -462,8 +500,8 @@ class AnimePageScreenTest {
             }
 
             onAllNodesWithTag(io.challenge_workshop.mal_ui.auth.ANIME_PAGE_START_DATE_CLEAR_TAG).assertCountEquals(0)
-            onNodeWithTag(ANIME_PAGE_FINISH_DATE_TAG).assertTextContains("2024")
-            onNodeWithTag(ANIME_PAGE_FINISH_DATE_CLEAR_TAG).performClick()
+            onNodeWithTag(ANIME_PAGE_FINISH_DATE_TAG).performScrollTo().assertTextContains("2024")
+            onNodeWithTag(ANIME_PAGE_FINISH_DATE_CLEAR_TAG).performScrollTo().performClick()
 
             assertEquals(listOf<ListEdit>(ListEdit.SetFinishDate(null)), recorded.edits)
         }
@@ -481,10 +519,10 @@ class AnimePageScreenTest {
             )
             setContent { ThemedSessionRoute(stateWith(saving), RecordedActions().actions) }
 
-            onNodeWithTag(ANIME_PAGE_EPISODES_TAG).assertTextContains("6")
-            onNodeWithTag(ANIME_PAGE_SCORE_TAG).assertTextContains("10 – Masterpiece")
+            onNodeWithTag(ANIME_PAGE_EPISODES_TAG).assertTextContains("06")
+            onNodeWithTag(ANIME_PAGE_SCORE_TAG).performScrollTo().assertTextContains("10 — Masterpiece")
             onNodeWithTag(animePageSavingTag(ANIME_PAGE_EPISODES_TAG)).assertIsDisplayed()
-            onNodeWithTag(animePageSavingTag(ANIME_PAGE_SCORE_TAG)).assertIsDisplayed()
+            onNodeWithTag(animePageSavingTag(ANIME_PAGE_SCORE_TAG)).performScrollTo().assertIsDisplayed()
             for (untouched in listOf(
                 ANIME_PAGE_WATCH_STATUS_TAG,
                 ANIME_PAGE_START_DATE_TAG,
