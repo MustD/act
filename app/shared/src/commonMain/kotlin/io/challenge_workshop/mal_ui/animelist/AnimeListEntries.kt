@@ -1,67 +1,82 @@
 package io.challenge_workshop.mal_ui.animelist
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.material3.CardDefaults
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import io.challenge_workshop.mal_ui.theme.Act
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_ROW_COLUMN_TAG
+import io.challenge_workshop.mal_ui.theme.Act
+import io.challenge_workshop.mal_ui.theme.ActMedium
+import io.challenge_workshop.mal_ui.theme.ActSmall
+import io.challenge_workshop.mal_ui.theme.ContinuousProgress
+import io.challenge_workshop.mal_ui.theme.CoverPlaceholder
+import io.challenge_workshop.mal_ui.theme.EpisodeCells
+import io.challenge_workshop.mal_ui.theme.TickingNumber
 
-/** The proportions MyAnimeList's cover art is drawn at, and close enough to what the CDN serves. */
-private const val COVER_ASPECT_RATIO: Float = 2f / 3f
-
-/** The narrowest a card may be. Also what the grid divides the window by to pick a column count. */
-val ANIME_CARD_MIN_WIDTH = 156.dp
-
-/** The cover on a dense list row: a thumbnail, sized so the row stays a row. */
-private val ROW_COVER_WIDTH = 44.dp
+/** The narrowest a card may be. The grid divides the window by it, so a phone gets one column. */
+val ANIME_CARD_MIN_WIDTH = 320.dp
 
 /**
- * The geometry a rendering and its skeleton have to agree on.
- *
- * Named rather than repeated, because the whole claim a skeleton makes is that the real thing lands
- * in the same place — and two copies of `padding(vertical = 6.dp)` are two things that drift apart
- * one commit at a time, silently, into a page that jumps when the data arrives.
+ * Below this a row or a table line is laid out as on a phone; from here it has room for its extra
+ * columns. Measured on the row, not the window: with a panel beside the list the row is narrower.
  */
-private val ROW_PADDING = 6.dp
-private val ROW_SPACING = 12.dp
-private val CARD_TEXT_PADDING = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
-private val COVER_CORNER = RoundedCornerShape(6.dp)
+private val WIDE_MIN_WIDTH = 600.dp
+
+private val CARD_COVER_WIDTH = 72.dp
+private val CARD_COVER_HEIGHT = 108.dp
+private val ROW_COVER_WIDTH = 36.dp
+private val ROW_COVER_HEIGHT = 54.dp
+
+/** The line a table's cells share: a row is never shorter than a thumb. */
+private val TABLE_ROW_MIN_HEIGHT = 44.dp
+
+/** The table's column widths, shared by the header and every line so they cannot drift apart. */
+private fun tableEpisodesWidth(wide: Boolean) = if (wide) 84.dp else 76.dp
+private fun tableScoreWidth(wide: Boolean) = if (wide) 30.dp else 26.dp
+private val TABLE_TYPE_WIDTH = 48.dp
+private val TABLE_AIRING_WIDTH = 72.dp
+private val TABLE_STARTED_WIDTH = 92.dp
 
 /**
- * One List Entry as a card: the cover art, the title, and the four facts about it that fit.
+ * One List Entry as a card: cover, title, `TV · Finished · sc 8`, the episode number and its cell bar.
  *
- * The card Layout is what the feature was asked for — cover art is how a person recognises a title
- * without reading it — so this is the default and [AnimeListRow] is the dense alternative.
+ * **Display only.** There is no +1 here and nothing to save: every edit goes through an open Anime
+ * Page, so the bottom row is the number and the bar and nothing is reserved beside them.
  */
 @Composable
 internal fun AnimeListCard(
@@ -70,46 +85,34 @@ internal fun AnimeListCard(
     modifier: Modifier = Modifier,
     selected: Boolean = false,
 ) {
-    Card(
-        onClick = onOpen,
-        modifier = modifier.fillMaxWidth().semantics { this.selected = selected },
-        colors = if (selected) {
-            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-        } else {
-            CardDefaults.cardColors()
-        },
+    val c = Act.colors
+    Row(
+        modifier
+            .fillMaxWidth()
+            .background(if (selected) c.sf2 else c.sf, ActMedium)
+            .border(1.dp, if (selected) c.acc else c.ln, ActMedium)
+            .clickable(role = Role.Button, onClick = onOpen)
+            .semantics { this.selected = selected }
+            .padding(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        AnimeCover(
-            entry = entry,
-            preferLarge = true,
-            modifier = Modifier.fillMaxWidth().aspectRatio(COVER_ASPECT_RATIO),
-        )
-        Column(
-            modifier = Modifier.padding(CARD_TEXT_PADDING),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(
-                entry.title,
-                style = MaterialTheme.typography.titleSmall,
-                overflow = TextOverflow.Ellipsis,
-                // Both bounds, not just the maximum: a grid row is as tall as its tallest card, and
-                // a one-line title beside a two-line one would otherwise leave the shorter card's
-                // metadata floating half a line up from its neighbour's.
-                minLines = 2,
-                maxLines = 2,
-            )
-            EntrySubtitle(entry.progress() + PART_SEPARATOR + entry.scoreLabel())
-            EntrySubtitle(entry.metadataLabel())
+        AnimeCoverBox(entry.title, entry.coverUrl(preferLarge = true), Modifier.size(CARD_COVER_WIDTH, CARD_COVER_HEIGHT))
+        Column(Modifier.weight(1f).height(CARD_COVER_HEIGHT), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(entry.title, style = Act.type.cardTitle, color = c.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(entry.metaLine(), style = Act.type.meta, color = c.dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.weight(1f))
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                TickingNumber(entry.episodesWatched, Act.type.cardNumber)
+                Text(entry.totalLabel(), style = Act.type.meta, color = c.dim)
+            }
+            EpisodeCells(entry.episodesWatched, entry.totalEpisodes, onPick = null)
         }
     }
 }
 
 /**
- * One List Entry as a dense row — ticket 02's rendering, now with the thumbnail and the metadata the
- * spec asks every List Entry to carry.
- *
- * Kept as the *other* Layout rather than replaced: a card grid is for browsing and a list is for
- * scanning four hundred completed shows, and the Layout toggle is what lets a person pick.
+ * One List Entry as a dense row: a thumbnail, the title, a 3dp progress bar with `7/12` beside it.
+ * Wide rows add type and airing, and the score, as columns of their own.
  */
 @Composable
 internal fun AnimeListRow(
@@ -118,70 +121,159 @@ internal fun AnimeListRow(
     modifier: Modifier = Modifier,
     selected: Boolean = false,
 ) {
-    // Measured, not a size class: the row is a grid cell, so what matters is the width it was given,
-    // which is not the window's once a panel sits beside the list.
-    BoxWithConstraints(
-        modifier
-            .fillMaxWidth()
-            .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
-            .clickable(role = Role.Button, onClick = onOpen)
-            .semantics { this.selected = selected },
-    ) {
-        val wide = maxWidth >= ROW_COLUMNS_MIN_WIDTH
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = ROW_PADDING),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(ROW_SPACING),
-        ) {
-            AnimeCover(
-                entry = entry,
-                preferLarge = false,
-                modifier = Modifier.width(ROW_COVER_WIDTH).aspectRatio(COVER_ASPECT_RATIO),
-            )
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
+    val c = Act.colors
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val wide = maxWidth >= WIDE_MIN_WIDTH
+        Column(Modifier.fillMaxWidth()) {
+            Row(
+                Modifier.fillMaxWidth()
+                    .background(if (selected) c.sf2 else Color.Transparent)
+                    .then(if (selected) Modifier.border(1.dp, c.acc) else Modifier)
+                    .clickable(role = Role.Button, onClick = onOpen)
+                    .semantics { this.selected = selected }
+                    .padding(start = 16.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                AnimeCoverBox(
                     entry.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    overflow = TextOverflow.Ellipsis,
-                    maxLines = 2,
+                    entry.coverUrl(preferLarge = false),
+                    Modifier.size(ROW_COVER_WIDTH, ROW_COVER_HEIGHT),
+                    letterSize = 15,
                 )
-                // The Watch Status has a column of its own when there is one, so it is not said twice.
-                EntrySubtitle(if (wide) entry.detailLabel() else entry.metadataLabel())
-            }
-            if (wide) {
-                RowColumn(entry.watchStatus.filterLabel(), ROW_STATUS_WIDTH)
-                RowColumn(entry.progress(), ROW_PROGRESS_WIDTH)
-                RowColumn(entry.scoreLabel(), ROW_SCORE_WIDTH)
-            } else {
-                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    EntrySubtitle(entry.progress())
-                    EntrySubtitle(entry.scoreLabel())
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(entry.title, style = Act.type.rowTitle, color = c.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ContinuousProgress(entry.episodesWatched, entry.totalEpisodes, Modifier.weight(1f).height(3.dp))
+                        Text(
+                            entry.rowProgress(),
+                            style = Act.type.meta.copy(lineHeight = Act.type.tiny.lineHeight),
+                            color = c.ink,
+                        )
+                    }
                 }
+                if (wide) {
+                    Text(
+                        entry.detailLabel(),
+                        style = Act.type.meta,
+                        color = c.dim,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.width(112.dp).testTag(ANIME_LIST_ROW_COLUMN_TAG),
+                    )
+                    Text(
+                        entry.tableScore(),
+                        style = Act.type.body,
+                        color = c.ink,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.width(28.dp).testTag(ANIME_LIST_ROW_COLUMN_TAG),
+                    )
+                }
+            }
+            HorizontalDivider(color = c.ln)
+        }
+    }
+}
+
+/**
+ * The header of the table Layout: `ls -l`'s column names, over a dashed rule. Draws the same columns
+ * [AnimeListTableRow] does, at the same widths, so the two cannot drift apart.
+ */
+@Composable
+internal fun AnimeListTableHeader(modifier: Modifier = Modifier) {
+    val c = Act.colors
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val wide = maxWidth >= WIDE_MIN_WIDTH
+        val style = Act.type.tiny.copy(fontWeight = FontWeight.Medium, letterSpacing = 0.6.sp)
+        Row(
+            Modifier.fillMaxWidth()
+                .drawBehind {
+                    val y = size.height - 0.5.dp.toPx()
+                    drawLine(
+                        c.ln,
+                        Offset(0f, y),
+                        Offset(size.width, y),
+                        strokeWidth = 1.dp.toPx(),
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx())),
+                    )
+                }
+                .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            TableHeaderCell("EP", Modifier.width(tableEpisodesWidth(wide)), style)
+            TableHeaderCell("SC", Modifier.width(tableScoreWidth(wide)), style)
+            TableHeaderCell("TITLE", Modifier.weight(1f), style)
+            if (wide) {
+                TableHeaderCell("TYPE", Modifier.width(TABLE_TYPE_WIDTH), style)
+                TableHeaderCell("AIRING", Modifier.width(TABLE_AIRING_WIDTH), style)
+                TableHeaderCell("STARTED", Modifier.width(TABLE_STARTED_WIDTH), style)
             }
         }
     }
 }
 
-/** One fixed-width cell of a wide dense row, so the same fact lines up down the whole list. */
 @Composable
-private fun RowColumn(text: String, width: Dp) {
+private fun TableHeaderCell(text: String, modifier: Modifier, style: TextStyle) {
+    Text(text, style = style, color = Act.colors.dim, maxLines = 1, modifier = modifier)
+}
+
+/**
+ * One List Entry as an `ls -l` line: episodes, score, title; wide adds type, airing and started.
+ *
+ * Started is **empty** for now: the list endpoint is not asked for dates, so a row carries none, and
+ * the column keeps its width so it fills in without moving anything when a date becomes known.
+ * There is no `[+]` column — the table is display only, like the other two.
+ */
+@Composable
+internal fun AnimeListTableRow(
+    entry: AnimeListEntry,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+) {
+    val c = Act.colors
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val wide = maxWidth >= WIDE_MIN_WIDTH
+        val cell = Act.type.body.copy(fontWeight = FontWeight.Normal)
+        Column(Modifier.fillMaxWidth()) {
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = TABLE_ROW_MIN_HEIGHT)
+                    .background(if (selected) c.sf2 else Color.Transparent)
+                    .then(if (selected) Modifier.border(1.dp, c.acc) else Modifier)
+                    .clickable(role = Role.Button, onClick = onOpen)
+                    .semantics { this.selected = selected }
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(entry.tableEpisodes(), style = Act.type.body, color = c.acc, maxLines = 1, modifier = Modifier.width(tableEpisodesWidth(wide)))
+                Text(entry.tableScore(), style = cell, color = c.dim, maxLines = 1, modifier = Modifier.width(tableScoreWidth(wide)))
+                Text(entry.title, style = cell, color = c.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                if (wide) {
+                    TableColumn(entry.mediaTypeLabel().orEmpty(), TABLE_TYPE_WIDTH)
+                    TableColumn(entry.airingStatus.airingLabel()?.lowercase().orEmpty(), TABLE_AIRING_WIDTH)
+                    TableColumn("", TABLE_STARTED_WIDTH)
+                }
+            }
+            HorizontalDivider(color = c.ln)
+        }
+    }
+}
+
+@Composable
+private fun TableColumn(text: String, width: Dp) {
     Text(
         text,
-        style = MaterialTheme.typography.bodyMedium,
-        overflow = TextOverflow.Ellipsis,
+        style = Act.type.body.copy(fontWeight = FontWeight.Normal),
+        color = Act.colors.dim,
         maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
         modifier = Modifier.width(width).testTag(ANIME_LIST_ROW_COLUMN_TAG),
     )
 }
 
-/** Below this a row is stacked as on a phone; from here it has room for its three columns. */
-private val ROW_COLUMNS_MIN_WIDTH = 600.dp
-private val ROW_STATUS_WIDTH = 120.dp
-private val ROW_PROGRESS_WIDTH = 88.dp
-private val ROW_SCORE_WIDTH = 88.dp
-
 /**
- * The cover art, over a placeholder that is always there.
+ * The cover art, over the [CoverPlaceholder] that is always there.
  *
  * **The placeholder is drawn first and the image over it, which is the whole error handling.** An
  * entry MAL sent no `main_picture` for never builds an [AsyncImage] at all; one whose art fails to
@@ -194,31 +286,13 @@ private val ROW_SCORE_WIDTH = 88.dp
  * therefore be right on two Targets and silently wrong on the third; the placeholder-behind is
  * the same on all three.
  *
- * [contentDescription] is null on purpose: the title is drawn beside the art in both Layouts, so the
+ * `contentDescription` is null on purpose: the title is drawn beside the art in every Layout, so the
  * cover is decorative and a screen reader announcing it would read the title twice.
  */
 @Composable
-private fun AnimeCover(entry: AnimeListEntry, preferLarge: Boolean, modifier: Modifier = Modifier) =
-    AnimeCoverBox(entry.title, entry.coverUrl(preferLarge), modifier)
-
-/** [AnimeCover] for anything with a title and a picture URL — a List Entry, or an Anime Page. */
-@Composable
-internal fun AnimeCoverBox(title: String, url: String?, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .clip(COVER_CORNER)
-            .background(placeholderColor()),
-        contentAlignment = Alignment.Center,
-    ) {
-        // A mark rather than an empty box, so a cover that never arrives still identifies its entry
-        // — and so a grid of them does not read as a grid of failures.
-        title.firstOrNull()?.let {
-            Text(
-                it.uppercase(),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+internal fun AnimeCoverBox(title: String, url: String?, modifier: Modifier = Modifier, letterSize: Int = 26) {
+    Box(modifier.clip(ActSmall)) {
+        CoverPlaceholder(title, Modifier.fillMaxSize(), letterSize)
         url?.let {
             AsyncImage(
                 model = it,
@@ -230,24 +304,12 @@ internal fun AnimeCoverBox(title: String, url: String?, modifier: Modifier = Mod
     }
 }
 
-/** Every secondary line on a card or a row, so they cannot drift apart one at a time. */
-@Composable
-private fun EntrySubtitle(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        overflow = TextOverflow.Ellipsis,
-        maxLines = 1,
-    )
-}
-
 /**
- * The colour behind an absent or unloaded cover, and behind every skeleton.
+ * The colour behind every skeleton, and behind the bars an Anime Page draws while it loads.
  *
  * One function rather than a literal at each site: the skeleton is a promise about the shape the
- * real content arrives in, and a placeholder that is a different grey from the skeleton it replaces
- * makes the arrival look like a failure.
+ * real content arrives in, and a different grey from the one it is replaced by makes the arrival
+ * look like a failure.
  */
 @Composable
 internal fun placeholderColor(): Color = Act.colors.ln
@@ -255,12 +317,13 @@ internal fun placeholderColor(): Color = Act.colors.ln
 /** [AnimeListCard]'s shape with nothing in it. See `AnimeListSection`'s note on skeletons. */
 @Composable
 internal fun AnimeCardSkeleton(modifier: Modifier = Modifier) {
-    Card(modifier) {
-        Box(Modifier.fillMaxWidth().aspectRatio(COVER_ASPECT_RATIO).background(placeholderColor()))
-        Column(
-            modifier = Modifier.padding(CARD_TEXT_PADDING),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
+    val c = Act.colors
+    Row(
+        modifier.fillMaxWidth().background(c.sf, ActMedium).border(1.dp, c.ln, ActMedium).padding(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Box(Modifier.size(CARD_COVER_WIDTH, CARD_COVER_HEIGHT).clip(ActSmall).background(placeholderColor()))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             SkeletonBar(Modifier.fillMaxWidth())
             SkeletonBar(Modifier.fillMaxWidth(0.6f))
         }
@@ -271,25 +334,32 @@ internal fun AnimeCardSkeleton(modifier: Modifier = Modifier) {
 @Composable
 internal fun AnimeRowSkeleton(modifier: Modifier = Modifier) {
     Row(
-        modifier = modifier.fillMaxWidth().padding(vertical = ROW_PADDING),
+        modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(ROW_SPACING),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(
-            Modifier
-                .width(ROW_COVER_WIDTH)
-                .aspectRatio(COVER_ASPECT_RATIO)
-                .clip(COVER_CORNER)
-                .background(placeholderColor()),
-        )
+        Box(Modifier.size(ROW_COVER_WIDTH, ROW_COVER_HEIGHT).clip(ActSmall).background(placeholderColor()))
         SkeletonBar(Modifier.weight(1f))
         SkeletonBar(Modifier.width(48.dp))
     }
 }
 
+/** [AnimeListTableRow]'s shape with nothing in it. */
+@Composable
+internal fun AnimeTableSkeleton(modifier: Modifier = Modifier) {
+    Row(
+        modifier.fillMaxWidth().heightIn(min = TABLE_ROW_MIN_HEIGHT).padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        SkeletonBar(Modifier.width(tableEpisodesWidth(wide = false)))
+        SkeletonBar(Modifier.weight(1f))
+    }
+}
+
 @Composable
 private fun SkeletonBar(modifier: Modifier = Modifier) {
-    Box(modifier.height(12.dp).background(placeholderColor(), RoundedCornerShape(4.dp)))
+    Box(modifier.height(12.dp).background(placeholderColor(), ActSmall))
 }
 
 /**
@@ -310,36 +380,41 @@ internal fun AnimePicture?.coverUrl(preferLarge: Boolean): String? {
 }
 
 /**
- * Watched-of-total episodes.
+ * The card's one meta line: media type, Airing Status and the user's score, `TV · Finished · sc 8`.
+ *
+ * Joined from a list that drops its nulls, so an entry MAL sent no `media_type` for closes up rather
+ * than showing a gap with two separators around it. The Watch Status is not here: it is the filter
+ * the whole list is under, and the tab already says it.
+ */
+internal fun AnimeListEntry.metaLine(): String =
+    listOfNotNull(mediaTypeLabel(), airingStatus.airingLabel(), scoreTag()).joinToString(PART_SEPARATOR)
+
+/**
+ * The user's own score, short. MAL sends `0` both for "not scored" and for a score of zero and does
+ * not distinguish them — its own scale starts at 1 — so `0` is read as unscored.
+ */
+internal fun AnimeListEntry.scoreTag(): String = if (score in 1..10) "sc $score" else "unscored"
+
+/** The score as a table cell: two digits, or `--`. */
+internal fun AnimeListEntry.tableScore(): String = if (score in 1..10) score.toString().padStart(2, '0') else "--"
+
+/**
+ * The episode total after the number, `/24`.
  *
  * MAL reports `0` for a total it does not know — a currently-airing show whose run is unannounced —
- * rather than omitting it, and "3 / 0" reads as a bug. So an unknown total shows as `?`.
+ * rather than omitting it, and "3/0" reads as a bug. So an unknown total shows as `?`.
  */
-internal fun AnimeListEntry.progress(): String =
-    "$episodesWatched / ${if (totalEpisodes > 0) totalEpisodes.toString() else "?"}"
+internal fun AnimeListEntry.totalLabel(): String = "/" + if (totalEpisodes > 0) totalEpisodes.toString() else "?"
 
-/**
- * The user's own score.
- *
- * MAL sends `0` both for "not scored" and for a score of zero, and does not distinguish them — its
- * own scale starts at 1 — so `0` is read as unscored. Spelled out rather than shown as a bare
- * number, because the number beside it is an episode count.
- */
-internal fun AnimeListEntry.scoreLabel(): String = if (score in 1..10) "Score $score" else "No score"
+/** Watched-of-total on a dense row, `7/12`. */
+internal fun AnimeListEntry.rowProgress(): String = "$episodesWatched${totalLabel()}"
 
-/**
- * The three facts about an entry that are not numbers: the Watch Status, the media type and the
- * Airing Status, in that order.
- *
- * One line rather than three, because a card has room for one — and joined from a list that drops
- * its nulls, so an entry MAL sent no `media_type` for closes up rather than showing a gap with two
- * separators around it.
- */
-internal fun AnimeListEntry.metadataLabel(): String =
-    listOfNotNull(watchStatus.filterLabel(), mediaTypeLabel(), airingStatus.airingLabel())
-        .joinToString(PART_SEPARATOR)
+/** Watched-of-total in the table, `019/028`, or `003/???` for an unknown total. */
+internal fun AnimeListEntry.tableEpisodes(): String =
+    episodesWatched.toString().padStart(3, '0') + "/" +
+        if (totalEpisodes > 0) totalEpisodes.toString().padStart(3, '0') else "???"
 
-/** [metadataLabel] without the Watch Status, for a row that shows that in a column of its own. */
+/** Media type and Airing Status, for a wide row's column. */
 internal fun AnimeListEntry.detailLabel(): String =
     listOfNotNull(mediaTypeLabel(), airingStatus.airingLabel()).joinToString(PART_SEPARATOR)
 

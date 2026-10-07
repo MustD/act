@@ -53,6 +53,8 @@ import io.challenge_workshop.mal_ui.theme.Act
 import io.challenge_workshop.mal_ui.animelist.LoadMoreWhenNearEnd
 import io.challenge_workshop.mal_ui.animelist.animeListItems
 import io.challenge_workshop.mal_ui.animelist.gridCells
+import io.challenge_workshop.mal_ui.animelist.gridPadding
+import io.challenge_workshop.mal_ui.animelist.gridSpacing
 import io.challenge_workshop.mal_ui.animepage.AnimePageScreen
 import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.screen.ShownError
@@ -337,9 +339,9 @@ private fun AnimeListPane(
                 .fillMaxWidth()
                 .testTag(ANIME_LIST_TAG),
             state = gridState,
-            contentPadding = PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = layout.gridPadding(),
+            horizontalArrangement = Arrangement.spacedBy(layout.gridSpacing()),
+            verticalArrangement = Arrangement.spacedBy(layout.gridSpacing()),
         ) {
             animeListItems(
                 state = list,

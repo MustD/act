@@ -2,6 +2,7 @@ package io.challenge_workshop.mal_ui.animelist
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_EMPTY_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_ERROR_TAG
@@ -64,6 +66,7 @@ fun LazyGridScope.animeListItems(
     /** The anime whose page is open, drawn highlighted; null when none is. */
     openAnimeId: Long? = null,
 ) {
+    val inset = layout.chromeInset()
     when (val content = state.content) {
         // Nothing asked for: only ever outside a Session, so only for the frame this screen is on its
         // way out. The heading alone is the honest thing to draw.
@@ -81,6 +84,7 @@ fun LazyGridScope.animeListItems(
             when (layout) {
                 AnimeListLayout.Cards -> AnimeCardSkeleton(Modifier.testTag(ANIME_LIST_SKELETON_TAG))
                 AnimeListLayout.List -> AnimeRowSkeleton(Modifier.testTag(ANIME_LIST_SKELETON_TAG))
+                AnimeListLayout.Table -> AnimeTableSkeleton(Modifier.testTag(ANIME_LIST_SKELETON_TAG))
             }
         }
 
@@ -89,7 +93,7 @@ fun LazyGridScope.animeListItems(
         // reuses `ErrorCard` rather than growing one of its own.
         is AnimeListContent.FirstPageFailed -> item(span = fullLineSpan) {
             Column(
-                Modifier.testTag(ANIME_LIST_ERROR_TAG),
+                Modifier.padding(inset).testTag(ANIME_LIST_ERROR_TAG),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 ErrorCard("Could not load your Anime List", content.message)
@@ -101,7 +105,7 @@ fun LazyGridScope.animeListItems(
         // fix for each is different and collapsing them tells a user with four hundred completed
         // shows that their MyAnimeList is empty. The Watch Status beside the variant says which.
         AnimeListContent.Empty -> item(span = fullLineSpan) {
-            EmptyAnimeList(state.watchStatus, onShowAll)
+            EmptyAnimeList(state.watchStatus, onShowAll, Modifier.padding(inset))
         }
 
         is AnimeListContent.Entries -> {
@@ -115,17 +119,17 @@ fun LazyGridScope.animeListItems(
             // own `GridCells`, chosen in `SignedInScreen`. That is the whole of the difference
             // between the two Layouts, which is why there is no second copy of anything here.
             val entries = content.entries
+            // The table's column names, as the first line of the same grid so they scroll with it.
+            if (layout == AnimeListLayout.Table) item(span = fullLineSpan) { AnimeListTableHeader() }
             items(entries.size) { index ->
                 val entry = entries[index]
                 when (layout) {
                     AnimeListLayout.Cards -> AnimeListCard(entry, onOpen = { onOpen(entry) }, selected = entry.animeId == openAnimeId)
-                    // No divider under a dense row. The rows are grid cells and the grid spaces them
-                    // itself, so a rule drawn at the bottom of each one lands 8dp above the next row
-                    // rather than between the two — a line that belongs to nothing.
                     AnimeListLayout.List -> AnimeListRow(entry, onOpen = { onOpen(entry) }, selected = entry.animeId == openAnimeId)
+                    AnimeListLayout.Table -> AnimeListTableRow(entry, onOpen = { onOpen(entry) }, selected = entry.animeId == openAnimeId)
                 }
             }
-            animeListTail(content.tail, onRetry)
+            animeListTail(content.tail, onRetry, inset)
         }
     }
 }
@@ -140,8 +144,8 @@ private fun TerminalButton(label: String, onClick: () -> Unit) {
 
 /** The one or two ways out of an empty Anime List, which depend on whether it is filtered. */
 @Composable
-private fun EmptyAnimeList(watchStatus: WatchStatus?, onShowAll: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+private fun EmptyAnimeList(watchStatus: WatchStatus?, onShowAll: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             // The `> ` is part of the string, so one node carries the whole line.
             "> " + (watchStatus?.emptyListMessage() ?: "You have nothing on your MyAnimeList yet."),
@@ -168,13 +172,13 @@ private fun EmptyAnimeList(watchStatus: WatchStatus?, onShowAll: () -> Unit) {
  * Nothing at all for [AnimeListTail.Idle] and [AnimeListTail.End]: the first is about to become a
  * page by scrolling, and the second is a list that has simply finished.
  */
-private fun LazyGridScope.animeListTail(tail: AnimeListTail, onRetry: () -> Unit) {
+private fun LazyGridScope.animeListTail(tail: AnimeListTail, onRetry: () -> Unit, inset: Dp) {
     when (tail) {
         AnimeListTail.Idle, AnimeListTail.End -> Unit
 
         AnimeListTail.LoadingMore -> item(span = fullLineSpan) {
             Row(
-                Modifier.testTag(ANIME_LIST_MORE_TAG),
+                Modifier.padding(inset).testTag(ANIME_LIST_MORE_TAG),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -188,7 +192,7 @@ private fun LazyGridScope.animeListTail(tail: AnimeListTail, onRetry: () -> Unit
         // the offset that failed.
         is AnimeListTail.MoreFailed -> item(span = fullLineSpan) {
             Column(
-                Modifier.testTag(ANIME_LIST_MORE_TAG),
+                Modifier.padding(inset).testTag(ANIME_LIST_MORE_TAG),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 ErrorCard("Could not load more", tail.message)
@@ -318,17 +322,34 @@ private const val SKELETON_ITEMS: Int = 8
  *
  * [AnimeListLayout.Cards] is [GridCells.Adaptive], not a column count per breakpoint: the grid
  * divides whatever width it is given by [ANIME_CARD_MIN_WIDTH] and stretches the cards to fit, so a
- * phone lands on two columns, a desktop window on five or six and a browser dragged between the two
- * changes column count as it goes — with no size class, no `WindowSizeClass` dependency and nothing
- * to keep in step with the three Targets' idea of a screen.
+ * phone lands on one column, a desktop window on as many as fit, and a browser dragged between the
+ * two changes column count as it goes — with no size class and nothing to keep in step with the
+ * three Targets' idea of a screen.
  *
- * [AnimeListLayout.List] is the same grid at one column, which is what makes the dense Layout a
- * Layout rather than a second lazy container. See [animeListItems].
- *
- * Neither is capped in width: both fill the window, and a wide dense row spends the extra room on
- * columns instead — see [AnimeListRow].
+ * [AnimeListLayout.List] and [AnimeListLayout.Table] are the same grid at one column, which is what
+ * makes them Layouts rather than extra lazy containers. See [animeListItems].
  */
 internal fun AnimeListLayout.gridCells(): GridCells = when (this) {
     AnimeListLayout.Cards -> GridCells.Adaptive(ANIME_CARD_MIN_WIDTH)
-    AnimeListLayout.List -> GridCells.Fixed(1)
+    AnimeListLayout.List, AnimeListLayout.Table -> GridCells.Fixed(1)
+}
+
+/**
+ * The grid's outer padding and the gap between cells. Cards sit on the page with a gap; rows and
+ * table lines run edge to edge and are separated by their own 1dp rule instead.
+ */
+internal fun AnimeListLayout.gridPadding(): PaddingValues = when (this) {
+    AnimeListLayout.Cards -> PaddingValues(12.dp)
+    AnimeListLayout.List, AnimeListLayout.Table -> PaddingValues(0.dp)
+}
+
+internal fun AnimeListLayout.gridSpacing(): Dp = when (this) {
+    AnimeListLayout.Cards -> 10.dp
+    AnimeListLayout.List, AnimeListLayout.Table -> 0.dp
+}
+
+/** What the grid's own padding does not give a non-entry line: the same 16dp as the chrome above. */
+private fun AnimeListLayout.chromeInset(): Dp = when (this) {
+    AnimeListLayout.Cards -> 4.dp
+    AnimeListLayout.List, AnimeListLayout.Table -> 16.dp
 }

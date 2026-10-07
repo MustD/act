@@ -81,26 +81,25 @@ class SignedInScreenTest {
             for (title in FIXTURE_TITLES) {
                 onNodeWithText(title).assertIsDisplayed()
             }
-            // Watched-of-total and the user's own score share a line on a card, so this one node
-            // carries both. `substring`, because what is asserted is that the two facts are there
-            // and not how they are punctuated.
-            onNodeWithText("3 / 26 · Score 8", substring = true).assertIsDisplayed()
-            // The Watch Status, the media type and the Airing Status, which are what make an
-            // unfiltered list legible. `onAllNodes`, because both fixture entries carry the same
-            // three — a metadata line that were unique per entry would be testing the fixture.
-            onAllNodesWithText("Watching · TV · Finished")[0].assertIsDisplayed()
+            // The media type, the Airing Status and the score share the card's one meta line.
+            // `onAllNodes`, because both fixture entries carry the same three — a meta line that
+            // were unique per entry would be testing the fixture.
+            onAllNodesWithText("TV · Finished · sc 8")[0].assertIsDisplayed()
+            // The episode number and its total are two nodes: the number is the animated one.
+            onAllNodesWithText("03")[0].assertIsDisplayed()
+            onAllNodesWithText("/26")[0].assertIsDisplayed()
         }
     }
 
     /**
      * A wide List row draws Watch Status, progress and score as columns; a narrow one stays stacked.
      *
-     * Three cells per entry, told apart from the stacked shape by their tag — the texts are the same
+     * Two cells per entry — type and airing, and the score, told apart from the stacked shape by their tag — the texts are the same
      * either way, so a text assertion could not tell a table from a phone.
      */
     @Test
     fun a_list_row_draws_columns_only_when_it_has_room() {
-        for ((width, columns) in listOf(1000.dp to FIXTURE_TITLES.size * 3, 400.dp to 0)) {
+        for ((width, columns) in listOf(1000.dp to FIXTURE_TITLES.size * 2, 400.dp to 0)) {
             runComposeUiTest {
                 setContent {
                     Box(Modifier.width(width)) {
@@ -139,23 +138,37 @@ class SignedInScreenTest {
             // Cards on a device that has never chosen: the feature was asked for as a grid of cover
             // art, so a first launch opens on the Layout the user would have picked.
             onNodeWithTag(ANIME_LIST_LAYOUT_TAG).assertIsDisplayed()
-            onNodeWithTag(ANIME_LIST_LAYOUT_TAG).assertContentDescriptionContains("Layout: Cards", substring = true)
+            onNodeWithTag(ANIME_LIST_LAYOUT_TAG).assertContentDescriptionContains("Layout: cards", substring = true)
             onNodeWithTag(ANIME_LIST_LAYOUT_TAG).performClick()
             waitForIdle()
 
-            onNodeWithTag(ANIME_LIST_LAYOUT_TAG).assertContentDescriptionContains("Layout: List", substring = true)
+            onNodeWithTag(ANIME_LIST_LAYOUT_TAG).assertContentDescriptionContains("Layout: rows", substring = true)
 
             for (title in FIXTURE_TITLES) {
                 onNodeWithText(title).assertIsDisplayed()
             }
-            // A dense row splits what a card joins, so these are three nodes rather than two.
-            // `onAllNodes` wherever both fixture entries share the value.
-            onNodeWithText("3 / 26").assertIsDisplayed()
-            onAllNodesWithText("Score 8")[0].assertIsDisplayed()
-            // The test window is wide, so the Watch Status has its own column and is not repeated in
-            // the metadata line.
-            onAllNodesWithText("Watching")[0].assertIsDisplayed()
+            // A row draws the progress as one `7/12` string and the rest as columns, because "the
+            // same entries, drawn densely" is the whole claim.
+            onAllNodesWithText("3/26")[0].assertIsDisplayed()
+            onAllNodesWithText("08")[0].assertIsDisplayed()
             onAllNodesWithText("TV · Finished")[0].assertIsDisplayed()
+        }
+    }
+
+    /**
+     * The third Layout is an `ls -l` table: a header, then the same entries as `019/028`-style lines.
+     * It has no `[+]` column and no way to change an entry from the list.
+     */
+    @Test
+    fun the_table_layout_draws_a_header_and_a_line_per_entry() {
+        runComposeUiTest {
+            setContent { ThemedSessionRoute(signedIn(layout = AnimeListLayout.Table), RecordedActions().actions) }
+
+            onNodeWithText("TITLE").assertIsDisplayed()
+            for (title in FIXTURE_TITLES) onNodeWithText(title).assertIsDisplayed()
+            onNodeWithText("003/026").assertIsDisplayed()
+            onAllNodesWithText("08")[0].assertIsDisplayed()
+            onNodeWithText("[+]").assertDoesNotExist()
         }
     }
 

@@ -249,8 +249,20 @@ class JsonTokenStoreTest {
     }
 
     @Test
+    fun every_layout_round_trips_by_name() = runTest {
+        for (layout in AnimeListLayout.entries) {
+            val kv = FakeKeyValueStore()
+            store(kv).writeLayout(layout)
+
+            assertEquals(layout, store(kv).readLayout())
+        }
+        // The stored names are a format: `List` is what rows have always been written as.
+        assertEquals(listOf("Cards", "List", "Table"), AnimeListLayout.entries.map { it.name })
+    }
+
+    @Test
     fun a_layout_this_build_does_not_know_reads_as_the_default() = runTest {
-        // A record written by a later build that offers a third Layout. An unknown enum value is a
+        // A record written by a later build that offers a fourth Layout. An unknown enum value is a
         // `SerializationException`, and a preference is never worth a crash loop over.
         val kv = FakeKeyValueStore(mutableMapOf(JsonTokenStore.LAYOUT_KEY to "\"Mosaic\""))
 

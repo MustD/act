@@ -49,32 +49,31 @@ class AnimeListEntriesTest {
     }
 
     @Test
-    fun progress_is_watched_of_total() {
-        assertEquals("3 / 26", entry(episodesWatched = 3, totalEpisodes = 26).progress())
+    fun a_row_shows_watched_over_total() {
+        assertEquals("7/12", entry(episodesWatched = 7, totalEpisodes = 12).rowProgress())
     }
 
-    /** MAL sends `0` for a run whose length is not yet announced, and "3 / 0" reads as a bug. */
+    /** MAL sends `0` for a run whose length is not yet announced, and "3/0" reads as a bug. */
     @Test
     fun an_unknown_episode_total_shows_as_a_question_mark() {
-        assertEquals("3 / ?", entry(episodesWatched = 3, totalEpisodes = 0).progress())
+        assertEquals("3/?", entry(episodesWatched = 3, totalEpisodes = 0).rowProgress())
+        assertEquals("/?", entry(totalEpisodes = 0).totalLabel())
+        assertEquals("/24", entry(totalEpisodes = 24).totalLabel())
     }
 
     /** MAL's scale starts at 1, so `0` is "not scored" and not a score of zero. */
     @Test
-    fun a_score_of_zero_is_no_score() {
-        assertEquals("Score 8", entry(score = 8).scoreLabel())
-        assertEquals("No score", entry(score = 0).scoreLabel())
+    fun a_score_of_zero_is_unscored() {
+        assertEquals("sc 8", entry(score = 8).scoreTag())
+        assertEquals("unscored", entry(score = 0).scoreTag())
     }
 
     @Test
-    fun the_metadata_line_names_the_watch_status_the_media_type_and_the_airing_status() {
-        val entry = entry(
-            watchStatus = WatchStatus.Watching,
-            mediaType = "tv",
-            airingStatus = AiringStatus.CurrentlyAiring,
-        )
+    fun the_card_meta_line_is_type_airing_and_score() {
+        val entry = entry(mediaType = "tv", airingStatus = AiringStatus.FinishedAiring, score = 8)
 
-        assertEquals("Watching · TV · Airing", entry.metadataLabel())
+        assertEquals("TV · Finished · sc 8", entry.metaLine())
+        assertEquals("TV · Finished · unscored", entry.copy(score = 0).metaLine())
     }
 
     /**
@@ -83,14 +82,25 @@ class AnimeListEntriesTest {
      * status this build has never seen lands.
      */
     @Test
-    fun facts_mal_did_not_send_are_dropped_from_the_metadata_line() {
-        val entry = entry(
-            watchStatus = WatchStatus.Completed,
-            mediaType = null,
-            airingStatus = AiringStatus.Unknown,
-        )
+    fun facts_mal_did_not_send_are_dropped_from_the_meta_line() {
+        val entry = entry(mediaType = null, airingStatus = AiringStatus.Unknown, score = 0)
 
-        assertEquals("Completed", entry.metadataLabel())
+        assertEquals("unscored", entry.metaLine())
+    }
+
+    @Test
+    fun the_detail_label_is_type_and_airing_without_the_score() {
+        assertEquals("TV · Finished", entry().detailLabel())
+    }
+
+    /** `ls -l` columns: zero-padded to three digits so they line up, `???` for an unknown total. */
+    @Test
+    fun the_table_pads_episodes_and_scores_so_columns_line_up() {
+        assertEquals("019/028", entry(episodesWatched = 19, totalEpisodes = 28).tableEpisodes())
+        assertEquals("003/???", entry(episodesWatched = 3, totalEpisodes = 0).tableEpisodes())
+        assertEquals("08", entry(score = 8).tableScore())
+        assertEquals("10", entry(score = 10).tableScore())
+        assertEquals("--", entry(score = 0).tableScore())
     }
 
     @Test

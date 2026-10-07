@@ -168,6 +168,7 @@ fun SignedInPromptRow(
 private fun AnimeListLayout.icon(): DrawableResource = when (this) {
     AnimeListLayout.Cards -> Res.drawable.view_agenda
     AnimeListLayout.List -> Res.drawable.view_list
+    AnimeListLayout.Table -> Res.drawable.table_rows
 }
 
 /** A 40dp square icon button, with the 40dp hit target the design asks for. */

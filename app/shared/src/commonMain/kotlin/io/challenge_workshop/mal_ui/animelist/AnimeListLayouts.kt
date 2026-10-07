@@ -1,6 +1,6 @@
 package io.challenge_workshop.mal_ui.animelist
 
-/** The two Layouts, in the order they are drawn — the default first. */
+/** The three Layouts, in the order they are drawn — the default first. */
 val ANIME_LIST_LAYOUTS: List<AnimeListLayout> = AnimeListLayout.entries.toList()
 
 /**
@@ -10,8 +10,9 @@ val ANIME_LIST_LAYOUTS: List<AnimeListLayout> = AnimeListLayout.entries.toList()
  * tier and has no business carrying display copy. The prompt row's button shows an icon instead.
  */
 fun AnimeListLayout.layoutLabel(): String = when (this) {
-    AnimeListLayout.Cards -> "Cards"
-    AnimeListLayout.List -> "List"
+    AnimeListLayout.Cards -> "cards"
+    AnimeListLayout.List -> "rows"
+    AnimeListLayout.Table -> "table"
 }
 
 /** The Layout the button moves to: the next one, wrapping to the first. */
