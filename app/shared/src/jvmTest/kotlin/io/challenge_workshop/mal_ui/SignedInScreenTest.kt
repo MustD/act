@@ -439,7 +439,7 @@ class SignedInScreenTest {
         runComposeUiTest {
             var loading by mutableStateOf(true)
             setContent {
-                ThemedSessionRoute(
+                PhoneSessionRoute(
                     signedIn(list = loadedList(replacing = loading)),
                     RecordedActions().actions,
                 )
@@ -472,7 +472,7 @@ class SignedInScreenTest {
         val many = (1..60).map { "Anime $it" }
         val actions = RecordedActions()
         runComposeUiTest {
-            setContent { ThemedSessionRoute(signedIn(list = loadedList(titles = many)), actions.actions) }
+            setContent { PhoneSessionRoute(signedIn(list = loadedList(titles = many)), actions.actions) }
 
             // The fixture has no filter, so it is All — the whole list rather than an arbitrary slice.
             onNodeWithText("all").assertIsSelected()

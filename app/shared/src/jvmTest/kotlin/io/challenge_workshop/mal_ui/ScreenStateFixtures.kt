@@ -2,6 +2,8 @@
 
 package io.challenge_workshop.mal_ui
 
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.width
 import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -291,4 +293,12 @@ internal class RecordingUriHandler(private val opened: MutableList<String>) : Ur
 @androidx.compose.runtime.Composable
 internal fun ThemedSessionRoute(state: ScreenState, actions: ScreenActions) {
     io.challenge_workshop.mal_ui.theme.ActTheme(dark = true) { SessionRoute(state, actions) }
+}
+
+/** [ThemedSessionRoute] at phone width, where the tabs and the More menu are what is on screen. */
+@androidx.compose.runtime.Composable
+internal fun PhoneSessionRoute(state: ScreenState, actions: ScreenActions) {
+    androidx.compose.foundation.layout.Box(
+        androidx.compose.ui.Modifier.width(400.dp),
+    ) { ThemedSessionRoute(state, actions) }
 }

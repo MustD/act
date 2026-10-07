@@ -9,12 +9,15 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -40,6 +43,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.testTag
@@ -50,11 +55,13 @@ import io.challenge_workshop.mal_ui.animelist.AnimeListFilters
 import io.challenge_workshop.mal_ui.animelist.AnimeListSortRow
 import io.challenge_workshop.mal_ui.animelist.filterLabel
 import io.challenge_workshop.mal_ui.theme.Act
+import io.challenge_workshop.mal_ui.theme.ActEasing
 import io.challenge_workshop.mal_ui.animelist.LoadMoreWhenNearEnd
 import io.challenge_workshop.mal_ui.animelist.animeListItems
 import io.challenge_workshop.mal_ui.animelist.gridCells
 import io.challenge_workshop.mal_ui.animelist.gridPadding
 import io.challenge_workshop.mal_ui.animelist.gridSpacing
+import io.challenge_workshop.mal_ui.animepage.AnimePage
 import io.challenge_workshop.mal_ui.animepage.AnimePageScreen
 import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.screen.ShownError
@@ -246,27 +253,22 @@ fun SignedInScreen(
         } else {
             // The screen tag is on this wrapper rather than on the list, because the list carries its
             // own and a second `testTag` would replace it.
-            Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-                SignedInPromptRow(
-                    state = state,
-                    actions = actions,
-                    onShowDiagnostics = { diagnosticsOpen = true },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                if (page == null) {
-                    AnimeListPane(state, actions, gridState, Modifier.weight(1f).fillMaxWidth())
-                } else {
-                    Row(Modifier.weight(1f).fillMaxWidth()) {
-                        AnimeListPane(state, actions, gridState, Modifier.weight(1f).fillMaxHeight())
-                        VerticalDivider()
-                        AnimePageScreen(
-                            page = page,
-                            canGoBack = canGoBack,
-                            actions = pageActions,
-                            modifier = Modifier.width(SIDE_PANEL_WIDTH).fillMaxHeight()
-                                .testTag(ANIME_PAGE_PANEL_TAG).padding(16.dp),
-                        )
-                    }
+            Row(Modifier.fillMaxSize()) {
+                if (sideBySide) {
+                    WideSidebar(state, actions, onShowDiagnostics = { diagnosticsOpen = true })
+                }
+                Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    SignedInPromptRow(
+                        state = state,
+                        actions = actions,
+                        onShowDiagnostics = { diagnosticsOpen = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        wide = sideBySide,
+                    )
+                    AnimeListPane(state, actions, gridState, Modifier.weight(1f).fillMaxWidth(), tabs = !sideBySide)
+                }
+                if (sideBySide) {
+                    AnimePageSidePanel(page, canGoBack, pageActions)
                 }
             }
         }
@@ -287,6 +289,57 @@ internal val SIDE_PANEL_MIN_WIDTH = 840.dp
 /** The Anime Page's width as a side panel; the list takes the rest. */
 internal val SIDE_PANEL_WIDTH = 480.dp
 
+/** How long the side panel takes to open or close. */
+internal const val SIDE_PANEL_MS = 400
+
+/** How far to the right the panel's content starts, and fades in from. */
+private val SIDE_PANEL_SLIDE = 24.dp
+
+/**
+ * The Anime Page beside the list. Its *width* animates between 0 and [SIDE_PANEL_WIDTH], so the
+ * list reflows as it goes, while the content is laid out at the full 480dp the whole time and is
+ * only clipped — a page that re-wrapped on every frame of the animation would be unreadable.
+ * The content fades in from [SIDE_PANEL_SLIDE] to the right as the width grows.
+ *
+ * Closing reverses it, which needs the page that was open: [page] is already null by then, so the
+ * last one is held until the width is back at 0.
+ */
+@Composable
+private fun AnimePageSidePanel(
+    page: AnimePage?,
+    canGoBack: Boolean,
+    actions: AnimePageActions,
+) {
+    val held = remember { mutableStateOf(page) }
+    if (page != null) held.value = page
+    val width by animateDpAsState(
+        if (page != null) SIDE_PANEL_WIDTH else 0.dp,
+        tween(SIDE_PANEL_MS, easing = ActEasing),
+        label = "sidePanelWidth",
+    )
+    val shown = held.value
+    if (shown == null || width == 0.dp && page == null) return
+    val progress = (width / SIDE_PANEL_WIDTH).coerceIn(0f, 1f)
+    Row(Modifier.width(width).fillMaxHeight().clipToBounds()) {
+        VerticalDivider()
+        AnimePageScreen(
+            page = shown,
+            canGoBack = canGoBack,
+            actions = actions,
+            modifier = Modifier
+                .wrapContentWidth(Alignment.Start, unbounded = true)
+                .width(SIDE_PANEL_WIDTH)
+                .fillMaxHeight()
+                .graphicsLayer {
+                    alpha = progress
+                    translationX = (1f - progress) * SIDE_PANEL_SLIDE.toPx()
+                }
+                .testTag(ANIME_PAGE_PANEL_TAG)
+                .padding(16.dp),
+        )
+    }
+}
+
 /** The filter row, the Sort Order and the entries: everything that is a query over the Anime List. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -295,6 +348,7 @@ private fun AnimeListPane(
     actions: SignedInActions,
     gridState: LazyGridState,
     modifier: Modifier = Modifier,
+    tabs: Boolean = true,
 ) {
     val list = state.list
     val layout = state.layout
@@ -310,13 +364,16 @@ private fun AnimeListPane(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag(ANIME_LIST_TITLE_TAG),
         )
-        AnimeListFilters(
-            selected = list.watchStatus,
-            // Both read the same decision, because both go through the same reset — see
-            // `AnimeListState.queryControlsEnabled`.
-            enabled = list.queryControlsEnabled,
-            onSelect = actions.onSelectWatchStatus,
-        )
+        // The sidebar carries the Watch Statuses from the side-panel width.
+        if (tabs) {
+            AnimeListFilters(
+                selected = list.watchStatus,
+                // Both read the same decision, because both go through the same reset — see
+                // `AnimeListState.queryControlsEnabled`.
+                enabled = list.queryControlsEnabled,
+                onSelect = actions.onSelectWatchStatus,
+            )
+        }
         AnimeListSortRow(
             selected = list.sortOrder,
             enabled = list.queryControlsEnabled,

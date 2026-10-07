@@ -55,7 +55,7 @@ class SignedInTopBarTest {
         val entries = listOf("reload", "diagnostics", "sign out")
         val actions = RecordedActions()
         runComposeUiTest {
-            setContent { ThemedSessionRoute(signedIn(), actions.actions) }
+            setContent { PhoneSessionRoute(signedIn(), actions.actions) }
 
             // None of the three is on the screen itself: they live behind one button.
             for (entry in entries) {
@@ -146,7 +146,7 @@ class SignedInTopBarTest {
     fun the_theme_button_asks_for_the_opposite_of_what_is_showing() {
         val actions = RecordedActions()
         runComposeUiTest {
-            setContent { ThemedSessionRoute(signedIn(), actions.actions) }
+            setContent { PhoneSessionRoute(signedIn(), actions.actions) }
 
             onNodeWithTag(SESSION_THEME_TAG).performClick()
 
@@ -186,7 +186,7 @@ class SignedInTopBarTest {
     @Test
     fun session_diagnostics_opens_the_debug_panel_in_a_dialog() {
         runComposeUiTest {
-            setContent { ThemedSessionRoute(signedIn(), RecordedActions().actions) }
+            setContent { PhoneSessionRoute(signedIn(), RecordedActions().actions) }
 
             // "Force 401" writes an invalid token into the store, so it must not be a stray tap away.
             onNodeWithText("Force 401").assertDoesNotExist()
@@ -224,7 +224,7 @@ class SignedInTopBarTest {
     fun each_debug_panel_button_reaches_its_own_action() {
         val actions = RecordedActions()
         runComposeUiTest {
-            setContent { ThemedSessionRoute(signedIn(diagnostics = TEST_DIAGNOSTICS), actions.actions) }
+            setContent { PhoneSessionRoute(signedIn(diagnostics = TEST_DIAGNOSTICS), actions.actions) }
             openDiagnostics()
 
             onNodeWithText("Reload diagnostics").performClick()

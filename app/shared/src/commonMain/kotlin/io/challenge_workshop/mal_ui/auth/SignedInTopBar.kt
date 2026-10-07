@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -80,6 +81,7 @@ fun SignedInPromptRow(
     actions: SignedInActions,
     onShowDiagnostics: () -> Unit,
     modifier: Modifier = Modifier,
+    wide: Boolean = false,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val c = Act.colors
@@ -88,18 +90,23 @@ fun SignedInPromptRow(
         modifier = modifier.testTag(SESSION_TOP_BAR_TAG).padding(start = 16.dp, top = 6.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                promptText(state.user?.name, state.list.watchStatus),
-                style = Act.type.meta,
-                color = c.dim,
-                // A MAL username has no length this row can rely on, and a row that grew a second
-                // line for one would push the list down by exactly as much.
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false).testTag(SESSION_USER_NAME_TAG),
-            )
-            BlockCursor(Modifier.padding(start = 2.dp))
+        if (wide) {
+            // The prompt is in the sidebar at this width; this row keeps only the buttons.
+            Spacer(Modifier.weight(1f))
+        } else {
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    promptText(state.user?.name, state.list.watchStatus),
+                    style = Act.type.meta,
+                    color = c.dim,
+                    // A MAL username has no length this row can rely on, and a row that grew a second
+                    // line for one would push the list down by exactly as much.
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false).testTag(SESSION_USER_NAME_TAG),
+                )
+                BlockCursor(Modifier.padding(start = 2.dp))
+            }
         }
         if (state.refreshing) {
             CircularProgressIndicator(Modifier.padding(horizontal = 8.dp).size(16.dp), color = c.acc, strokeWidth = 2.dp)
@@ -119,46 +126,49 @@ fun SignedInPromptRow(
             onClick = { actions.onToggleTheme(c.isDark) },
             modifier = Modifier.testTag(SESSION_THEME_TAG),
         )
-        // The menu is anchored to this `Box` rather than to the row, so it opens under the button
-        // that summoned it instead of at the corner of the window.
-        Box {
-            PromptIconButton(
-                icon = Res.drawable.more_vert,
-                description = "More",
-                onClick = { menuOpen = true },
-                modifier = Modifier.testTag(SESSION_MENU_BUTTON_TAG),
-            )
-            DropdownMenu(
-                expanded = menuOpen,
-                onDismissRequest = { menuOpen = false },
-                modifier = Modifier.testTag(SESSION_MENU_TAG),
-            ) {
-                // Each entry closes the menu before it acts. Leaving it open over a screen that has
-                // just started replacing itself would put a second tap one pixel away from the first.
-                DropdownMenuItem(
-                    text = { Text("reload") },
-                    // The same reset the filter and the Sort Order go through, with neither of them
-                    // changed — so it refetches the list on screen from `offset=0`.
-                    onClick = {
-                        menuOpen = false
-                        actions.onReload()
-                    },
+        // At wide widths the sidebar carries these three; the menu would only repeat it.
+        if (!wide) {
+            // The menu is anchored to this `Box` rather than to the row, so it opens under the button
+            // that summoned it instead of at the corner of the window.
+            Box {
+                PromptIconButton(
+                    icon = Res.drawable.more_vert,
+                    description = "More",
+                    onClick = { menuOpen = true },
+                    modifier = Modifier.testTag(SESSION_MENU_BUTTON_TAG),
                 )
-                DropdownMenuItem(
-                    text = { Text("diagnostics") },
-                    onClick = {
-                        menuOpen = false
-                        onShowDiagnostics()
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text("sign out") },
-                    enabled = !state.busy,
-                    onClick = {
-                        menuOpen = false
-                        actions.onSignOut()
-                    },
-                )
+                DropdownMenu(
+                    expanded = menuOpen,
+                    onDismissRequest = { menuOpen = false },
+                    modifier = Modifier.testTag(SESSION_MENU_TAG),
+                ) {
+                    // Each entry closes the menu before it acts. Leaving it open over a screen that has
+                    // just started replacing itself would put a second tap one pixel away from the first.
+                    DropdownMenuItem(
+                        text = { Text("reload") },
+                        // The same reset the filter and the Sort Order go through, with neither of them
+                        // changed — so it refetches the list on screen from `offset=0`.
+                        onClick = {
+                            menuOpen = false
+                            actions.onReload()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("diagnostics") },
+                        onClick = {
+                            menuOpen = false
+                            onShowDiagnostics()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("sign out") },
+                        enabled = !state.busy,
+                        onClick = {
+                            menuOpen = false
+                            actions.onSignOut()
+                        },
+                    )
+                }
             }
         }
     }
@@ -190,7 +200,7 @@ private fun PromptIconButton(
 
 /** The 7×12 accent block after the prompt, on for half a second and off for half a second. */
 @Composable
-private fun BlockCursor(modifier: Modifier = Modifier) {
+internal fun BlockCursor(modifier: Modifier = Modifier) {
     var on by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) {
         while (true) {

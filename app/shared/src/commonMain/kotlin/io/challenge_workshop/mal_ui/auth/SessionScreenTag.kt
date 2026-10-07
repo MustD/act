@@ -234,3 +234,6 @@ fun animePageRelatedTag(animeId: Long): String = "$ANIME_PAGE_TAG.related.$anime
 
 /** The "On your list" mark on a Related Anime row. */
 fun animePageRelatedOnListTag(animeId: Long): String = "$ANIME_PAGE_TAG.related.$animeId.onList"
+
+/** The 208dp sidebar shown from [SIDE_PANEL_MIN_WIDTH]; it replaces the tabs and the More menu. */
+val SESSION_SIDEBAR_TAG: String = "${SessionScreenTag.SignedIn.tag}.sidebar"
