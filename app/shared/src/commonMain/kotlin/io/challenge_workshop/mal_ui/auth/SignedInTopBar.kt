@@ -42,6 +42,8 @@ import io.challenge_workshop.mal_ui.animelist.AnimeListLayout
 import io.challenge_workshop.mal_ui.animelist.layoutLabel
 import io.challenge_workshop.mal_ui.animelist.next
 import io.challenge_workshop.mal_ui.animelist.promptText
+import io.challenge_workshop.mal_ui.theme.ActMedium
+import io.challenge_workshop.mal_ui.theme.SectionLabel
 import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.theme.Act
 import io.challenge_workshop.mal_ui.theme.ActMedium
@@ -239,7 +241,14 @@ fun SessionDiagnosticsDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         modifier = modifier.testTag(SESSION_DIAGNOSTICS_TAG),
-        title = { Text("Session diagnostics") },
+        containerColor = Act.colors.sf,
+        shape = ActMedium,
+        title = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                SectionLabel("diagnostics")
+                Text("Session diagnostics", style = Act.type.sheetTitle, color = Act.colors.ink)
+            }
+        },
         text = {
             Column(
                 Modifier.verticalScroll(rememberScrollState()),
@@ -252,6 +261,6 @@ fun SessionDiagnosticsDialog(
                 SessionDebugPanel(state, actions)
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        confirmButton = { TerminalButton("Close", onClick = onDismiss) },
     )
 }

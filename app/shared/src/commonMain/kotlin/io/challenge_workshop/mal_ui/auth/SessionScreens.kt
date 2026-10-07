@@ -2,6 +2,15 @@ package io.challenge_workshop.mal_ui.auth
 
 import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.background
+import io.challenge_workshop.mal_ui.theme.rememberSpinnerGlyph
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.foundation.layout.height
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.clickable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -80,8 +89,13 @@ import io.challenge_workshop.mal_ui.screen.ShownError
  */
 @Composable
 fun RestoringScreen(modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
+    Box(modifier.fillMaxSize().background(Act.colors.bg), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            ActWordmark(size = 32)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("${rememberSpinnerGlyph()} restoring session", style = Act.type.meta, color = Act.colors.dim)
+            }
+        }
     }
 }
 
@@ -110,66 +124,73 @@ fun AuthorizingScreen(
     LaunchedEffect(state.signInError) { if (state.signInError != null) troubleOpen = true }
 
     ScreenColumn(modifier) {
-        Text("Waiting for MyAnimeList…", style = MaterialTheme.typography.headlineSmall)
-        LinearProgressIndicator(Modifier.fillMaxWidth())
+        ActWordmark()
+        PromptLine("mal auth --wait")
+        Text("Waiting for MyAnimeList…", style = Act.type.pageTitle, color = Act.colors.ink)
+        TerminalProgress(Modifier.fillMaxWidth())
         Text(
             "Finish signing in in the browser window that opened.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = Act.type.body,
+            color = Act.colors.dim,
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            TextButton(onClick = actions.onCancelSignIn, enabled = !state.signIn.busy) { Text("Cancel") }
-            if (state.signIn.busy) CircularProgressIndicator(Modifier.padding(4.dp))
+            TerminalButton("Cancel", onClick = actions.onCancelSignIn, enabled = !state.signIn.busy)
+            if (state.signIn.busy) Text(rememberSpinnerGlyph().toString(), style = Act.type.body, color = Act.colors.pend)
         }
 
         state.signInError?.let { ErrorCard("Could not complete the sign-in", it.withRelayAdvice()) }
 
-        HorizontalDivider()
-        TextButton(onClick = { troubleOpen = !troubleOpen }) { Text("Having trouble?") }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Act.colors.ln))
+        TerminalLink("Having trouble?", onClick = { troubleOpen = !troubleOpen })
         if (troubleOpen) {
             Text(
                 "If you land on a page that will not load, copy the whole address from the address bar " +
                     "and paste it below.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = Act.type.body,
+                color = Act.colors.dim,
             )
 
             @Suppress("DEPRECATION")
             // `LocalClipboard` supersedes this, but its `ClipEntry` has no common constructor from text
             // in Compose 1.11 — a copy button through it would need three actuals to write a string.
             val clipboard = LocalClipboardManager.current
-            OutlinedTextField(
+            TerminalField(
                 value = state.authorizationUrl,
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Authorization URL") },
-                modifier = Modifier.fillMaxWidth(),
-                supportingText = { Text("Didn't open? Copy this and paste it into a browser.") },
-                // Selecting a long URL out of a text field by hand is exactly the friction that makes
-                // people give up on the fallback, and the fallback is the only mechanism that always
-                // works. Never logged: under `plain` PKCE the code verifier is inside this string.
-                trailingIcon = {
-                    TextButton(onClick = { clipboard.setText(AnnotatedString(state.authorizationUrl)) }) {
-                        Text("Copy")
-                    }
-                },
+                label = "Authorization URL",
+                hint = "Didn't open? Copy this and paste it into a browser.",
             )
-            OutlinedTextField(
+            // Selecting a long URL out of a text field by hand is exactly the friction that makes
+            // people give up on the fallback, and the fallback is the only mechanism that always
+            // works. Never logged: under `plain` PKCE the code verifier is inside this string.
+            TerminalButton("Copy", onClick = { clipboard.setText(AnnotatedString(state.authorizationUrl)) })
+            TerminalField(
                 value = state.signIn.pastedRedirect,
                 onValueChange = actions.onPastedRedirectChange,
-                label = { Text("Redirect URL or authorization code") },
+                label = "Redirect URL or authorization code",
                 enabled = !state.signIn.busy,
                 minLines = 2,
-                modifier = Modifier.fillMaxWidth(),
             )
-            Button(onClick = actions.onCompleteSignIn, enabled = state.signIn.canComplete) {
-                Text("Complete sign-in")
-            }
+            TerminalButton("Complete sign-in", onClick = actions.onCompleteSignIn, enabled = state.signIn.canComplete, primary = true)
         }
     }
+}
+
+/** An indeterminate bar: a 2dp rule in `ln` with an accent segment sweeping along it. */
+@Composable
+private fun TerminalProgress(modifier: Modifier = Modifier) {
+    val c = Act.colors
+    val sweep = rememberInfiniteTransition(label = "sweep")
+    val at by sweep.animateFloat(0f, 1f, infiniteRepeatable(tween(1400, easing = LinearEasing)), label = "at")
+    Box(modifier.height(2.dp).background(c.ln).drawBehind {
+        val w = size.width * 0.25f
+        val x = (size.width + w) * at - w
+        drawRect(c.acc, Offset(x.coerceAtLeast(0f), 0f), Size((x + w).coerceAtMost(size.width) - x.coerceAtLeast(0f), size.height))
+    })
 }
 
 /**
@@ -457,6 +478,7 @@ internal fun ScreenColumn(modifier: Modifier = Modifier, content: @Composable ()
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(Act.colors.bg)
             .safeContentPadding()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
@@ -464,7 +486,7 @@ internal fun ScreenColumn(modifier: Modifier = Modifier, content: @Composable ()
     ) {
         Column(
             modifier = Modifier.paneItem(),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             content()
         }
@@ -495,42 +517,13 @@ internal fun ShownError.withRelayAdvice(): String =
 /** Internal, not private: the Anime List reuses it rather than growing an error card of its own. */
 @Composable
 internal fun ErrorCard(title: String, body: String, modifier: Modifier = Modifier) {
-    MessageCard(
-        modifier = modifier,
-        title = title,
-        body = body,
-        container = MaterialTheme.colorScheme.errorContainer,
-        content = MaterialTheme.colorScheme.onErrorContainer,
-    )
-}
-
-@Composable
-internal fun MessageCard(
-    title: String,
-    body: String,
-    container: Color,
-    content: Color,
-    modifier: Modifier = Modifier,
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
-    ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
-            Text(body, style = MaterialTheme.typography.bodySmall)
-        }
-    }
+    TerminalMessage(title, body, modifier)
 }
 
 @Composable
 internal fun LabelledValue(label: String, value: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            "$label:",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(value, style = MaterialTheme.typography.bodySmall, overflow = TextOverflow.Ellipsis, maxLines = 1)
+        Text("$label:", style = Act.type.meta, color = Act.colors.dim)
+        Text(value, style = Act.type.meta, color = Act.colors.ink, overflow = TextOverflow.Ellipsis, maxLines = 1)
     }
 }

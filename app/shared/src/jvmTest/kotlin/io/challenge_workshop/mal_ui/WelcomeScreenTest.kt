@@ -16,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.v2.runComposeUiTest
+import io.challenge_workshop.mal_ui.theme.ActTheme
 import io.challenge_workshop.mal_ui.animelist.AnimeListRepository
 import io.challenge_workshop.mal_ui.animepage.AnimePageRepository
 import io.challenge_workshop.mal_ui.animelist.LayoutPreference
@@ -117,7 +118,8 @@ class WelcomeScreenTest {
                     // Otherwise the desktop `UriHandler` really does launch a browser from a unit
                     // test.
                     CompositionLocalProvider(LocalUriHandler provides RecordingUriHandler(opened)) {
-                        AppScreen(repository, signIn, controls, animeList, animePages, layout, theme)
+                        // `App()` provides the theme in production; `AppScreen` is below it.
+                        ActTheme { AppScreen(repository, signIn, controls, animeList, animePages, layout, theme) }
                     }
                 }
 

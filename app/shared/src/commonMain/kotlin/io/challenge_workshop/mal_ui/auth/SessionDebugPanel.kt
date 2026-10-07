@@ -5,14 +5,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.challenge_workshop.mal_ui.getPlatform
 import io.challenge_workshop.mal_ui.screen.ScreenState
+import io.challenge_workshop.mal_ui.theme.Act
 
 /**
  * Diagnostics for the signed-in state.
@@ -47,8 +46,8 @@ fun SessionDebugPanel(
         if (diagnostics == null) {
             Text(
                 "No stored Session.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = Act.type.meta,
+                color = Act.colors.dim,
             )
         } else {
             LabelledValue("Access token obtained", "${diagnostics.obtainedAtEpochMs} ms epoch")
@@ -59,8 +58,8 @@ fun SessionDebugPanel(
                 Text(
                     "The access token has been deliberately invalidated. The next request should " +
                         "get a real 401 from MAL and refresh.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = Act.type.meta,
+                    color = Act.colors.dim,
                 )
             }
         }
@@ -71,26 +70,20 @@ fun SessionDebugPanel(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            OutlinedButton(onClick = actions.onReloadDiagnostics, enabled = !state.busy) {
-                Text("Reload diagnostics")
-            }
+            TerminalButton("Reload diagnostics", onClick = actions.onReloadDiagnostics, enabled = !state.busy)
             // Here rather than on the screen, and next to "Force 401" rather than anywhere else:
             // reloading the profile is the request that makes a forced 401 refresh, and the two
             // being one row apart is the whole procedure.
-            OutlinedButton(onClick = actions.onRefreshUser, enabled = !state.busy) {
-                Text("Reload profile")
-            }
+            TerminalButton("Reload profile", onClick = actions.onRefreshUser, enabled = !state.busy)
             // The only way a human ever sees the refresh path execute against real MAL: a shell-only
             // app never sits open for the hour it would otherwise take.
-            OutlinedButton(onClick = actions.onForceExpireAccessToken, enabled = !state.busy) {
-                Text("Force 401")
-            }
+            TerminalButton("Force 401", onClick = actions.onForceExpireAccessToken, enabled = !state.busy)
         }
         Text(
             "Force 401 writes an invalid access token, keeps the refresh token, and drops Ktor's " +
                 "cached copy. Reload profile afterwards to watch the refresh happen.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = Act.type.meta,
+            color = Act.colors.dim,
         )
     }
 }
