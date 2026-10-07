@@ -50,6 +50,26 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusTarget
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import io.challenge_workshop.mal_ui.animelist.AnimeListContent
+import io.challenge_workshop.mal_ui.animelist.AnimeListLayout
+import io.challenge_workshop.mal_ui.animepage.ListEdit
+import io.challenge_workshop.mal_ui.animepage.KeyCommand
+import io.challenge_workshop.mal_ui.animepage.adjacentIndex
+import io.challenge_workshop.mal_ui.animepage.keyCommand
+import io.challenge_workshop.mal_ui.animepage.steppedWatchStatus
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -279,7 +299,25 @@ fun SignedInScreen(
     // Measured rather than a window size class: the same decision the list's rows make about their
     // own width, and no dependency. The list's own state — its scroll position included — is hoisted
     // above this, so it survives the panel opening and closing and a resize across the line.
-    BoxWithConstraints(modifier.fillMaxSize().safeContentPadding()) {
+    val keys = remember { FocusRequester() }
+    // Again when the page closes: the node that held focus leaves composition with it.
+    // Not on opening: the page takes focus itself, for Esc, and must keep it.
+    LaunchedEffect(state.animePages.isOpen) { if (!state.animePages.isOpen) runCatching { keys.requestFocus() } }
+    val scope = rememberCoroutineScope()
+    // No text field lives under this screen (Paste-the-code is on the Authorizing screen and the date
+    // picker is its own dialog window), so there is nothing for these keys to steal from.
+    val keyboard = getPlatform().hasKeyboard
+    BoxWithConstraints(
+        modifier.fillMaxSize().safeContentPadding().focusRequester(keys).focusTarget()
+            .onPreviewKeyEvent { event ->
+                if (!keyboard || event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                // Browser and OS shortcuts (ctrl+- zoom, alt+arrows) are not ours. Shift stays: `+` is shift-`=`.
+                if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) return@onPreviewKeyEvent false
+                val command = keyCommand(event.key) ?: return@onPreviewKeyEvent false
+                handleKeyCommand(command, state, actions, gridState, scope)
+                true
+            },
+    ) {
         val sideBySide = maxWidth >= SIDE_PANEL_MIN_WIDTH
         val phoneProgress by animateFloatAsState(
             if (page != null && !sideBySide) 1f else 0f,
@@ -337,7 +375,7 @@ fun SignedInScreen(
                     )
                 }
             }
-            LogBar(state.saveLog, keyHints = sideBySide && getPlatform().hasKeyboard)
+            LogBar(state.saveLog, keyHints = sideBySide && keyboard)
         }
     }
 
@@ -347,6 +385,41 @@ fun SignedInScreen(
             actions = actions.diagnostics,
             onDismiss = { diagnosticsOpen = false },
         )
+    }
+}
+
+/**
+ * One bound key. Moves go through [SignedInActions.onOpenAnime], edits through the page's own
+ * [AnimePageActions.onEdit], so the save loop and [AnimePage.canEdit] apply as for a tap.
+ */
+private fun handleKeyCommand(
+    command: KeyCommand,
+    state: ScreenState.SignedIn,
+    actions: SignedInActions,
+    gridState: LazyGridState,
+    scope: CoroutineScope,
+) {
+    val page = state.animePages.current
+    when (command) {
+        is KeyCommand.Move -> {
+            val entries = (state.list.content as? AnimeListContent.Entries)?.entries ?: return
+            val current = entries.indexOfFirst { it.animeId == page?.animeId }
+            val next = adjacentIndex(current, command.delta, entries.size) ?: return
+            // At the end of what is loaded, `j` asks for more, as scrolling would.
+            if (command.delta > 0 && next == current) actions.onLoadMore()
+            if (next == current) return
+            actions.onOpenAnime(entries[next])
+            val offset = if (state.layout == AnimeListLayout.Table) 1 else 0
+            scope.launch { gridState.animateScrollToItem(next + offset) }
+        }
+
+        is KeyCommand.Edit -> if (page?.canEdit == true) actions.animePage.onEdit(command.edit)
+
+        is KeyCommand.Status -> {
+            val entry = page?.shownListEntry?.takeIf { page.canEdit } ?: return
+            val stepped = steppedWatchStatus(entry.watchStatus, command.delta)
+            if (stepped != entry.watchStatus) actions.animePage.onEdit(ListEdit.SetWatchStatus(stepped))
+        }
     }
 }
 
