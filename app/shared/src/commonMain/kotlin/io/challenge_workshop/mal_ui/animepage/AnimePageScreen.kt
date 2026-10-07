@@ -37,7 +37,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.LinearProgressIndicator
+import io.challenge_workshop.mal_ui.theme.LoadingLine
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -109,7 +109,7 @@ fun AnimePageScreen(
     // The caller's modifier carries the signed-in screen's tag, and a second `testTag` on the same
     // node is ignored, so the page's own goes on a child.
     Box(modifier) {
-        PageContent(page, canGoBack, sidePanel, actions, focus)
+        PageContent(page, canGoBack, sidePanel, open, actions, focus)
     }
 }
 
@@ -118,6 +118,7 @@ private fun PageContent(
     page: AnimePage,
     canGoBack: Boolean,
     sidePanel: Boolean,
+    open: Boolean,
     actions: AnimePageActions,
     focus: FocusRequester,
 ) {
@@ -128,7 +129,7 @@ private fun PageContent(
             .focusRequester(focus)
             .focusTarget()
             .onPreviewKeyEvent {
-                if (it.type == KeyEventType.KeyDown && it.key == Key.Escape) {
+                if (open && it.type == KeyEventType.KeyDown && it.key == Key.Escape) {
                     actions.onBack()
                     true
                 } else {
@@ -138,11 +139,7 @@ private fun PageContent(
     ) {
         TopBar(page, canGoBack, sidePanel, actions)
         if (page.load == AnimePageLoad.Loading) {
-            LinearProgressIndicator(
-                Modifier.fillMaxWidth().testTag(ANIME_PAGE_LOADING_TAG),
-                color = Act.colors.acc,
-                trackColor = Act.colors.ln,
-            )
+            LoadingLine(Modifier.testTag(ANIME_PAGE_LOADING_TAG))
         }
         Column(
             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())

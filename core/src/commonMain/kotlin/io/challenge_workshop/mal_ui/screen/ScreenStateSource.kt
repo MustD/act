@@ -29,7 +29,7 @@ import kotlinx.coroutines.flow.stateIn
  * review will push on, and the answer is not "it is fine" — it is that the alternative puts the
  * mapping back in a composable. See `docs/adr/0004-screen-state-in-core.md`.
  *
- * Two of those inputs are deliberately *not* the objects that own them:
+ * Four of those inputs are deliberately *not* the objects that own them:
  *  - `animeList` is `AnimeListRepository.state` rather than the repository, which also holds the
  *    operations — and those are the actions records' business, not a value's. Loaded pages not
  *    outliving a Session is the repository's rule, not this source's.
@@ -38,7 +38,7 @@ import kotlinx.coroutines.flow.stateIn
  *  - `animePages` is `AnimePageRepository.state`, and only the signed-in variant carries it: the
  *    history ends with the Session, so no other variant has anything to show.
  *
- *   - `saveLog` is `AnimePageRepository.log`: the last PATCH sent and whether any save is pending. Not in
+ *  - `saveLog` is `AnimePageRepository.log`: the last PATCH sent and whether any save is pending. Not in
  *    `animePages` because it outlives the pages — a save runs on after its page is closed.
  *
  * The eight flows are the whole constructor. Where this build sends MAL traffic is *not* an eighth

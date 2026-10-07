@@ -336,7 +336,7 @@ class SignInTest {
     // ---- what the UI can see ----
 
     /**
-     * `docs/errors.md`: never log the code or the verifier, nor a token — and what the UI holds is what
+     * Never log the code or the verifier, nor a token — and what the UI holds is what
      * ends up in a screenshot or a bug report. The authorization URL is the one deliberate exception,
      * because Paste-the-code has to offer it, and it is `ScreenStateSource`'s, not this class's.
      */

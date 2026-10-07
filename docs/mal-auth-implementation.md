@@ -8,8 +8,7 @@
 Research and an implementation order for turning the current three-step manual login into
 `login → myanimelist.net → redirect back → tokens`, on web, desktop and Android.
 
-Companion to [`errors.md`](errors.md), which covers the CORS/relay problem already solved. This document is about what
-is *not* built yet.
+This document is about what is *not* built yet; the CORS/relay problem is already solved.
 
 **Confidence is marked throughout.** `[verified]` was measured or read from source during this research; `[docs]` comes
 from an official document; `[reported]` is community evidence; `[unverified]`
@@ -118,8 +117,8 @@ permissive direction.
 - A bare IP literal — `http://127.0.0.1:18040/oauth/callback`. **Accepted**, which was the doubtful one — the form is
   unattested against MAL and some providers reject it. RFC 8252 §8.3 prefers the literal IP, so the desktop listener
   uses it and the `localhost` fallback is unnecessary. That also sidesteps the dual-address-family trap: `localhost`
-  resolves to both `127.0.0.1` and `::1` here, which is the same thing that caused the dev-server bug in
-  [`errors.md`](errors.md), and an IP literal has no such ambiguity. `http://localhost:18040/oauth/callback` is
+  resolves to both `127.0.0.1` and `::1` here, which is the same thing that caused an earlier
+  dev-server bug, and an IP literal has no such ambiguity. `http://localhost:18040/oauth/callback` is
   registered too but redundant.
 - A `.localhost` subdomain — `https://mal-ui.localhost/oauth/callback` and `https://js.mal-ui.localhost/oauth/callback`.
   **Both accepted**, which is the prediction that failed: Google, Entra and Slack are all documented to reject
@@ -173,9 +172,7 @@ So: **never log the authorization URL, the code, or the verifier**; prefer strip
 possible ([§5.2](#52-callback-response-page), [§6.4](#64-clean-the-url-after-capture)); and treat the `state` check as
 load-bearing rather than decorative. It already exists — keep it.
 
-This is MAL's limitation, not something the implementation can fix. Also recorded in
-[`errors.md`](errors.md#plain-pkce-is-weaker-than-it-looks--by-design-not-fixable-here), which is where it is likeliest
-to be read while something is actually going wrong.
+This is MAL's limitation, not something the implementation can fix.
 
 ---
 
@@ -484,7 +481,7 @@ but the address bar still shows `?code=…`") stops being true once something li
 `0.0.0.0` and exposes the callback to the LAN `[verified]`. Use
 `InetSocketAddress(InetAddress.getLoopbackAddress(), port)`. Prefer `127.0.0.1` in the registered URI per RFC 8252 §8.3;
 if MAL rejects the IP literal, keep `localhost` but bind **both** families on the same port (verified to work
-simultaneously) — `localhost` resolves to both here, which already caused the dev-server bug in `errors.md`.
+simultaneously) — `localhost` resolves to both here, which already caused an earlier dev-server bug.
 
 **Port in use:** the OS refuses the second bind with `BindException` `[verified]`; Java sets no
 `SO_REUSEPORT`, so two listeners can never silently race. That makes the exception a free cross-process
@@ -815,9 +812,7 @@ fallback, `clearAuthQuery()`. Shared `webMain` implementation; consider moving
 `launchMode="singleTop"`, `allowBackup="false"` + `dataExtractionRules`, custom-scheme filter, the redirect`SharedFlow`,
 `AuthTabIntent` with the raced intent-filter fallback.
 
-**Phase 6 — polish.** Client ID via Gradle property ([§7](#7-client-id-configuration)); update
-`errors.md` with the `plain`-PKCE weakening, the `Desktop.Action.BROWSE` finding, and MAL's byte-exact/401-
-`invalid_client` matching behaviour.
+**Phase 6 — polish.** Client ID via Gradle property ([§7](#7-client-id-configuration)).
 
 **Keep paste-the-code throughout.** It is the only mechanism that works everywhere, it is already tested, and it is the
 documented fallback for headless desktop, blocked popups, and browsers without Custom Tabs. Model it as

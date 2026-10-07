@@ -13,7 +13,7 @@ internal sealed interface KeyCommand {
     data class Edit(val edit: ListEdit) : KeyCommand
 
     /** The previous (-1) or next (+1) Watch Status, in chip order. */
-    data class Status(val delta: Int) : KeyCommand
+    data class StepWatchStatus(val delta: Int) : KeyCommand
 }
 
 internal fun keyCommand(key: Key): KeyCommand? = when (key) {
@@ -21,8 +21,8 @@ internal fun keyCommand(key: Key): KeyCommand? = when (key) {
     Key.K, Key.DirectionUp -> KeyCommand.Move(-1)
     Key.Plus, Key.Equals, Key.NumPadAdd -> KeyCommand.Edit(ListEdit.AddEpisodes(1))
     Key.Minus, Key.NumPadSubtract -> KeyCommand.Edit(ListEdit.AddEpisodes(-1))
-    Key.LeftBracket -> KeyCommand.Status(-1)
-    Key.RightBracket -> KeyCommand.Status(1)
+    Key.LeftBracket -> KeyCommand.StepWatchStatus(-1)
+    Key.RightBracket -> KeyCommand.StepWatchStatus(1)
     else -> SCORE_KEYS[key]?.let { KeyCommand.Edit(ListEdit.SetScore(it)) }
 }
 
@@ -33,13 +33,13 @@ private val SCORE_KEYS: Map<Key, Int> = mapOf(
     Key.NumPad6 to 6, Key.NumPad7 to 7, Key.NumPad8 to 8, Key.NumPad9 to 9, Key.NumPad0 to 10,
 )
 
-private val STATUS_ORDER: List<WatchStatus> = ANIME_LIST_FILTERS.filterNotNull()
+private val WATCH_STATUS_ORDER: List<WatchStatus> = ANIME_LIST_FILTERS.filterNotNull()
 
-/** [current] moved by [delta] along the chips, stopping at either end; an unlisted status starts from the first. */
+/** [current] moved by [delta] along the chips, stopping at either end; an unlisted Watch Status starts from the first. */
 internal fun steppedWatchStatus(current: WatchStatus, delta: Int): WatchStatus {
-    val at = STATUS_ORDER.indexOf(current)
-    if (at < 0) return STATUS_ORDER.first()
-    return STATUS_ORDER[(at + delta).coerceIn(0, STATUS_ORDER.lastIndex)]
+    val at = WATCH_STATUS_ORDER.indexOf(current)
+    if (at < 0) return WATCH_STATUS_ORDER.first()
+    return WATCH_STATUS_ORDER[(at + delta).coerceIn(0, WATCH_STATUS_ORDER.lastIndex)]
 }
 
 /**

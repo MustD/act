@@ -415,7 +415,7 @@ private fun handleKeyCommand(
 
         is KeyCommand.Edit -> if (page?.canEdit == true) actions.animePage.onEdit(command.edit)
 
-        is KeyCommand.Status -> {
+        is KeyCommand.StepWatchStatus -> {
             val entry = page?.shownListEntry?.takeIf { page.canEdit } ?: return
             val stepped = steppedWatchStatus(entry.watchStatus, command.delta)
             if (stepped != entry.watchStatus) actions.animePage.onEdit(ListEdit.SetWatchStatus(stepped))
@@ -471,6 +471,7 @@ private fun AnimePageSidePanel(
             canGoBack = canGoBack,
             actions = actions,
             sidePanel = true,
+            open = page != null,
             modifier = Modifier
                 .wrapContentWidth(Alignment.Start, unbounded = true)
                 .width(SIDE_PANEL_WIDTH)

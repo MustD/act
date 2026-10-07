@@ -13,7 +13,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridItemSpanScope
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.material3.CircularProgressIndicator
+import io.challenge_workshop.mal_ui.theme.BusyIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -182,7 +182,7 @@ private fun LazyGridScope.animeListTail(tail: AnimeListTail, onRetry: () -> Unit
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                CircularProgressIndicator(Modifier.padding(4.dp).size(16.dp), color = Act.colors.acc, strokeWidth = 2.dp)
+                BusyIndicator(Modifier.padding(4.dp))
                 Text("> loading more…", style = Act.type.body, color = Act.colors.dim)
             }
         }

@@ -224,7 +224,7 @@ internal object AiringStatusSerializer : WireEnumSerializer<AiringStatus>(
  * the order — cards, rows, table — is the order the Layout button cycles through.
  *
  * Serialized **by name**, because it is what `JsonTokenStore`'s fourth record holds. That makes the
- * two names below a stored format: renaming one is a preference silently reset, not a compile error.
+ * three names below a stored format: renaming one is a preference silently reset, not a compile error.
  * A value this build has no name for reads as the default rather than throwing — see
  * `JsonTokenStore.readLayout`.
  */

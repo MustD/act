@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,6 +60,30 @@ fun rememberSpinnerGlyph(): Char {
     val still = Act.reducedMotion
     LaunchedEffect(still) { if (!still) while (true) { delay(90); frame = (frame + 1) % SPINNER.length } }
     return SPINNER[frame]
+}
+
+/**
+ * The small 16dp "working" ring, in accent. Reduced motion swaps it for the still braille glyph, as
+ * [rememberSpinnerGlyph] does: a stock indeterminate indicator has no instant path of its own.
+ */
+@Composable
+fun BusyIndicator(modifier: Modifier = Modifier) {
+    if (Act.reducedMotion) {
+        Text("${SPINNER[0]}", style = Act.type.body, color = Act.colors.acc, modifier = modifier)
+    } else {
+        CircularProgressIndicator(modifier.size(16.dp), color = Act.colors.acc, strokeWidth = 2.dp)
+    }
+}
+
+/** A full-width loading line under a bar; with reduced motion a still, full one. */
+@Composable
+fun LoadingLine(modifier: Modifier = Modifier) {
+    val c = Act.colors
+    if (Act.reducedMotion) {
+        LinearProgressIndicator(progress = { 1f }, modifier = modifier.fillMaxWidth(), color = c.acc, trackColor = c.ln)
+    } else {
+        LinearProgressIndicator(modifier.fillMaxWidth(), color = c.acc, trackColor = c.ln)
+    }
 }
 
 /** "// episodes" section header, with an optional trailing slot (the saving indicator). */

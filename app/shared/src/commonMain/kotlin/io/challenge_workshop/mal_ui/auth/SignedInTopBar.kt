@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
+import io.challenge_workshop.mal_ui.theme.BusyIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -111,7 +111,7 @@ fun SignedInPromptRow(
             }
         }
         if (state.refreshing) {
-            CircularProgressIndicator(Modifier.padding(horizontal = 8.dp).size(16.dp), color = c.acc, strokeWidth = 2.dp)
+            BusyIndicator(Modifier.padding(horizontal = 8.dp))
         }
         // A button that moves to the next Layout, rather than a menu of them: it re-draws the
         // entries already loaded and asks MAL for nothing, which is also why it is never disabled

@@ -8,7 +8,7 @@ measurement behind the cover-art paragraph of that feature's spec. Run on **2026
 On the browser Targets, Compose renders into a canvas, so an image is fetched by the HTTP client and not by an `<img>`
 tag the browser owns — which makes it subject to CORS from `cdn.myanimelist.net`, the host every `main_picture` URL
 points at. MAL's token and API endpoints send no `Access-Control-Allow-Origin` at all and answer preflight `OPTIONS`
-with 405, which is the whole reason `:server` has a Relay (`docs/errors.md`). The question is whether the CDN behaves
+with 405, which is the whole reason `:server` has a Relay. The question is whether the CDN behaves
 the same way. If it does, web cover art fails exactly the way the token endpoint did, and ticket 07 has to ship a
 `GET /mal/img/{path...}` Relay route plus an ADR for widening the Relay's deliberately narrow scope.
 

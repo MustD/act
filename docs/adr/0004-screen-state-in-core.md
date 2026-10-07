@@ -38,7 +38,7 @@ Targets; the drawing is the part that can only be tested where a Compose harness
 
 ## The known cost
 
-**`ScreenStateSource` takes eight flows** (six when this was written; the Anime Page history is the seventh and the save log the eighth, see [ADR-0006](0006-anime-page-history-in-screen-state.md)). The caller sees one; the constructor is wide, and that is the objection a
+**`ScreenStateSource` takes eight flows** (six when this was written; the Anime Page history is the seventh, see [ADR-0006](0006-anime-page-history-in-screen-state.md); the save log is the eighth, kept apart from that history because a save outlives its page). The caller sees one; the constructor is wide, and that is the objection a
 review will raise. It is defensible because each input has exactly one owner and the combine is total over
 `SessionState` by the compiler's own exhaustiveness check — but the answer is not "it is fine", it is that every
 alternative puts the mapping back in a composable. Two of the inputs are deliberately not the objects that own them:

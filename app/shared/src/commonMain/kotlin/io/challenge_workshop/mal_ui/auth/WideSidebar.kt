@@ -95,7 +95,7 @@ internal fun WideSidebar(
         SidebarLabel("// watch status")
         Column(Modifier.testTag(ANIME_LIST_FILTERS_TAG), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             for (filter in ANIME_LIST_FILTERS) {
-                SidebarStatus(
+                SidebarWatchStatus(
                     filter,
                     active = filter == state.list.watchStatus,
                     enabled = state.list.queryControlsEnabled,
@@ -121,7 +121,7 @@ private fun SidebarLabel(text: String) {
 }
 
 @Composable
-private fun SidebarStatus(filter: WatchStatus?, active: Boolean, enabled: Boolean, onClick: () -> Unit) {
+private fun SidebarWatchStatus(filter: WatchStatus?, active: Boolean, enabled: Boolean, onClick: () -> Unit) {
     val c = Act.colors
     Box(
         Modifier.fillMaxWidth().height(38.dp).clip(ActMedium)

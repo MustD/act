@@ -36,8 +36,8 @@ class KeyCommandsTest {
 
     @Test
     fun brackets_step_the_watch_status() {
-        assertEquals(KeyCommand.Status(-1), keyCommand(Key.LeftBracket))
-        assertEquals(KeyCommand.Status(1), keyCommand(Key.RightBracket))
+        assertEquals(KeyCommand.StepWatchStatus(-1), keyCommand(Key.LeftBracket))
+        assertEquals(KeyCommand.StepWatchStatus(1), keyCommand(Key.RightBracket))
     }
 
     @Test
