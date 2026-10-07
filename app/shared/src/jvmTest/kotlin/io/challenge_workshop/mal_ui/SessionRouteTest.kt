@@ -46,7 +46,7 @@ class SessionRouteTest {
     fun every_screen_state_renders_one_screen_with_something_on_it() {
         for ((state, expected) in cases) {
             runComposeUiTest {
-                setContent { SessionRoute(state, RecordedActions().actions) }
+                setContent { ThemedSessionRoute(state, RecordedActions().actions) }
 
                 onNodeWithTag(expected.tag).assertIsDisplayed()
                 for (other in SessionScreenTag.entries - expected) {

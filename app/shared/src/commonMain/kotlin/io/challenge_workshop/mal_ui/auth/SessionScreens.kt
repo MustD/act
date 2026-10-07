@@ -47,7 +47,9 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.challenge_workshop.mal_ui.animelist.AnimeListFilters
-import io.challenge_workshop.mal_ui.animelist.AnimeListSortMenu
+import io.challenge_workshop.mal_ui.animelist.AnimeListSortRow
+import io.challenge_workshop.mal_ui.animelist.filterLabel
+import io.challenge_workshop.mal_ui.theme.Act
 import io.challenge_workshop.mal_ui.animelist.LoadMoreWhenNearEnd
 import io.challenge_workshop.mal_ui.animelist.animeListItems
 import io.challenge_workshop.mal_ui.animelist.gridCells
@@ -180,7 +182,7 @@ fun AuthorizingScreen(
  * fetches anything.
  *
  * Everything that is *not* a query over the list has left the list entirely: the name, the Layout
- * toggle, Reload, Sign out and the debug panel are in [SignedInTopBar], which neither scrolls nor
+ * toggle, Reload, Sign out and the debug panel are in [SignedInPromptRow], which neither scrolls nor
  * competes with the entries. The filter row and the Sort Order stay between the bar and the list,
  * because those two are the query.
  */
@@ -243,7 +245,7 @@ fun SignedInScreen(
             // The screen tag is on this wrapper rather than on the list, because the list carries its
             // own and a second `testTag` would replace it.
             Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-                SignedInTopBar(
+                SignedInPromptRow(
                     state = state,
                     actions = actions,
                     onShowDiagnostics = { diagnosticsOpen = true },
@@ -295,39 +297,34 @@ private fun AnimeListPane(
     val list = state.list
     val layout = state.layout
     Column(modifier) {
-        // Outside the lazy grid, so both controls stay put while the list scrolls under them.
-        // Both are as wide as the window, so the controls line up with the entries they act on:
-        // the grid pads its own entries with `contentPadding`, and this carries the same 16dp.
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth()) {
-            AnimeListFilters(
-                selected = list.watchStatus,
-                // Both read the same decision, because both go through the same reset — see
-                // `AnimeListState.queryControlsEnabled`.
-                enabled = list.queryControlsEnabled,
-                onSelect = actions.onSelectWatchStatus,
-            )
-            // Still a `FlowRow` with one child in it, now that the Layout toggle has gone to the
-            // top app bar: the Sort Order button names its direction in words ("Last updated
-            // (newest first)"), which is wider than a narrow phone, and a `FlowRow` is what lets it
-            // take the line it needs rather than being clipped off the edge — with no size class
-            // and nothing to keep in step with every Target.
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                itemVerticalAlignment = Alignment.CenterVertically,
-            ) {
-                AnimeListSortMenu(
-                    selected = list.sortOrder,
-                    enabled = list.queryControlsEnabled,
-                    onSelect = actions.onSelectSortOrder,
-                )
-            }
-            // Above the list rather than at the bottom of it, so a failed sign-out, Reload or
-            // profile reload is visible from where the user actually is — and outside the grid, so
-            // it does not scroll away from the controls that caused it. Under the `FlowRow` rather
-            // than in it: it is a card the width of the pane, not a control to lay out beside one.
-            state.error?.let { ErrorCard("Something went wrong", it.withRelayAdvice()) }
+        // Outside the lazy grid, so the title and both query controls stay put while the list
+        // scrolls under them. The title is the bare filter label — MAL's list is paged and nothing
+        // here knows the totals, so there is no count to put beside it.
+        Text(
+            list.watchStatus.filterLabel(),
+            style = Act.type.screenTitle,
+            color = Act.colors.ink,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag(ANIME_LIST_TITLE_TAG),
+        )
+        AnimeListFilters(
+            selected = list.watchStatus,
+            // Both read the same decision, because both go through the same reset — see
+            // `AnimeListState.queryControlsEnabled`.
+            enabled = list.queryControlsEnabled,
+            onSelect = actions.onSelectWatchStatus,
+        )
+        AnimeListSortRow(
+            selected = list.sortOrder,
+            enabled = list.queryControlsEnabled,
+            onSelect = actions.onSelectSortOrder,
+        )
+        // Above the list rather than at the bottom of it, so a failed sign-out, Reload or profile
+        // reload is visible from where the user actually is — and outside the grid, so it does not
+        // scroll away from the controls that caused it.
+        state.error?.let {
+            ErrorCard("Something went wrong", it.withRelayAdvice(), Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
         }
         LazyVerticalGrid(
             // The Layout is entirely this: how many columns the entries get. Everything inside `animeListItems` is written once.
@@ -400,8 +397,9 @@ internal fun ShownError.withRelayAdvice(): String =
 
 /** Internal, not private: the Anime List reuses it rather than growing an error card of its own. */
 @Composable
-internal fun ErrorCard(title: String, body: String) {
+internal fun ErrorCard(title: String, body: String, modifier: Modifier = Modifier) {
     MessageCard(
+        modifier = modifier,
         title = title,
         body = body,
         container = MaterialTheme.colorScheme.errorContainer,
@@ -410,9 +408,15 @@ internal fun ErrorCard(title: String, body: String) {
 }
 
 @Composable
-internal fun MessageCard(title: String, body: String, container: Color, content: Color) {
+internal fun MessageCard(
+    title: String,
+    body: String,
+    container: Color,
+    content: Color,
+    modifier: Modifier = Modifier,
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {

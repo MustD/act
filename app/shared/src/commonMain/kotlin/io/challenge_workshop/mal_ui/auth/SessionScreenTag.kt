@@ -102,15 +102,6 @@ val ANIME_LIST_FILTERS_TAG: String = "${SessionScreenTag.SignedIn.tag}.filters"
 val ANIME_LIST_SORT_TAG: String = "${SessionScreenTag.SignedIn.tag}.sort"
 
 /**
- * The Sort Order menu itself, once opened.
- *
- * Its own tag because the thing worth asserting about it is *how many* entries it has: MAL offers
- * four orderings and no way to reverse any of them, and a fifth entry — a "Reverse" toggle most of
- * all — is a well-meant addition that could only reverse the pages already loaded. See ADR-0003.
- */
-val ANIME_LIST_SORT_MENU_TAG: String = "$ANIME_LIST_SORT_TAG.menu"
-
-/**
  * The Layout toggle above the Anime List — the control that picks cards or the dense list.
  *
  * A sibling of the list like the other two controls, and for one more reason besides theirs: it is
@@ -130,6 +121,12 @@ val ANIME_LIST_LAYOUT_TAG: String = "${SessionScreenTag.SignedIn.tag}.layout"
  * the profile row and the debug panel.
  */
 val SESSION_TOP_BAR_TAG: String = "${SessionScreenTag.SignedIn.tag}.topBar"
+
+/** The Theme button on the prompt row. */
+val SESSION_THEME_TAG: String = "$SESSION_TOP_BAR_TAG.theme"
+
+/** The screen title under the prompt row: the bare filter label. */
+val ANIME_LIST_TITLE_TAG: String = "${SessionScreenTag.SignedIn.tag}.title"
 
 /**
  * The user's name in the top app bar.
@@ -155,7 +152,7 @@ val SESSION_MENU_BUTTON_TAG: String = "$SESSION_TOP_BAR_TAG.moreButton"
 /**
  * The overflow menu itself, once opened: Reload, Sign out, Session diagnostics.
  *
- * Its own tag for the reason [ANIME_LIST_SORT_MENU_TAG] has one — what is worth asserting is *what
+ * Its own tag because what is worth asserting is *what
  * is in it*, and the three entries in it are the three things the Anime List taking over this screen
  * could otherwise have cost.
  */

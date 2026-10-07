@@ -41,7 +41,7 @@ class AuthorizingScreenTest {
             @Suppress("DEPRECATION")
             setContent {
                 CompositionLocalProvider(LocalClipboardManager provides clipboard) {
-                    SessionRoute(authorizing(), RecordedActions().actions)
+                    ThemedSessionRoute(authorizing(), RecordedActions().actions)
                 }
             }
 
@@ -66,7 +66,7 @@ class AuthorizingScreenTest {
         val pasted = "$DESKTOP_REDIRECT_URI?code=the-code&state=a-state"
         runComposeUiTest {
             setContent {
-                SessionRoute(
+                ThemedSessionRoute(
                     authorizing(signIn = SignInState(pastedRedirect = "half a")),
                     actions.actions,
                 )
@@ -90,7 +90,7 @@ class AuthorizingScreenTest {
     @Test
     fun the_trouble_section_is_collapsed_by_default_and_opens_on_tap() {
         runComposeUiTest {
-            setContent { SessionRoute(authorizing(), RecordedActions().actions) }
+            setContent { ThemedSessionRoute(authorizing(), RecordedActions().actions) }
 
             onNodeWithText("Waiting for MyAnimeList…").assertIsDisplayed()
             onNodeWithText("Cancel").assertIsDisplayed()
@@ -109,7 +109,7 @@ class AuthorizingScreenTest {
     fun the_trouble_section_opens_by_itself_when_an_error_is_shown() {
         runComposeUiTest {
             setContent {
-                SessionRoute(
+                ThemedSessionRoute(
                     authorizing(signIn = SignInState(phase = SignInPhase.Failed("Port 18040 is taken"))),
                     RecordedActions().actions,
                 )
@@ -124,7 +124,7 @@ class AuthorizingScreenTest {
     fun the_trouble_section_reopens_when_a_different_error_replaces_one_already_seen() {
         runComposeUiTest {
             var state by mutableStateOf(authorizing())
-            setContent { SessionRoute(state, RecordedActions().actions) }
+            setContent { ThemedSessionRoute(state, RecordedActions().actions) }
             onNodeWithText("Complete sign-in").assertDoesNotExist()
 
             state = authorizing(signIn = SignInState(phase = SignInPhase.Failed("The sign-in timed out")))

@@ -1,10 +1,25 @@
 package io.challenge_workshop.mal_ui.animelist
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import io.challenge_workshop.mal_ui.theme.Act
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -52,6 +67,18 @@ fun WatchStatus?.filterLabel(): String = when (this) {
     WatchStatus.Unknown -> "Other"
 }
 
+/** The tab's text: MAL's own wire key, and `all` for the absence of one. */
+fun WatchStatus?.tabKey(): String = this?.wireValue ?: "all"
+
+/**
+ * The prompt row's text: who is signed in, and the slice being listed. `ls` alone for All, which is
+ * the whole list rather than a directory of it. [userName] is null until the profile has loaded.
+ */
+fun promptText(userName: String?, watchStatus: WatchStatus?): String {
+    val command = if (watchStatus == null) "ls" else "ls ${watchStatus.tabKey()}/"
+    return "${userName ?: "user"}@mal:~$ $command"
+}
+
 /**
  * What a filter that matched nothing says.
  *
@@ -77,10 +104,11 @@ fun WatchStatus.emptyListMessage(): String = when (this) {
 }
 
 /**
- * The filter row: one Watch Status at a time, Watching to begin with.
+ * The Watch Status tabs: one at a time, Watching to begin with, drawn as MAL's own wire keys.
  *
- * **A horizontally scrollable [Row] rather than a tab row**, because six tabs do not fit the width
- * of a phone and one scrolling row is the arrangement that works unchanged on every Target.
+ * **A horizontally scrollable [Row]** rather than a fixed tab row, because six tabs do not fit the
+ * width of a phone. The active tab is `ink` with a 2dp accent underline and the rest are `dim`; both
+ * change over 200ms.
  *
  * [enabled] is false while the replacement first page is in flight. The previously loaded entries
  * stay on screen behind it until the replacement lands, so without this the row would invite a
@@ -93,18 +121,43 @@ fun AnimeListFilters(
     onSelect: (WatchStatus?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val ln = Act.colors.ln
     Row(
-        modifier = modifier.testTag(ANIME_LIST_FILTERS_TAG).horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier.testTag(ANIME_LIST_FILTERS_TAG)
+            .fillMaxWidth()
+            .drawBehind {
+                drawLine(
+                    color = ln, start = Offset(0f, size.height), end = Offset(size.width, size.height),
+                    strokeWidth = 1.dp.toPx(),
+                )
+            }
+            .horizontalScroll(rememberScrollState())
+            .padding(start = 16.dp, end = 16.dp, top = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         for (filter in ANIME_LIST_FILTERS) {
-            FilterChip(
-                selected = filter == selected,
-                onClick = { onSelect(filter) },
-                enabled = enabled,
-                elevation = null, //chip mouse hover frame issue workaround
-                label = { Text(filter.filterLabel()) },
-            )
+            WatchStatusTab(filter.tabKey(), filter == selected, enabled) { onSelect(filter) }
         }
     }
 }
+
+@Composable
+private fun WatchStatusTab(label: String, active: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    val c = Act.colors
+    val text by animateColorAsState(if (active) c.ink else c.dim, tween(TAB_FADE_MS), label = "tabText")
+    val underline by animateColorAsState(if (active) c.acc else Color.Transparent, tween(TAB_FADE_MS), label = "tabUnderline")
+    Box(
+        Modifier.height(36.dp)
+            .selectable(selected = active, enabled = enabled, role = Role.Tab, onClick = onClick)
+            .drawBehind {
+                drawRect(underline, Offset(0f, size.height - 2.dp.toPx()), Size(size.width, 2.dp.toPx()))
+            }
+            .alpha(if (enabled) 1f else DISABLED_ALPHA),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, style = Act.type.body, color = text)
+    }
+}
+
+private const val TAB_FADE_MS = 200
+private const val DISABLED_ALPHA = 0.5f

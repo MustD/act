@@ -33,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import io.challenge_workshop.mal_ui.theme.Act
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_ROW_COLUMN_TAG
 
 /** The proportions MyAnimeList's cover art is drawn at, and close enough to what the CDN serves. */
@@ -249,8 +250,7 @@ private fun EntrySubtitle(text: String) {
  * makes the arrival look like a failure.
  */
 @Composable
-internal fun placeholderColor(): Color =
-    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
+internal fun placeholderColor(): Color = Act.colors.ln
 
 /** [AnimeListCard]'s shape with nothing in it. See `AnimeListSection`'s note on skeletons. */
 @Composable

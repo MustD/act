@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -28,6 +30,8 @@ import io.challenge_workshop.mal_ui.auth.ANIME_LIST_ERROR_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_MORE_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_SKELETON_TAG
 import io.challenge_workshop.mal_ui.auth.ErrorCard
+import io.challenge_workshop.mal_ui.theme.Act
+import io.challenge_workshop.mal_ui.theme.ActSmall
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
@@ -60,10 +64,6 @@ fun LazyGridScope.animeListItems(
     /** The anime whose page is open, drawn highlighted; null when none is. */
     openAnimeId: Long? = null,
 ) {
-    item(span = fullLineSpan) {
-        Text("Your Anime List", style = MaterialTheme.typography.titleMedium)
-    }
-
     when (val content = state.content) {
         // Nothing asked for: only ever outside a Session, so only for the frame this screen is on its
         // way out. The heading alone is the honest thing to draw.
@@ -93,7 +93,7 @@ fun LazyGridScope.animeListItems(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 ErrorCard("Could not load your Anime List", content.message)
-                OutlinedButton(onClick = onRetry) { Text("Retry") }
+                TerminalButton("Retry", onRetry)
             }
         }
 
@@ -130,27 +130,34 @@ fun LazyGridScope.animeListItems(
     }
 }
 
+/** A text button in the terminal style: outlined, mono 12, 2dp corners, 40dp tall. */
+@Composable
+private fun TerminalButton(label: String, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, shape = ActSmall, modifier = Modifier.height(40.dp)) {
+        Text(label, style = Act.type.body)
+    }
+}
+
 /** The one or two ways out of an empty Anime List, which depend on whether it is filtered. */
 @Composable
 private fun EmptyAnimeList(watchStatus: WatchStatus?, onShowAll: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            watchStatus?.emptyListMessage() ?: "You have nothing on your MyAnimeList yet.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            // The `> ` is part of the string, so one node carries the whole line.
+            "> " + (watchStatus?.emptyListMessage() ?: "You have nothing on your MyAnimeList yet."),
+            style = Act.type.body,
+            color = Act.colors.dim,
             modifier = Modifier.testTag(ANIME_LIST_EMPTY_TAG),
         )
         if (watchStatus == null) {
             // The way out of an empty account is not in this app: this release only reads, so there
             // is nothing here that could add the first entry.
             val uriHandler = LocalUriHandler.current
-            OutlinedButton(onClick = { uriHandler.openUri(MY_ANIME_LIST_URL) }) {
-                Text("Open myanimelist.net")
-            }
+            TerminalButton("Open myanimelist.net") { uriHandler.openUri(MY_ANIME_LIST_URL) }
         } else {
             // The way out of an empty slice is one tap, rather than the user having to work out that
             // the chip they tapped is what emptied the screen.
-            OutlinedButton(onClick = onShowAll) { Text("Show all") }
+            TerminalButton("Show all", onShowAll)
         }
     }
 }
@@ -171,8 +178,8 @@ private fun LazyGridScope.animeListTail(tail: AnimeListTail, onRetry: () -> Unit
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                CircularProgressIndicator(Modifier.padding(4.dp))
-                Text("Loading more…", style = MaterialTheme.typography.bodyMedium)
+                CircularProgressIndicator(Modifier.padding(4.dp).size(16.dp), color = Act.colors.acc, strokeWidth = 2.dp)
+                Text("> loading more…", style = Act.type.body, color = Act.colors.dim)
             }
         }
 
@@ -185,7 +192,7 @@ private fun LazyGridScope.animeListTail(tail: AnimeListTail, onRetry: () -> Unit
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 ErrorCard("Could not load more", tail.message)
-                OutlinedButton(onClick = onRetry) { Text("Try again") }
+                TerminalButton("Try again", onRetry)
             }
         }
     }

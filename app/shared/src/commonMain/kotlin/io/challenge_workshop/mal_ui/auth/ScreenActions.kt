@@ -12,6 +12,7 @@ import io.challenge_workshop.mal_ui.animepage.AnimePageRepository
 import io.challenge_workshop.mal_ui.animepage.RelatedAnime
 import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.session.SessionControls
+import io.challenge_workshop.mal_ui.theme.ThemePreference
 
 /**
  * Everything a screen can *do*, held apart from [ScreenState], which is everything a screen can *be*.
@@ -74,6 +75,8 @@ data class SignedInActions(
     val onSelectWatchStatus: (WatchStatus?) -> Unit,
     val onSelectSortOrder: (AnimeListSortOrder) -> Unit,
     val onSelectLayout: (AnimeListLayout) -> Unit,
+    /** The Theme button; the argument is whether dark is on screen now, which `System` hides. */
+    val onToggleTheme: (showingDark: Boolean) -> Unit,
     val onSignOut: () -> Unit,
     /** Tapping a List Entry: opens its Anime Page as a new history. */
     val onOpenAnime: (AnimeListEntry) -> Unit,
@@ -128,6 +131,7 @@ internal fun screenActions(
     animeList: AnimeListRepository,
     animePages: AnimePageRepository,
     layout: LayoutPreference,
+    theme: ThemePreference,
     channel: AuthRedirectChannel,
     openUri: (String) -> Unit,
 ): ScreenActions = ScreenActions(
@@ -150,6 +154,7 @@ internal fun screenActions(
         // Straight to the preference, which switches inside the click and writes behind it: a Layout
         // is a presentation choice, costs no request, and needs no coroutine of this caller's.
         onSelectLayout = layout::choose,
+        onToggleTheme = theme::toggle,
         onSignOut = controls::signOut,
         onOpenAnime = animePages::open,
         animePage = AnimePageActions(

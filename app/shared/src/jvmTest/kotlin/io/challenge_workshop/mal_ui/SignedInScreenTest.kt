@@ -11,6 +11,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertContentDescriptionContains
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -18,6 +19,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -43,7 +45,7 @@ import io.challenge_workshop.mal_ui.auth.ANIME_LIST_LAYOUT_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_MORE_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_ROW_COLUMN_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_SKELETON_TAG
-import io.challenge_workshop.mal_ui.auth.ANIME_LIST_SORT_MENU_TAG
+import io.challenge_workshop.mal_ui.auth.ANIME_LIST_TITLE_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_SORT_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_TAG
 import androidx.compose.ui.unit.dp
@@ -73,7 +75,7 @@ class SignedInScreenTest {
     @Test
     fun the_signed_in_screen_renders_the_anime_list() {
         runComposeUiTest {
-            setContent { SessionRoute(signedIn(), RecordedActions().actions) }
+            setContent { ThemedSessionRoute(signedIn(), RecordedActions().actions) }
 
             onNodeWithTag(ANIME_LIST_TAG).assertIsDisplayed()
             for (title in FIXTURE_TITLES) {
@@ -102,7 +104,7 @@ class SignedInScreenTest {
             runComposeUiTest {
                 setContent {
                     Box(Modifier.width(width)) {
-                        SessionRoute(signedIn(layout = AnimeListLayout.List), RecordedActions().actions)
+                        ThemedSessionRoute(signedIn(layout = AnimeListLayout.List), RecordedActions().actions)
                     }
                 }
                 // Unmerged: a tappable row merges its descendants into one node, and the columns are
@@ -132,17 +134,16 @@ class SignedInScreenTest {
             val actions = recorded.actions.let {
                 it.copy(signedIn = it.signedIn.copy(onSelectLayout = { chosen -> layout = chosen }))
             }
-            setContent { SessionRoute(signedIn(layout = layout), actions) }
+            setContent { ThemedSessionRoute(signedIn(layout = layout), actions) }
 
             // Cards on a device that has never chosen: the feature was asked for as a grid of cover
             // art, so a first launch opens on the Layout the user would have picked.
             onNodeWithTag(ANIME_LIST_LAYOUT_TAG).assertIsDisplayed()
-            onNodeWithText("Cards").assertIsSelected()
-            onNodeWithText("List").performClick()
+            onNodeWithTag(ANIME_LIST_LAYOUT_TAG).assertContentDescriptionContains("Layout: Cards", substring = true)
+            onNodeWithTag(ANIME_LIST_LAYOUT_TAG).performClick()
             waitForIdle()
 
-            onNodeWithText("List").assertIsSelected()
-            onNodeWithText("Cards").assertIsNotSelected()
+            onNodeWithTag(ANIME_LIST_LAYOUT_TAG).assertContentDescriptionContains("Layout: List", substring = true)
 
             for (title in FIXTURE_TITLES) {
                 onNodeWithText(title).assertIsDisplayed()
@@ -171,13 +172,21 @@ class SignedInScreenTest {
     fun the_layout_toggle_asks_for_a_layout_and_nothing_else() {
         val actions = RecordedActions()
         runComposeUiTest {
-            setContent { SessionRoute(signedIn(), actions.actions) }
+            var layout by mutableStateOf(AnimeListLayout.Cards)
+            val wired = actions.actions.let {
+                it.copy(signedIn = it.signedIn.copy(onSelectLayout = { chosen -> layout = chosen; actions.calls += "selectLayout"; actions.layouts += chosen }))
+            }
+            setContent { ThemedSessionRoute(signedIn(layout = layout), wired) }
 
-            onNodeWithText("List").performClick()
-            onNodeWithText("Cards").performClick()
+            // The button moves to the next Layout and wraps: with every Layout visited the cycle is
+            // back where it began.
+            repeat(AnimeListLayout.entries.size) {
+                onNodeWithTag(ANIME_LIST_LAYOUT_TAG).performClick()
+                waitForIdle()
+            }
 
-            assertEquals(listOf("selectLayout", "selectLayout"), actions.calls)
-            assertEquals(listOf(AnimeListLayout.List, AnimeListLayout.Cards), actions.layouts)
+            assertEquals(List(AnimeListLayout.entries.size) { "selectLayout" }, actions.calls)
+            assertEquals(AnimeListLayout.entries.drop(1) + AnimeListLayout.entries.first(), actions.layouts)
         }
     }
 
@@ -210,7 +219,7 @@ class SignedInScreenTest {
 
         for ((expected, list) in states) {
             runComposeUiTest {
-                setContent { SessionRoute(signedIn(list = list), RecordedActions().actions) }
+                setContent { ThemedSessionRoute(signedIn(list = list), RecordedActions().actions) }
 
                 // `onAllNodesWithTag`, because the skeleton is one tagged placeholder per grid cell
                 // rather than one tagged wrapper — which is what lets the grid lay the placeholders
@@ -238,7 +247,7 @@ class SignedInScreenTest {
         runComposeUiTest {
             setContent {
                 CompositionLocalProvider(LocalUriHandler provides RecordingUriHandler(opened)) {
-                    SessionRoute(
+                    ThemedSessionRoute(
                         signedIn(list = listShowing(AnimeListContent.Empty)),
                         RecordedActions().actions,
                     )
@@ -270,14 +279,14 @@ class SignedInScreenTest {
         val actions = RecordedActions()
         runComposeUiTest {
             setContent {
-                SessionRoute(
+                ThemedSessionRoute(
                     signedIn(list = listShowing(AnimeListContent.Empty, watchStatus = WatchStatus.OnHold)),
                     actions.actions,
                 )
             }
 
             assertEquals(
-                "Nothing on hold.",
+                "> Nothing on hold.",
                 onNodeWithTag(ANIME_LIST_EMPTY_TAG).textContent(),
                 "the message must name the filter rather than report an empty account",
             )
@@ -305,7 +314,7 @@ class SignedInScreenTest {
         for ((label, list) in failures) {
             val actions = RecordedActions()
             runComposeUiTest {
-                setContent { SessionRoute(signedIn(list = list), actions.actions) }
+                setContent { ThemedSessionRoute(signedIn(list = list), actions.actions) }
 
                 // Fully into view first: the later-page row is below the entries, and a click aimed
                 // at a node that is only half on screen lands outside the window.
@@ -329,7 +338,7 @@ class SignedInScreenTest {
     fun a_page_that_fails_mid_scroll_keeps_the_list_on_screen() {
         runComposeUiTest {
             setContent {
-                SessionRoute(
+                ThemedSessionRoute(
                     signedIn(list = loadedList(tail = AnimeListTail.MoreFailed("MAL said no"))),
                     RecordedActions().actions,
                 )
@@ -358,13 +367,13 @@ class SignedInScreenTest {
             val actions = RecordedActions()
             runComposeUiTest {
                 setContent {
-                    SessionRoute(
+                    ThemedSessionRoute(
                         signedIn(list = loadedList(titles = many, tail = tail)),
                         actions.actions,
                     )
                 }
 
-                onNodeWithTag(ANIME_LIST_TAG).performScrollToIndex(many.size)
+                onNodeWithTag(ANIME_LIST_TAG).performScrollToIndex(many.size - 1)
                 waitForIdle()
 
                 assertEquals(expected, actions.calls.distinct(), "tail=$tail")
@@ -387,13 +396,13 @@ class SignedInScreenTest {
         runComposeUiTest {
             var revision by mutableStateOf(0)
             setContent {
-                SessionRoute(
+                ThemedSessionRoute(
                     signedIn(list = loadedList(titles = many, tail = AnimeListTail.End, revision = revision)),
                     RecordedActions().actions,
                 )
             }
 
-            onNodeWithTag(ANIME_LIST_TAG).performScrollToIndex(many.size)
+            onNodeWithTag(ANIME_LIST_TAG).performScrollToIndex(many.size - 1)
             waitForIdle()
             onNodeWithText("Anime 1").assertDoesNotExist()
 
@@ -417,23 +426,23 @@ class SignedInScreenTest {
         runComposeUiTest {
             var loading by mutableStateOf(true)
             setContent {
-                SessionRoute(
+                ThemedSessionRoute(
                     signedIn(list = loadedList(replacing = loading)),
                     RecordedActions().actions,
                 )
             }
 
             onNodeWithText(FIXTURE_TITLES.first()).assertIsDisplayed()
-            for (filter in listOf("All", "Watching", "Completed")) {
+            for (filter in listOf("all", "watching", "completed")) {
                 onNodeWithText(filter).assertIsNotEnabled()
             }
             onNodeWithTag(ANIME_LIST_SORT_TAG).assertIsNotEnabled()
-            onNodeWithText("List").assertIsEnabled()
+            onNodeWithTag(ANIME_LIST_LAYOUT_TAG).assertIsEnabled()
 
             loading = false
             waitForIdle()
 
-            onNodeWithText("All").assertIsEnabled()
+            onNodeWithText("all").assertIsEnabled()
             onNodeWithTag(ANIME_LIST_SORT_TAG).assertIsEnabled()
         }
     }
@@ -450,21 +459,22 @@ class SignedInScreenTest {
         val many = (1..60).map { "Anime $it" }
         val actions = RecordedActions()
         runComposeUiTest {
-            setContent { SessionRoute(signedIn(list = loadedList(titles = many)), actions.actions) }
+            setContent { ThemedSessionRoute(signedIn(list = loadedList(titles = many)), actions.actions) }
 
-            // On launch it is All — the whole list rather than an arbitrary slice of it.
-            onNodeWithText("All").assertIsSelected()
-            for (other in listOf("Watching", "Completed", "On hold", "Dropped", "Plan to watch")) {
+            // The fixture has no filter, so it is All — the whole list rather than an arbitrary slice.
+            onNodeWithText("all").assertIsSelected()
+            onNodeWithTag(ANIME_LIST_TITLE_TAG).assertTextEquals("All")
+            for (other in listOf("watching", "completed", "on_hold", "dropped", "plan_to_watch")) {
                 onNodeWithText(other).assertIsNotSelected()
             }
 
             // Sixty entries down, and still on screen: the row is a sibling of the list rather than
             // an item in it, precisely so it does not scroll out of reach.
-            onNodeWithTag(ANIME_LIST_TAG).performScrollToIndex(many.size)
+            onNodeWithTag(ANIME_LIST_TAG).performScrollToIndex(many.size - 1)
             waitForIdle()
             onNodeWithTag(ANIME_LIST_FILTERS_TAG).assertIsDisplayed()
 
-            onNodeWithText("Watching").performClick()
+            onNodeWithText("watching").performClick()
 
             assertEquals(listOf<WatchStatus?>(WatchStatus.Watching), actions.watchStatuses)
         }
@@ -480,45 +490,46 @@ class SignedInScreenTest {
         val many = (1..60).map { "Anime $it" }
         val actions = RecordedActions()
         runComposeUiTest {
-            setContent { SessionRoute(signedIn(list = loadedList(titles = many)), actions.actions) }
+            setContent { ThemedSessionRoute(signedIn(list = loadedList(titles = many)), actions.actions) }
 
             onNodeWithTag(ANIME_LIST_SORT_TAG)
-                .assertTextContains("Last updated (newest first)", substring = true)
+                .assertTextContains("sort: last updated (newest first)", substring = true)
 
             // Sixty entries down, and still on screen, for the reason the filter row is.
-            onNodeWithTag(ANIME_LIST_TAG).performScrollToIndex(many.size)
+            onNodeWithTag(ANIME_LIST_TAG).performScrollToIndex(many.size - 1)
             waitForIdle()
             onNodeWithTag(ANIME_LIST_SORT_TAG).assertIsDisplayed().performClick()
-            onNodeWithText("Title (A–Z)").performClick()
 
-            assertEquals(listOf(AnimeListSortOrder.Title), actions.sortOrders)
+            assertEquals(listOf(AnimeListSortOrder.Score), actions.sortOrders)
         }
     }
 
     /**
      * There are exactly four orderings and no way to reverse any of them, which is a design decision
      * (ADR-0003) rather than an omission — the list is paged, so a reverse toggle could only reverse
-     * the pages already loaded.
-     *
-     * Asserted on the open menu because that is the only place a fifth entry could appear, and a
-     * "Reverse" or "Descending" item is exactly the well-meant addition this is here to stop.
+     * the pages already loaded. Tapping the row visits the four in turn and comes back to the first.
      */
     @Test
-    fun the_sort_menu_offers_mals_four_orderings_and_no_direction_toggle() {
+    fun the_sort_row_cycles_mals_four_orderings_and_has_no_direction_toggle() {
         runComposeUiTest {
-            setContent { SessionRoute(signedIn(), RecordedActions().actions) }
-
-            onNodeWithTag(ANIME_LIST_SORT_TAG).performClick()
-            waitForIdle()
-
-            for (label in ANIME_LIST_SORT_ORDERS.map { it.sortLabel() }) {
-                onNodeWithText(label).assertIsDisplayed()
+            var order by mutableStateOf(AnimeListSortOrder.LastUpdated)
+            val recorded = RecordedActions()
+            val actions = recorded.actions.let {
+                it.copy(signedIn = it.signedIn.copy(onSelectSortOrder = { chosen -> order = chosen }))
             }
-            assertEquals(
-                4,
-                onNodeWithTag(ANIME_LIST_SORT_MENU_TAG).onChildren().fetchSemanticsNodes().size,
-                "a fifth menu entry is either a Sort Order MAL does not have or a reverse toggle",
-            )
+            setContent { ThemedSessionRoute(signedIn(list = loadedList(sortOrder = order)), actions) }
+
+            val seen = buildList {
+                repeat(ANIME_LIST_SORT_ORDERS.size) {
+                    onNodeWithTag(ANIME_LIST_SORT_TAG).assertTextContains(order.sortLabel().lowercase(), substring = true)
+                    add(order)
+                    onNodeWithTag(ANIME_LIST_SORT_TAG).performClick()
+                    waitForIdle()
+                }
+            }
+
+            assertEquals(ANIME_LIST_SORT_ORDERS, seen)
+            assertEquals(ANIME_LIST_SORT_ORDERS.first(), order)
         }
     }
 
@@ -529,7 +540,7 @@ class SignedInScreenTest {
     @Test
     fun a_failed_sign_out_shows_on_the_signed_in_screen_and_not_as_a_failed_sign_in() {
         runComposeUiTest {
-            setContent { SessionRoute(signedIn(error = "store is read-only"), RecordedActions().actions) }
+            setContent { ThemedSessionRoute(signedIn(error = "store is read-only"), RecordedActions().actions) }
 
             onNodeWithText("store is read-only", substring = true).assertIsDisplayed()
             onNodeWithText("Sign-in failed").assertDoesNotExist()

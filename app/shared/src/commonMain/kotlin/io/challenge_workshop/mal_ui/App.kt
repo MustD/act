@@ -65,7 +65,7 @@ fun App(
 
     ActTheme(dark = dark) {
         Surface(modifier = Modifier) {
-            AppScreen(repository, signIn, controls, animeList, animePages, layout)
+            AppScreen(repository, signIn, controls, animeList, animePages, layout, theme)
         }
     }
 }
@@ -99,6 +99,7 @@ internal fun AppScreen(
     animeList: AnimeListRepository,
     animePages: AnimePageRepository,
     layout: LayoutPreference,
+    theme: ThemePreference,
 ) {
     val channel = rememberAuthRedirectChannel()
     val uriHandler = LocalUriHandler.current
@@ -117,8 +118,8 @@ internal fun AppScreen(
         )
     }
 
-    val actions = remember(signIn, controls, animeList, animePages, layout, channel, uriHandler) {
-        screenActions(signIn, controls, animeList, animePages, layout, channel, uriHandler::openUri)
+    val actions = remember(signIn, controls, animeList, animePages, layout, theme, channel, uriHandler) {
+        screenActions(signIn, controls, animeList, animePages, layout, theme, channel, uriHandler::openUri)
     }
 
     SessionRoute(source.state.collectAsStateWithLifecycle().value, actions)

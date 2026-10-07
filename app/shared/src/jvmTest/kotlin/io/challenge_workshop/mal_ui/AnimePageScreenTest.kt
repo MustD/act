@@ -103,7 +103,7 @@ class AnimePageScreenTest {
     @Test
     fun below_840dp_an_open_page_replaces_the_list() {
         runComposeUiTest {
-            setContent { Box(Modifier.width(839.dp)) { SessionRoute(stateWith(page()), RecordedActions().actions) } }
+            setContent { Box(Modifier.width(839.dp)) { ThemedSessionRoute(stateWith(page()), RecordedActions().actions) } }
 
             onNodeWithTag(ANIME_PAGE_TAG).assertIsDisplayed()
             onAllNodesWithTag(ANIME_LIST_TAG).assertCountEquals(0)
@@ -114,7 +114,7 @@ class AnimePageScreenTest {
     @Test
     fun from_840dp_an_open_page_sits_beside_the_list_at_480dp() {
         runComposeUiTest {
-            setContent { Box(Modifier.width(840.dp)) { SessionRoute(stateWith(page()), RecordedActions().actions) } }
+            setContent { Box(Modifier.width(840.dp)) { ThemedSessionRoute(stateWith(page()), RecordedActions().actions) } }
 
             onNodeWithTag(ANIME_PAGE_TAG).assertIsDisplayed()
             onNodeWithTag(ANIME_LIST_TAG).assertIsDisplayed()
@@ -128,7 +128,7 @@ class AnimePageScreenTest {
             runComposeUiTest {
                 setContent {
                     Box(Modifier.width(1000.dp)) {
-                        SessionRoute(
+                        ThemedSessionRoute(
                             signedIn(layout = layout, animePages = AnimePageHistory(listOf(page(id = 2)))),
                             RecordedActions().actions,
                         )
@@ -148,7 +148,7 @@ class AnimePageScreenTest {
             val many = List(60) { "Title $it" }
             setContent {
                 Box(Modifier.width(width)) {
-                    SessionRoute(
+                    ThemedSessionRoute(
                         signedIn(list = loadedList(titles = many), animePages = AnimePageHistory(listOf(page(id = 1), page(id = 2)))),
                         RecordedActions().actions,
                     )
@@ -172,7 +172,7 @@ class AnimePageScreenTest {
     @Test
     fun a_loading_page_shows_what_it_opened_with_and_a_placeholder_for_the_rest() {
         runComposeUiTest {
-            setContent { Box(Modifier.width(500.dp)) { SessionRoute(stateWith(page()), RecordedActions().actions) } }
+            setContent { Box(Modifier.width(500.dp)) { ThemedSessionRoute(stateWith(page()), RecordedActions().actions) } }
 
             onNodeWithText("Cowboy Bebop").assertIsDisplayed()
             onNodeWithText("/ 26").assertIsDisplayed()
@@ -189,7 +189,7 @@ class AnimePageScreenTest {
                 synopsis = "Bounty hunters in space.",
                 listEntry = ListEntry(WatchStatus.Completed, 9, 26, "2024-03", "2024-04-02", null),
             )
-            setContent { SessionRoute(stateWith(loaded), RecordedActions().actions) }
+            setContent { ThemedSessionRoute(stateWith(loaded), RecordedActions().actions) }
 
             assertEquals("Bounty hunters in space.", onNodeWithTag(ANIME_PAGE_SYNOPSIS_TAG).textContent())
             onNodeWithText("2024-03", substring = true).assertIsDisplayed()
@@ -203,7 +203,7 @@ class AnimePageScreenTest {
         runComposeUiTest {
             val recorded = RecordedActions()
             setContent {
-                SessionRoute(stateWith(page(load = AnimePageLoad.Failed("MAL is down"))), recorded.actions)
+                ThemedSessionRoute(stateWith(page(load = AnimePageLoad.Failed("MAL is down"))), recorded.actions)
             }
 
             // Below the fold now that the List Entry has controls; existing is what is being asserted.
@@ -220,7 +220,7 @@ class AnimePageScreenTest {
         runComposeUiTest {
             val recorded = RecordedActions()
             setContent {
-                SessionRoute(
+                ThemedSessionRoute(
                     stateWith(page(load = AnimePageLoad.Loaded, listEntry = null)),
                     recorded.actions
                 )
@@ -239,7 +239,7 @@ class AnimePageScreenTest {
     fun adding_is_not_offered_before_the_fetch_and_is_disabled_while_the_add_is_pending() {
         runComposeUiTest {
             setContent {
-                SessionRoute(
+                ThemedSessionRoute(
                     stateWith(page(load = AnimePageLoad.Loading, listEntry = null)),
                     RecordedActions().actions
                 )
@@ -249,7 +249,7 @@ class AnimePageScreenTest {
         runComposeUiTest {
             val pending = PageSave(target = ListEntry(WatchStatus.Watching, 0, 0, null, null, null))
             setContent {
-                SessionRoute(
+                ThemedSessionRoute(
                     stateWith(page(load = AnimePageLoad.Loaded, listEntry = null, save = pending)),
                     RecordedActions().actions
                 )
@@ -264,7 +264,7 @@ class AnimePageScreenTest {
     fun a_refused_add_shows_the_error_on_the_not_on_your_list_state() {
         runComposeUiTest {
             setContent {
-                SessionRoute(
+                ThemedSessionRoute(
                     stateWith(
                         page(
                             load = AnimePageLoad.Loaded,
@@ -286,7 +286,7 @@ class AnimePageScreenTest {
     fun the_close_button_closes_and_back_appears_only_with_something_to_go_back_to() {
         runComposeUiTest {
             val recorded = RecordedActions()
-            setContent { SessionRoute(stateWith(page()), recorded.actions) }
+            setContent { ThemedSessionRoute(stateWith(page()), recorded.actions) }
 
             onAllNodesWithTag(ANIME_PAGE_BACK_TAG).assertCountEquals(0)
             onNodeWithTag(ANIME_PAGE_CLOSE_TAG).performClick()
@@ -295,7 +295,7 @@ class AnimePageScreenTest {
         }
         runComposeUiTest {
             val recorded = RecordedActions()
-            setContent { SessionRoute(stateWith(page(1), page(2)), recorded.actions) }
+            setContent { ThemedSessionRoute(stateWith(page(1), page(2)), recorded.actions) }
 
             onNodeWithTag(ANIME_PAGE_BACK_TAG).performClick()
 
@@ -307,7 +307,7 @@ class AnimePageScreenTest {
     fun escape_goes_one_page_back() {
         runComposeUiTest {
             val recorded = RecordedActions()
-            setContent { SessionRoute(stateWith(page()), recorded.actions) }
+            setContent { ThemedSessionRoute(stateWith(page()), recorded.actions) }
             waitForIdle()
 
             onNodeWithTag(ANIME_PAGE_TAG).performKeyInput { pressKey(Key.Escape) }
@@ -320,7 +320,7 @@ class AnimePageScreenTest {
     fun tapping_a_list_entry_asks_to_open_it() {
         runComposeUiTest {
             val recorded = RecordedActions()
-            setContent { SessionRoute(signedIn(), recorded.actions) }
+            setContent { ThemedSessionRoute(signedIn(), recorded.actions) }
 
             onNodeWithText("Mushishi").performClick()
 
@@ -337,7 +337,7 @@ class AnimePageScreenTest {
     fun related_anime_show_title_relation_and_the_on_list_mark_only_where_it_applies() {
         runComposeUiTest {
             setContent {
-                SessionRoute(
+                ThemedSessionRoute(
                     stateWith(page(load = AnimePageLoad.Loaded, related = relatedAnime)),
                     RecordedActions().actions,
                 )
@@ -355,7 +355,7 @@ class AnimePageScreenTest {
     @Test
     fun a_page_without_related_anime_has_no_section() {
         runComposeUiTest {
-            setContent { SessionRoute(stateWith(page(load = AnimePageLoad.Loaded)), RecordedActions().actions) }
+            setContent { ThemedSessionRoute(stateWith(page(load = AnimePageLoad.Loaded)), RecordedActions().actions) }
 
             onNodeWithTag(ANIME_PAGE_RELATED_TAG).assertDoesNotExist()
         }
@@ -366,7 +366,7 @@ class AnimePageScreenTest {
         runComposeUiTest {
             val recorded = RecordedActions()
             setContent {
-                SessionRoute(stateWith(page(load = AnimePageLoad.Loaded, related = relatedAnime)), recorded.actions)
+                ThemedSessionRoute(stateWith(page(load = AnimePageLoad.Loaded, related = relatedAnime)), recorded.actions)
             }
 
             onNodeWithTag(animePageRelatedTag(11)).performScrollTo().performClick()
@@ -387,7 +387,7 @@ class AnimePageScreenTest {
     fun the_controls_are_disabled_until_the_fetch_has_succeeded() {
         for (load in listOf(AnimePageLoad.Loading, AnimePageLoad.Failed("MAL is down"))) {
             runComposeUiTest {
-                setContent { SessionRoute(stateWith(page(load = load)), RecordedActions().actions) }
+                setContent { ThemedSessionRoute(stateWith(page(load = load)), RecordedActions().actions) }
 
                 for (tag in editControls) onNodeWithTag(tag).assertIsNotEnabled()
             }
@@ -397,7 +397,7 @@ class AnimePageScreenTest {
     @Test
     fun once_loaded_the_controls_are_enabled() {
         runComposeUiTest {
-            setContent { SessionRoute(stateWith(page(load = AnimePageLoad.Loaded)), RecordedActions().actions) }
+            setContent { ThemedSessionRoute(stateWith(page(load = AnimePageLoad.Loaded)), RecordedActions().actions) }
 
             for (tag in editControls) onNodeWithTag(tag).assertIsEnabled()
         }
@@ -407,7 +407,7 @@ class AnimePageScreenTest {
     fun plus_and_minus_and_the_number_field_report_edits() {
         runComposeUiTest {
             val recorded = RecordedActions()
-            setContent { SessionRoute(stateWith(page(load = AnimePageLoad.Loaded)), recorded.actions) }
+            setContent { ThemedSessionRoute(stateWith(page(load = AnimePageLoad.Loaded)), recorded.actions) }
 
             onNodeWithTag(ANIME_PAGE_EPISODES_PLUS_TAG).performClick()
             onNodeWithTag(ANIME_PAGE_EPISODES_MINUS_TAG).performClick()
@@ -427,7 +427,7 @@ class AnimePageScreenTest {
     fun the_score_picker_offers_mals_labels_and_no_score() {
         runComposeUiTest {
             val recorded = RecordedActions()
-            setContent { SessionRoute(stateWith(page(load = AnimePageLoad.Loaded)), recorded.actions) }
+            setContent { ThemedSessionRoute(stateWith(page(load = AnimePageLoad.Loaded)), recorded.actions) }
 
             onNodeWithTag(ANIME_PAGE_SCORE_TAG).assertTextContains("8 – Very Good")
             onNodeWithTag(ANIME_PAGE_SCORE_TAG).performClick()
@@ -442,7 +442,7 @@ class AnimePageScreenTest {
     fun the_watch_status_picker_reports_the_choice() {
         runComposeUiTest {
             val recorded = RecordedActions()
-            setContent { SessionRoute(stateWith(page(load = AnimePageLoad.Loaded)), recorded.actions) }
+            setContent { ThemedSessionRoute(stateWith(page(load = AnimePageLoad.Loaded)), recorded.actions) }
 
             onNodeWithTag(ANIME_PAGE_WATCH_STATUS_TAG).performClick()
             // "On hold" is also a filter chip in the list beside the page; the menu item is drawn last.
@@ -458,7 +458,7 @@ class AnimePageScreenTest {
             val recorded = RecordedActions()
             val status = ListEntry(WatchStatus.Completed, 9, 26, null, "2024", null)
             setContent {
-                SessionRoute(stateWith(page(load = AnimePageLoad.Loaded, listEntry = status)), recorded.actions)
+                ThemedSessionRoute(stateWith(page(load = AnimePageLoad.Loaded, listEntry = status)), recorded.actions)
             }
 
             onAllNodesWithTag(io.challenge_workshop.mal_ui.auth.ANIME_PAGE_START_DATE_CLEAR_TAG).assertCountEquals(0)
@@ -479,7 +479,7 @@ class AnimePageScreenTest {
                 listEntry = confirmed,
                 save = PageSave(target = pending, inFlight = confirmed.copy(episodesWatched = 4)),
             )
-            setContent { SessionRoute(stateWith(saving), RecordedActions().actions) }
+            setContent { ThemedSessionRoute(stateWith(saving), RecordedActions().actions) }
 
             onNodeWithTag(ANIME_PAGE_EPISODES_TAG).assertTextContains("6")
             onNodeWithTag(ANIME_PAGE_SCORE_TAG).assertTextContains("10 – Masterpiece")
@@ -499,7 +499,7 @@ class AnimePageScreenTest {
     fun a_refused_save_shows_its_error_and_no_saving_marker() {
         runComposeUiTest {
             setContent {
-                SessionRoute(
+                ThemedSessionRoute(
                     stateWith(page(load = AnimePageLoad.Loaded, save = PageSave(error = "MAL said no"))),
                     RecordedActions().actions,
                 )

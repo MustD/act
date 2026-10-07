@@ -188,6 +188,7 @@ internal class RecordedActions {
     val watchStatuses: MutableList<WatchStatus?> = mutableListOf()
     val sortOrders: MutableList<AnimeListSortOrder> = mutableListOf()
     val layouts: MutableList<AnimeListLayout> = mutableListOf()
+    val themes: MutableList<Boolean> = mutableListOf()
     val opened: MutableList<AnimeListEntry> = mutableListOf()
     val edits: MutableList<ListEdit> = mutableListOf()
     val added: MutableList<WatchStatus> = mutableListOf()
@@ -209,6 +210,7 @@ internal class RecordedActions {
             onSelectWatchStatus = { watchStatuses += it; calls += "selectWatchStatus" },
             onSelectSortOrder = { sortOrders += it; calls += "selectSortOrder" },
             onSelectLayout = { layouts += it; calls += "selectLayout" },
+            onToggleTheme = { themes += it; calls += "toggleTheme" },
             onSignOut = { calls += "signOut" },
             onOpenAnime = { opened += it; calls += "openAnime" },
             animePage = AnimePageActions(
@@ -254,12 +256,11 @@ internal fun SemanticsNodeInteraction.textContent(): String =
 /**
  * Opens the diagnostics dialog the way a person does: the overflow menu, then its last entry.
  *
- * The menu closes on the way, which is what keeps "Session diagnostics" unambiguous — the menu entry
- * and the dialog's own title share those words and are never on screen at once.
+ * The menu closes on the way, so its "diagnostics" entry and the dialog are never on screen at once.
  */
 internal fun ComposeUiTest.openDiagnostics() {
     onNodeWithTag(SESSION_MENU_BUTTON_TAG).performClick()
-    onNodeWithText("Session diagnostics").performClick()
+    onNodeWithText("diagnostics").performClick()
     waitForIdle()
 }
 
@@ -280,4 +281,14 @@ internal class RecordingUriHandler(private val opened: MutableList<String>) : Ur
     override fun openUri(uri: String) {
         opened += uri
     }
+}
+
+/**
+ * [SessionRoute] inside the Theme `App()` would have put it in. The screens read their colours and
+ * type from `Act`, which has no default on purpose: a screen drawn outside the Theme should fail
+ * loudly rather than in the wrong colours.
+ */
+@androidx.compose.runtime.Composable
+internal fun ThemedSessionRoute(state: ScreenState, actions: ScreenActions) {
+    io.challenge_workshop.mal_ui.theme.ActTheme(dark = true) { SessionRoute(state, actions) }
 }
