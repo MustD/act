@@ -196,8 +196,8 @@ time is exactly the trap the Conventions section warns about.
 `appModule` is the only place that reads `MAL_CLIENT_ID`. `:core` keeps `MalAuthConfig.clientId` a required parameter on
 purpose, so `:core`'s own tests cannot pick up whatever the developer's machine was configured with.
 
-`mal.layout.v1` is `JsonTokenStore`'s only preference record, and `clear()` does not drop it. An earlier build also kept
-`mal.clientId.v1`; `restore()` removes that record on startup (`discardLegacyClientId`), and nothing else reads it.
+`mal.layout.v1` and `mal.theme.v1` are `JsonTokenStore`'s preference records (`ThemePreference` in `:core`: dark, light
+or system), and `clear()` drops neither. An earlier build also kept `mal.clientId.v1`; `restore()` removes that record on startup (`discardLegacyClientId`), and nothing else reads it.
 The Pending Authorization keeps its own `clientId`, so an authorization started before an app update exchanges against
 the ID it was started with.
 

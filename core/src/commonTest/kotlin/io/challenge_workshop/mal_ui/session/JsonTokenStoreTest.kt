@@ -1,6 +1,7 @@
 package io.challenge_workshop.mal_ui.session
 
 import io.challenge_workshop.mal_ui.animelist.AnimeListLayout
+import io.challenge_workshop.mal_ui.theme.Theme
 import io.challenge_workshop.mal_ui.mal.MalTokens
 import io.challenge_workshop.mal_ui.mal.MalUser
 import kotlinx.coroutines.test.runTest
@@ -268,5 +269,43 @@ class JsonTokenStoreTest {
         // signing out must not reset how the next user of this device reads their list.
         assertNull(store.readSession())
         assertEquals(AnimeListLayout.List, store.readLayout())
+    }
+
+    @Test
+    fun the_theme_record_has_its_own_versioned_key() {
+        assertEquals("mal.theme.v1", JsonTokenStore.THEME_KEY)
+    }
+
+    @Test
+    fun a_theme_round_trips_unchanged() = runTest {
+        val store = store(FakeKeyValueStore())
+
+        store.writeTheme(Theme.Light)
+
+        assertEquals(Theme.Light, store.readTheme())
+    }
+
+    @Test
+    fun a_missing_theme_record_reads_as_system() = runTest {
+        assertEquals(Theme.System, store(FakeKeyValueStore()).readTheme())
+    }
+
+    @Test
+    fun a_theme_this_build_does_not_know_reads_as_system() = runTest {
+        val kv = FakeKeyValueStore(mutableMapOf(JsonTokenStore.THEME_KEY to "\"Sepia\""))
+
+        assertEquals(Theme.System, store(kv).readTheme())
+    }
+
+    @Test
+    fun clear_keeps_the_theme() = runTest {
+        val store = store(FakeKeyValueStore())
+        store.writeSession(TOKENS, USER)
+        store.writeTheme(Theme.Dark)
+
+        store.clear()
+
+        assertNull(store.readSession())
+        assertEquals(Theme.Dark, store.readTheme())
     }
 }

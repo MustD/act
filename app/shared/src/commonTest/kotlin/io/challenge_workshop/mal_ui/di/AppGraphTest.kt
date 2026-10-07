@@ -5,6 +5,7 @@ package io.challenge_workshop.mal_ui.di
 import io.challenge_workshop.mal_ui.animelist.AnimeListRepository
 import io.challenge_workshop.mal_ui.animepage.AnimePageRepository
 import io.challenge_workshop.mal_ui.animelist.LayoutPreference
+import io.challenge_workshop.mal_ui.theme.ThemePreference
 import io.challenge_workshop.mal_ui.auth.SignIn
 import io.challenge_workshop.mal_ui.auth.StartupRedirect
 import io.challenge_workshop.mal_ui.mal.HttpClientFactory
@@ -80,6 +81,7 @@ class AppGraphTest {
         assertNotNull(koin.get<JsonTokenStore>())
         assertNotNull(koin.get<MalSessionRepository>())
         assertNotNull(koin.get<LayoutPreference>())
+        assertNotNull(koin.get<ThemePreference>())
         assertNotNull(koin.get<AnimeListRepository>())
         assertNotNull(koin.get<AnimePageRepository>())
         assertNotNull(koin.get<SignIn>())
@@ -122,6 +124,15 @@ class AppGraphTest {
      * screen's state: two instances would be two answers to what the user last chose, and the one the
      * Screen State reads would not be the one a tap wrote to.
      */
+    @Test
+    fun the_theme_preference_is_a_singleton() {
+        val koin = koin()
+
+        assertSame(koin.get<ThemePreference>(), koin.get<ThemePreference>())
+
+        koin.get<MalSessionRepository>().close()
+    }
+
     @Test
     fun the_layout_preference_is_a_singleton() {
         val koin = koin()
