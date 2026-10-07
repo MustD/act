@@ -15,6 +15,7 @@ import io.challenge_workshop.mal_ui.theme.EpisodeCells
 import io.challenge_workshop.mal_ui.theme.ActMedium
 import io.challenge_workshop.mal_ui.theme.ActEasing
 import io.challenge_workshop.mal_ui.theme.Act
+import io.challenge_workshop.mal_ui.theme.motion
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.graphicsLayer
@@ -323,7 +324,7 @@ private fun StepButton(
     val c = Act.colors
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.92f else 1f, tween(120, easing = ActEasing), label = "stepPress")
+    val scale by animateFloatAsState(if (pressed) 0.92f else 1f, motion(tween(120, easing = ActEasing)), label = "stepPress")
     Box(
         Modifier.size(52.dp)
             .graphicsLayer { scaleX = scale; scaleY = scale }

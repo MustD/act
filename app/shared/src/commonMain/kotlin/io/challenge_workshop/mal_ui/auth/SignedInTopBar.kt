@@ -204,8 +204,11 @@ private fun PromptIconButton(
 @Composable
 internal fun BlockCursor(modifier: Modifier = Modifier) {
     var on by remember { mutableStateOf(true) }
-    LaunchedEffect(Unit) {
-        while (true) {
+    // Reduced motion leaves the cursor on, solid.
+    val still = Act.reducedMotion
+    LaunchedEffect(still) {
+        on = true
+        while (!still) {
             delay(CURSOR_BLINK_MS)
             on = !on
         }

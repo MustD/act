@@ -1,6 +1,8 @@
 package io.challenge_workshop.mal_ui.theme
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -52,7 +54,9 @@ private const val SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
 @Composable
 fun rememberSpinnerGlyph(): Char {
     var frame by remember { mutableIntStateOf(0) }
-    LaunchedEffect(Unit) { while (true) { delay(90); frame = (frame + 1) % SPINNER.length } }
+    // Reduced motion holds the first frame: a still glyph still says "working", and nothing spins.
+    val still = Act.reducedMotion
+    LaunchedEffect(still) { if (!still) while (true) { delay(90); frame = (frame + 1) % SPINNER.length } }
     return SPINNER[frame]
 }
 
@@ -97,10 +101,12 @@ fun CoverPlaceholder(title: String, modifier: Modifier = Modifier, letterSize: I
 /** Zero-padded number that rolls in from above whenever it changes. */
 @Composable
 fun TickingNumber(value: Int, style: TextStyle) {
+    val still = Act.reducedMotion
     AnimatedContent(
         targetState = value,
         transitionSpec = {
-            (slideInVertically(tween(280, easing = ActEasing)) { -(it * 0.4f).toInt() } + fadeIn(tween(280))) togetherWith fadeOut(tween(100))
+            if (still) EnterTransition.None togetherWith ExitTransition.None
+            else (slideInVertically(tween(280, easing = ActEasing)) { -(it * 0.4f).toInt() } + fadeIn(tween(280))) togetherWith fadeOut(tween(100))
         },
         label = "episodes",
     ) { Text(it.toString().padStart(2, '0'), style = style, color = Act.colors.ink) }
@@ -111,7 +117,7 @@ fun TickingNumber(value: Int, style: TextStyle) {
 private fun cellColor(filled: Boolean, index: Int, staggerMs: Int, durationMs: Int, on: Color, off: Color): Color {
     val color by animateColorAsState(
         if (filled) on else off,
-        animationSpec = tween(durationMs, delayMillis = index * staggerMs),
+        animationSpec = motion(tween(durationMs, delayMillis = index * staggerMs)),
         label = "cell",
     )
     return color
@@ -163,7 +169,7 @@ fun EpisodeCells(
 fun ContinuousProgress(watched: Int, total: Int, modifier: Modifier = Modifier) {
     val c = Act.colors
     val target = if (total > 0) (watched.toFloat() / total).coerceIn(0f, 1f) else 1f
-    val frac by animateFloatAsState(target, tween(350, easing = ActEasing), label = "progress")
+    val frac by animateFloatAsState(target, motion(tween(350, easing = ActEasing)), label = "progress")
     Box(modifier.fillMaxWidth().background(c.ln)) {
         Box(
             Modifier.fillMaxHeight().fillMaxWidth(frac).drawBehind {
@@ -203,7 +209,7 @@ fun <T> WatchStatusChips(options: List<T>, selected: T, key: (T) -> String, enab
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         for (o in options) {
             val on = o == selected
-            val border by animateColorAsState(if (on) c.acc else c.ln, label = "chipBorder")
+            val border by animateColorAsState(if (on) c.acc else c.ln, motion(tween(200)), label = "chipBorder")
             Box(
                 Modifier.height(40.dp).clip(ActSmall).background(if (on) c.sf else Color.Transparent)
                     .border(1.dp, border, ActSmall)

@@ -71,6 +71,7 @@ import io.challenge_workshop.mal_ui.animelist.AnimeListSortRow
 import io.challenge_workshop.mal_ui.animelist.filterLabel
 import io.challenge_workshop.mal_ui.theme.Act
 import io.challenge_workshop.mal_ui.theme.ActEasing
+import io.challenge_workshop.mal_ui.theme.motion
 import io.challenge_workshop.mal_ui.animelist.LoadMoreWhenNearEnd
 import io.challenge_workshop.mal_ui.animelist.animeListItems
 import io.challenge_workshop.mal_ui.animelist.gridCells
@@ -180,12 +181,23 @@ fun AuthorizingScreen(
     }
 }
 
+/**
+ * Where the sweeping segment is, 0…1. Reduced motion parks it mid-rule — still an indeterminate bar, but nothing
+ * travels, and no infinite transition is left running to ask for frames.
+ */
+@Composable
+private fun sweepPosition(): Float {
+    if (Act.reducedMotion) return 0.5f
+    val at by rememberInfiniteTransition(label = "sweep")
+        .animateFloat(0f, 1f, infiniteRepeatable(tween(1400, easing = LinearEasing)), label = "at")
+    return at
+}
+
 /** An indeterminate bar: a 2dp rule in `ln` with an accent segment sweeping along it. */
 @Composable
 private fun TerminalProgress(modifier: Modifier = Modifier) {
     val c = Act.colors
-    val sweep = rememberInfiniteTransition(label = "sweep")
-    val at by sweep.animateFloat(0f, 1f, infiniteRepeatable(tween(1400, easing = LinearEasing)), label = "at")
+    val at = sweepPosition()
     Box(modifier.height(2.dp).background(c.ln).drawBehind {
         val w = size.width * 0.25f
         val x = (size.width + w) * at - w
@@ -271,7 +283,7 @@ fun SignedInScreen(
         val sideBySide = maxWidth >= SIDE_PANEL_MIN_WIDTH
         val phoneProgress by animateFloatAsState(
             if (page != null && !sideBySide) 1f else 0f,
-            tween(SIDE_PANEL_MS, easing = ActEasing),
+            motion(tween(SIDE_PANEL_MS, easing = ActEasing)),
             label = "phonePage",
         )
         // Held so that closing can run the slide backwards: `page` is already null by then.
@@ -373,7 +385,7 @@ private fun AnimePageSidePanel(
     if (page != null) held.value = page
     val width by animateDpAsState(
         if (page != null) SIDE_PANEL_WIDTH else 0.dp,
-        tween(SIDE_PANEL_MS, easing = ActEasing),
+        motion(tween(SIDE_PANEL_MS, easing = ActEasing)),
         label = "sidePanelWidth",
     )
     val shown = held.value

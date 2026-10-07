@@ -17,6 +17,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import io.challenge_workshop.mal_ui.theme.Act
+import io.challenge_workshop.mal_ui.theme.motion
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.rememberScrollState
@@ -144,8 +145,8 @@ fun AnimeListFilters(
 @Composable
 private fun WatchStatusTab(label: String, active: Boolean, enabled: Boolean, onClick: () -> Unit) {
     val c = Act.colors
-    val text by animateColorAsState(if (active) c.ink else c.dim, tween(TAB_FADE_MS), label = "tabText")
-    val underline by animateColorAsState(if (active) c.acc else Color.Transparent, tween(TAB_FADE_MS), label = "tabUnderline")
+    val text by animateColorAsState(if (active) c.ink else c.dim, motion(tween(TAB_FADE_MS)), label = "tabText")
+    val underline by animateColorAsState(if (active) c.acc else Color.Transparent, motion(tween(TAB_FADE_MS)), label = "tabUnderline")
     Box(
         Modifier.height(36.dp)
             .selectable(selected = active, enabled = enabled, role = Role.Tab, onClick = onClick)

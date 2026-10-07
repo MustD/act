@@ -166,11 +166,15 @@ val ActEasing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f)
 
 private val LocalActColors = staticCompositionLocalOf { DarkBase }
 private val LocalActType = staticCompositionLocalOf<ActType> { error("ActTheme not applied") }
+private val LocalReducedMotion = staticCompositionLocalOf { false }
 
 /** `Act.colors` and `Act.type`: the tokens of the enclosing [ActTheme]. */
 object Act {
     val colors: ActColors @Composable @ReadOnlyComposable get() = LocalActColors.current
     val type: ActType @Composable @ReadOnlyComposable get() = LocalActType.current
+
+    /** Whether every transition should jump instead of play. See [motion]. */
+    val reducedMotion: Boolean @Composable @ReadOnlyComposable get() = LocalReducedMotion.current
 }
 
 /**
@@ -181,6 +185,7 @@ object Act {
 fun ActTheme(
     dark: Boolean = isSystemInDarkTheme(),
     accent: ActAccent = ActAccent.Phosphor,
+    reducedMotion: Boolean = systemReducedMotion(),
     content: @Composable () -> Unit,
 ) {
     val c = actColors(dark, accent)
@@ -195,7 +200,7 @@ fun ActTheme(
         error = c.error, errorContainer = c.sf2, onErrorContainer = c.error,
     )
     val type = actType()
-    CompositionLocalProvider(LocalActColors provides c, LocalActType provides type) {
+    CompositionLocalProvider(LocalActColors provides c, LocalActType provides type, LocalReducedMotion provides reducedMotion) {
         MaterialTheme(colorScheme = scheme, typography = type.toMaterial(), shapes = ActShapes, content = content)
     }
 }
