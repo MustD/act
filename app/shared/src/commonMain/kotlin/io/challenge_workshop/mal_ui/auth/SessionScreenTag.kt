@@ -197,6 +197,9 @@ val ANIME_PAGE_LOADING_TAG: String = "$ANIME_PAGE_TAG.loading"
 /** The failed-fetch card and its retry. Nothing becomes editable behind it. */
 val ANIME_PAGE_ERROR_TAG: String = "$ANIME_PAGE_TAG.error"
 
+/** The `more ▾` / `less ▴` toggle under a clamped synopsis, present only when the text overflows three lines. */
+val ANIME_PAGE_SYNOPSIS_TOGGLE_TAG: String = "$ANIME_PAGE_TAG.synopsisToggle"
+
 /** The synopsis text, which is the one thing only the fetch can supply. */
 val ANIME_PAGE_SYNOPSIS_TAG: String = "$ANIME_PAGE_TAG.synopsis"
 
@@ -229,10 +232,12 @@ val ANIME_PAGE_EPISODES_PLUS_TAG: String = "$ANIME_PAGE_TAG.episodesPlus"
 /** The score button, which opens the picker of MAL's labels. */
 val ANIME_PAGE_SCORE_TAG: String = "$ANIME_PAGE_TAG.score"
 
-/** Each date's button, which opens the DatePicker, and its clear action. */
+/** Each date's value as MAL holds it, then its `set today` action (which opens the DatePicker) and its `clear` action. */
 val ANIME_PAGE_START_DATE_TAG: String = "$ANIME_PAGE_TAG.startDate"
+val ANIME_PAGE_START_DATE_SET_TAG: String = "$ANIME_PAGE_TAG.startDateSet"
 val ANIME_PAGE_START_DATE_CLEAR_TAG: String = "$ANIME_PAGE_TAG.startDateClear"
 val ANIME_PAGE_FINISH_DATE_TAG: String = "$ANIME_PAGE_TAG.finishDate"
+val ANIME_PAGE_FINISH_DATE_SET_TAG: String = "$ANIME_PAGE_TAG.finishDateSet"
 val ANIME_PAGE_FINISH_DATE_CLEAR_TAG: String = "$ANIME_PAGE_TAG.finishDateClear"
 
 /** The Related Anime section, absent until the fetch has landed and when the anime has none. */

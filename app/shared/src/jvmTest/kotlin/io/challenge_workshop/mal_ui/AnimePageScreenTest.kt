@@ -358,10 +358,10 @@ class AnimePageScreenTest {
                 )
             }
 
-            onNodeWithTag(animePageRelatedTag(11)).performScrollTo()
+            onNodeWithTag(ANIME_PAGE_RELATED_TAG).performScrollTo()
             onNodeWithText("Cowboy Bebop: The Movie").assertIsDisplayed()
-            onNodeWithText("Side Story").assertIsDisplayed()
-            onNodeWithText("Alternative Version").assertIsDisplayed()
+            onNodeWithText("SIDE STORY").assertIsDisplayed()
+            onNodeWithText("ALTERNATIVE VERSION").assertIsDisplayed()
             onNodeWithTag(animePageRelatedOnListTag(11), useUnmergedTree = true).assertIsDisplayed()
             onNodeWithTag(animePageRelatedOnListTag(10), useUnmergedTree = true).assertDoesNotExist()
         }
@@ -384,7 +384,8 @@ class AnimePageScreenTest {
                 ThemedSessionRoute(stateWith(page(load = AnimePageLoad.Loaded, related = relatedAnime)), recorded.actions)
             }
 
-            onNodeWithTag(animePageRelatedTag(11)).performScrollTo().performClick()
+            onNodeWithTag(ANIME_PAGE_RELATED_TAG).performScrollTo()
+            onNodeWithTag(animePageRelatedTag(11)).performClick()
 
             assertEquals(listOf(11L), recorded.openedRelated.map { it.animeId })
         }
@@ -393,7 +394,7 @@ class AnimePageScreenTest {
     private val editControls = listOf(
         ANIME_PAGE_EPISODES_MINUS_TAG,
         ANIME_PAGE_EPISODES_PLUS_TAG,
-        ANIME_PAGE_START_DATE_TAG, ANIME_PAGE_FINISH_DATE_TAG,
+        io.challenge_workshop.mal_ui.auth.ANIME_PAGE_START_DATE_SET_TAG, io.challenge_workshop.mal_ui.auth.ANIME_PAGE_FINISH_DATE_SET_TAG,
     )
 
     /** The controls that have no tag of their own: a chip, a score cell, an episode cell. */
@@ -546,6 +547,36 @@ class AnimePageScreenTest {
             onNodeWithTag(ANIME_PAGE_SAVE_ERROR_TAG).assertIsDisplayed()
             onNodeWithText("MAL said no").assertIsDisplayed()
             onAllNodesWithText("Saving…").assertCountEquals(0)
+        }
+    }
+
+    @Test
+    fun set_today_opens_the_date_picker_and_saves_nothing_by_itself() {
+        runComposeUiTest {
+            val recorded = RecordedActions()
+            setContent { ThemedSessionRoute(stateWith(page(load = AnimePageLoad.Loaded)), recorded.actions) }
+
+            onNodeWithTag(io.challenge_workshop.mal_ui.auth.ANIME_PAGE_START_DATE_SET_TAG).performScrollTo().assertTextContains("set today").performClick()
+
+            onNodeWithText("OK").assertIsDisplayed()
+            assertEquals(emptyList<ListEdit>(), recorded.edits)
+        }
+    }
+
+    @Test
+    fun a_long_synopsis_is_clamped_with_a_toggle_and_a_short_one_has_none() {
+        runComposeUiTest {
+            val long = "Bounty hunters in space. ".repeat(60)
+            setContent { PhoneSessionRoute(stateWith(page(load = AnimePageLoad.Loaded, synopsis = long)), RecordedActions().actions) }
+
+            val toggle = onNodeWithTag(io.challenge_workshop.mal_ui.auth.ANIME_PAGE_SYNOPSIS_TOGGLE_TAG).performScrollTo()
+            toggle.assertTextContains("more ▾").performClick()
+            toggle.assertTextContains("less ▴")
+        }
+        runComposeUiTest {
+            setContent { PhoneSessionRoute(stateWith(page(load = AnimePageLoad.Loaded, synopsis = "Short.")), RecordedActions().actions) }
+
+            onAllNodesWithTag(io.challenge_workshop.mal_ui.auth.ANIME_PAGE_SYNOPSIS_TOGGLE_TAG).assertCountEquals(0)
         }
     }
 }

@@ -1,5 +1,10 @@
 package io.challenge_workshop.mal_ui.animepage
 
+import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_FINISH_DATE_SET_TAG
+import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_START_DATE_SET_TAG
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_SCORE_CLEAR_TAG
 import io.challenge_workshop.mal_ui.theme.WatchStatusChips
 import io.challenge_workshop.mal_ui.theme.TickingNumber
@@ -152,14 +157,17 @@ internal fun ListEntrySection(page: AnimePage, onEdit: (ListEdit) -> Unit, onAdd
         }
         Section("dates", ANIME_PAGE_START_DATE_TAG, saving = false) {
             ErrorUnder(EntrySection.Dates)
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                Modifier.fillMaxWidth().background(Act.colors.sf, ActMedium).border(1.dp, Act.colors.ln, ActMedium),
+            ) {
                 DateRow(
-                    "Started", entry.startDate, enabled, ANIME_PAGE_START_DATE_TAG, ANIME_PAGE_START_DATE_CLEAR_TAG,
-                    saving = pending.startDate != null,
+                    "started", entry.startDate, enabled, ANIME_PAGE_START_DATE_TAG, ANIME_PAGE_START_DATE_SET_TAG,
+                    ANIME_PAGE_START_DATE_CLEAR_TAG, saving = pending.startDate != null,
                 ) { onEdit(ListEdit.SetStartDate(it)) }
+                HorizontalDivider(color = Act.colors.ln)
                 DateRow(
-                    "Finished", entry.finishDate, enabled, ANIME_PAGE_FINISH_DATE_TAG, ANIME_PAGE_FINISH_DATE_CLEAR_TAG,
-                    saving = pending.finishDate != null,
+                    "finished", entry.finishDate, enabled, ANIME_PAGE_FINISH_DATE_TAG, ANIME_PAGE_FINISH_DATE_SET_TAG,
+                    ANIME_PAGE_FINISH_DATE_CLEAR_TAG, saving = pending.finishDate != null,
                 ) { onEdit(ListEdit.SetFinishDate(it)) }
             }
         }
@@ -331,9 +339,10 @@ private fun StepButton(
 }
 
 /**
- * A date as MAL holds it — shown verbatim, so a partial `2024` reads as `2024` — a button that opens
- * a Material 3 [DatePicker] in a dialog, and a clear action. Only a full date can be picked, and
- * picking one replaces whatever was there.
+ * A date as MAL holds it — shown verbatim, so a partial `2024` reads as `2024` — in a 48dp row with
+ * `set today` when empty and `clear` when set. `set today` opens a Material 3 [DatePicker] in a
+ * dialog rather than saving at once; only a full date can be picked, and picking one replaces
+ * whatever was there. The value carries [tag], the actions [setTag] and [clearTag].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -342,24 +351,35 @@ private fun DateRow(
     date: String?,
     enabled: Boolean,
     tag: String,
+    setTag: String,
     clearTag: String,
     saving: Boolean,
     onPick: (LocalDate?) -> Unit,
 ) {
     var picking by remember { mutableStateOf(false) }
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(
+        Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Text(label, style = Act.type.meta, color = Act.colors.dim, modifier = Modifier.width(64.dp))
-        SavingIndicator(saving, Modifier.testTag(animePageSavingTag(tag)))
-        OutlinedButton(onClick = { picking = true }, enabled = enabled, modifier = Modifier.testTag(tag)) {
-            Text(date ?: NO_DATE)
-        }
-        if (date != null) {
-            TextButton(
-                onClick = { onPick(null) },
-                enabled = enabled,
-                modifier = Modifier.testTag(clearTag).semantics { contentDescription = "Clear date" },
-            ) { Text("Clear") }
-        }
+        Text(
+            date ?: NO_DATE,
+            style = Act.type.body,
+            color = if (date != null) Act.colors.ink else Act.colors.dim,
+            modifier = Modifier.testTag(tag),
+        )
+        SavingIndicator(saving, Modifier.padding(start = 8.dp).testTag(animePageSavingTag(tag)))
+        Spacer(Modifier.weight(1f))
+        val (action, actionTag) = if (date == null) "set today" to setTag else "clear" to clearTag
+        Text(
+            action,
+            style = Act.type.meta,
+            color = Act.colors.acc.copy(alpha = if (enabled) 1f else 0.4f),
+            modifier = Modifier.testTag(actionTag)
+                .semantics { contentDescription = if (date == null) "Set $label date" else "Clear $label date" }
+                .clickable(enabled = enabled, role = Role.Button) { if (date == null) picking = true else onPick(null) }
+                .padding(vertical = 12.dp),
+        )
     }
     if (picking) {
         val state = rememberDatePickerState(

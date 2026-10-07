@@ -1,5 +1,9 @@
 package io.challenge_workshop.mal_ui.animepage
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_SYNOPSIS_TOGGLE_TAG
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -147,7 +151,7 @@ private fun PageContent(
         ) {
             Header(page.anime)
             ListEntrySection(page, actions.onEdit, actions.onAdd)
-            SynopsisSection(page, actions.onRetry)
+            SynopsisSection(page, sidePanel, actions.onRetry)
             RelatedSection(page.related, actions.onOpenRelated)
         }
     }
@@ -231,7 +235,7 @@ private fun Header(anime: Anime) {
 }
 
 @Composable
-private fun SynopsisSection(page: AnimePage, onRetry: () -> Unit) {
+private fun SynopsisSection(page: AnimePage, sidePanel: Boolean, onRetry: () -> Unit) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SectionLabel("synopsis")
         when (val load = page.load) {
@@ -244,12 +248,7 @@ private fun SynopsisSection(page: AnimePage, onRetry: () -> Unit) {
                 }
             }
 
-            AnimePageLoad.Loaded -> Text(
-                page.synopsis?.takeIf { it.isNotBlank() } ?: "No synopsis.",
-                style = Act.type.synopsis,
-                color = Act.colors.ink,
-                modifier = Modifier.testTag(ANIME_PAGE_SYNOPSIS_TAG),
-            )
+            AnimePageLoad.Loaded -> SynopsisText(page.synopsis?.takeIf { it.isNotBlank() } ?: "No synopsis.", sidePanel)
 
             is AnimePageLoad.Failed -> Column(
                 Modifier.testTag(ANIME_PAGE_ERROR_TAG),
@@ -267,3 +266,37 @@ private fun SynopsisSection(page: AnimePage, onRetry: () -> Unit) {
 }
 
 private val COVER_WIDTH = 100.dp
+
+private const val SYNOPSIS_CLAMP_LINES = 3
+
+/**
+ * The synopsis: in full in the side panel, clamped to [SYNOPSIS_CLAMP_LINES] lines on a phone with a
+ * `more ▾` / `less ▴` toggle that is offered only when the text really is cut off.
+ */
+@Composable
+private fun SynopsisText(text: String, sidePanel: Boolean) {
+    var expanded by remember(text) { mutableStateOf(false) }
+    var overflows by remember(text) { mutableStateOf(false) }
+    val clamped = !sidePanel && !expanded
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text,
+            style = Act.type.synopsis,
+            color = Act.colors.ink,
+            maxLines = if (clamped) SYNOPSIS_CLAMP_LINES else Int.MAX_VALUE,
+            overflow = TextOverflow.Ellipsis,
+            onTextLayout = { if (clamped && it.hasVisualOverflow) overflows = true },
+            modifier = Modifier.testTag(ANIME_PAGE_SYNOPSIS_TAG),
+        )
+        if (!sidePanel && overflows) {
+            Text(
+                if (expanded) "less ▴" else "more ▾",
+                style = Act.type.meta,
+                color = Act.colors.acc,
+                modifier = Modifier.testTag(ANIME_PAGE_SYNOPSIS_TOGGLE_TAG)
+                    .clickable(role = Role.Button) { expanded = !expanded }
+                    .padding(vertical = 8.dp),
+            )
+        }
+    }
+}
