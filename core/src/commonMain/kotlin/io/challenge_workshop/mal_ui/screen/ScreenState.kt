@@ -3,6 +3,7 @@ package io.challenge_workshop.mal_ui.screen
 import io.challenge_workshop.mal_ui.animelist.AnimeListLayout
 import io.challenge_workshop.mal_ui.animelist.AnimeListState
 import io.challenge_workshop.mal_ui.animepage.AnimePageHistory
+import io.challenge_workshop.mal_ui.animepage.SaveLog
 import io.challenge_workshop.mal_ui.auth.SignInState
 import io.challenge_workshop.mal_ui.mal.MalEndpoints
 import io.challenge_workshop.mal_ui.mal.MalUser
@@ -97,6 +98,8 @@ sealed interface ScreenState {
          * — see `docs/adr/0006-anime-page-history-in-screen-state.md`. Empty when none is open.
          */
         val animePages: AnimePageHistory,
+        /** The last save sent and whether any is pending, for the log bar. Data only; the words are `:app:shared`'s. */
+        val saveLog: SaveLog,
         val busy: Boolean,
         val error: ShownError?,
         /** Null until the diagnostics dialog asks for it, which is the only thing that reads it. */

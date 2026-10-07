@@ -251,3 +251,9 @@ fun animePageRelatedOnListTag(animeId: Long): String = "$ANIME_PAGE_TAG.related.
 
 /** The 208dp sidebar shown from [SIDE_PANEL_MIN_WIDTH]; it replaces the tabs and the More menu. */
 val SESSION_SIDEBAR_TAG: String = "${SessionScreenTag.SignedIn.tag}.sidebar"
+
+/** The request-log bar at the bottom of the signed-in screen, its description, its result and the wide key hints. */
+val LOG_BAR_TAG: String = "${SessionScreenTag.SignedIn.tag}.logBar"
+val LOG_BAR_TEXT_TAG: String = "$LOG_BAR_TAG.text"
+val LOG_BAR_RESULT_TAG: String = "$LOG_BAR_TAG.result"
+val LOG_BAR_HINTS_TAG: String = "$LOG_BAR_TAG.hints"

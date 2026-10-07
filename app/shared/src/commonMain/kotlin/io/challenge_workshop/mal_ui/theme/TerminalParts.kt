@@ -48,6 +48,14 @@ import kotlinx.coroutines.delay
 
 private const val SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
 
+/** The braille spinner's current frame, advancing every 90ms for as long as this is in composition. */
+@Composable
+fun rememberSpinnerGlyph(): Char {
+    var frame by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) { while (true) { delay(90); frame = (frame + 1) % SPINNER.length } }
+    return SPINNER[frame]
+}
+
 /** "// episodes" section header, with an optional trailing slot (the saving indicator). */
 @Composable
 fun SectionLabel(text: String, trailing: @Composable () -> Unit = {}) {
@@ -61,9 +69,8 @@ fun SectionLabel(text: String, trailing: @Composable () -> Unit = {}) {
 @Composable
 fun SavingIndicator(saving: Boolean, modifier: Modifier = Modifier) {
     if (!saving) return
-    var frame by remember { mutableIntStateOf(0) }
-    LaunchedEffect(Unit) { while (true) { delay(90); frame = (frame + 1) % SPINNER.length } }
-    Text("${SPINNER[frame]} saving", style = Act.type.tiny.copy(fontWeight = FontWeight.Medium), color = Act.colors.pend, modifier = modifier)
+    val glyph = rememberSpinnerGlyph()
+    Text("$glyph saving", style = Act.type.tiny.copy(fontWeight = FontWeight.Medium), color = Act.colors.pend, modifier = modifier)
 }
 
 /** Placeholder behind cover art: 135° stripes + first letter. Put the Coil AsyncImage over it, as today. */

@@ -24,6 +24,7 @@ import io.challenge_workshop.mal_ui.animelist.AnimeListState
 import io.challenge_workshop.mal_ui.animelist.AnimeListTail
 import io.challenge_workshop.mal_ui.animelist.WatchStatus
 import io.challenge_workshop.mal_ui.animepage.AnimePageHistory
+import io.challenge_workshop.mal_ui.animepage.SaveLog
 import io.challenge_workshop.mal_ui.animepage.ListEdit
 import io.challenge_workshop.mal_ui.animepage.RelatedAnime
 import io.challenge_workshop.mal_ui.auth.AnimePageActions
@@ -100,6 +101,7 @@ internal fun signedIn(
     list: AnimeListState = loadedList(),
     layout: AnimeListLayout = AnimeListLayout.Cards,
     animePages: AnimePageHistory = AnimePageHistory(),
+    saveLog: SaveLog = SaveLog(),
     busy: Boolean = false,
     error: String? = null,
     diagnostics: SessionDiagnostics? = null,
@@ -110,6 +112,7 @@ internal fun signedIn(
     list = list,
     layout = layout,
     animePages = animePages,
+    saveLog = saveLog,
     busy = busy,
     error = error?.let { ShownError(it, relayHint) },
     diagnostics = diagnostics,
