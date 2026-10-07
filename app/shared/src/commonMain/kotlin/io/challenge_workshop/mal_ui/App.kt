@@ -1,6 +1,5 @@
 package io.challenge_workshop.mal_ui
 
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -27,6 +26,7 @@ import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.screen.ScreenStateSource
 import io.challenge_workshop.mal_ui.session.MalSessionRepository
 import io.challenge_workshop.mal_ui.session.SessionControls
+import io.challenge_workshop.mal_ui.theme.ActTheme
 import org.koin.compose.koinInject
 
 /**
@@ -57,7 +57,7 @@ fun App(
     // how two of the three Targets would end up without one.
     setSingletonImageLoaderFactory { context -> malImageLoader(context) }
 
-    MaterialTheme {
+    ActTheme {
         Surface(modifier = Modifier) {
             AppScreen(repository, signIn, controls, animeList, animePages, layout)
         }
