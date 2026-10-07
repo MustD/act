@@ -89,6 +89,21 @@ class AnimeListPagerTest {
     }
 
     @Test
+    fun a_pager_given_no_filter_opens_on_watching() = runTest {
+        val mal = FakeMal(acceptedAccessToken = "t", animeList = page(FakeEntry(1, "Cowboy Bebop")))
+        val http = HttpClient(mal.engine) {
+            malClientDefaults()
+            install(DefaultRequest) { headers.append(HttpHeaders.Authorization, "Bearer t") }
+        }
+        val pager = AnimeListPager(MalAnimeListClient(TEST_API_BASE_URL, http))
+
+        pager.start()
+
+        assertEquals("watching", mal.animeListRequests.single().parameters["status"])
+        assertEquals(WatchStatus.Watching, pager.state.value.watchStatus)
+    }
+
+    @Test
     fun each_watch_status_filter_sends_its_own_single_status_value() = runTest {
         val expected = mapOf(
             WatchStatus.Watching to "watching",

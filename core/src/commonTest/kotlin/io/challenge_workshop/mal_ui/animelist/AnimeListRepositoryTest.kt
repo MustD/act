@@ -146,10 +146,10 @@ class AnimeListRepositoryTest {
         assertEquals(3, h.awaitSettled().size)
         val fresh = h.list.state.value
 
-        assertNull(fresh.watchStatus, "the next Session opens unfiltered")
+        assertEquals(WatchStatus.Watching, fresh.watchStatus, "the next Session opens on Watching")
         assertEquals(AnimeListSortOrder.LastUpdated, fresh.sortOrder, "and on the default Sort Order")
         assertEquals(4, h.mal.animeListRequests.size, "the new Session asked for its own first page")
-        assertNull(h.mal.statuses.last())
+        assertEquals("watching", h.mal.statuses.last())
         assertEquals(AnimeListSortOrder.LastUpdated.wireValue, h.mal.sorts.last())
         h.close()
     }
@@ -181,8 +181,8 @@ class AnimeListRepositoryTest {
         h.session.restore()
         h.awaitSettled()
 
-        assertNull(h.list.state.value.watchStatus)
-        assertNull(h.mal.statuses.last())
+        assertEquals(WatchStatus.Watching, h.list.state.value.watchStatus)
+        assertEquals("watching", h.mal.statuses.last())
         h.close()
     }
 
@@ -235,8 +235,8 @@ class AnimeListRepositoryTest {
         h.awaitSettled()
         assertEquals(1, h.mal.animeListRequests.size, "the user arriving did not ask for a second list")
 
-        h.list.setWatchStatus(WatchStatus.Watching)
-        h.awaitList { it.watchStatus == WatchStatus.Watching && it.settled() }
+        h.list.setWatchStatus(WatchStatus.Completed)
+        h.awaitList { it.watchStatus == WatchStatus.Completed && it.settled() }
 
         // A real refresh: `refreshing` goes true and back to false on the same Session.
         h.session.forceExpireAccessToken()
@@ -244,7 +244,7 @@ class AnimeListRepositoryTest {
         assertEquals(2, h.mal.tokenEndpointHits, "the sign-in's exchange, then the one refresh the 401 drove")
         runCurrent()
 
-        assertEquals(WatchStatus.Watching, h.list.state.value.watchStatus)
+        assertEquals(WatchStatus.Completed, h.list.state.value.watchStatus)
         assertEquals(2, h.mal.animeListRequests.size, "the refresh did not rebuild the list")
         h.close()
     }
@@ -255,7 +255,7 @@ class AnimeListRepositoryTest {
         h.session.restore()
         h.awaitSettled()
 
-        h.list.setWatchStatus(null)
+        h.list.setWatchStatus(WatchStatus.Watching)
         h.list.setSortOrder(AnimeListSortOrder.LastUpdated)
         runCurrent()
         assertEquals(1, h.mal.animeListRequests.size, "re-picking what is on screen asks for nothing")

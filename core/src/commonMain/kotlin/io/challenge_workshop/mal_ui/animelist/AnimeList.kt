@@ -37,6 +37,12 @@ enum class WatchStatus(
 }
 
 /**
+ * The filter every Session opens on. Watching rather than All: the list people open the app for is
+ * what they are in the middle of, and All is the sixth and last tab.
+ */
+internal val DEFAULT_WATCH_STATUS: WatchStatus = WatchStatus.Watching
+
+/**
  * What the anime itself is doing — true for everyone, and unrelated to any user's list.
  *
  * [Unknown] exists for the same reason as [WatchStatus.Unknown].

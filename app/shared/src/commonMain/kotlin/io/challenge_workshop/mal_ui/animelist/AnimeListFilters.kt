@@ -13,7 +13,8 @@ import androidx.compose.ui.unit.dp
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_FILTERS_TAG
 
 /**
- * The six mutually exclusive filter choices, in the order they are drawn.
+ * The six mutually exclusive filter choices, in the order they are drawn: the five Watch Statuses,
+ * then All.
  *
  * `null` is **All**, and it is the absence of MAL's `status` parameter rather than a sixth value of
  * it: MAL takes one Watch Status or none, which is also why these are chips with one active at a
@@ -25,12 +26,12 @@ import io.challenge_workshop.mal_ui.auth.ANIME_LIST_FILTERS_TAG
  * unreachable.
  */
 val ANIME_LIST_FILTERS: List<WatchStatus?> = listOf(
-    null,
     WatchStatus.Watching,
     WatchStatus.Completed,
     WatchStatus.OnHold,
     WatchStatus.Dropped,
     WatchStatus.PlanToWatch,
+    null,
 )
 
 /**
@@ -76,7 +77,7 @@ fun WatchStatus.emptyListMessage(): String = when (this) {
 }
 
 /**
- * The filter row: one Watch Status at a time, All to begin with.
+ * The filter row: one Watch Status at a time, Watching to begin with.
  *
  * **A horizontally scrollable [Row] rather than a tab row**, because six tabs do not fit the width
  * of a phone and one scrolling row is the arrangement that works unchanged on every Target.
