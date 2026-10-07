@@ -82,7 +82,7 @@ fun CoverPlaceholder(title: String, modifier: Modifier = Modifier, letterSize: I
         contentAlignment = Alignment.Center,
     ) {
         title.firstOrNull()?.let {
-            Text(it.uppercase(), style = Act.type.cardTitle.copy(fontSize = letterSize.sp), color = c.dim)
+            Text(it.uppercase(), style = Act.type.rowTitle.copy(fontSize = letterSize.sp), color = c.dim)
         }
     }
 }

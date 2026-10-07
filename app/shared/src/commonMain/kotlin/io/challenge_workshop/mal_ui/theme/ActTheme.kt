@@ -48,16 +48,17 @@ data class ActColors(
     val isDark: Boolean,
 )
 
+/** `acc` and `pend` are filled in from the [ActAccent] by [actColors]; the bases leave them unspecified. */
 private val DarkBase = ActColors(
     bg = Color(0xFF0D0E0C), sf = Color(0xFF151713), sf2 = Color(0xFF1C1F1A), ln = Color(0xFF2B2E28),
     ink = Color(0xFFE8EAE2), dim = Color(0xFF8D9287), onAcc = Color(0xFF0D0E0C),
-    acc = Color(0xFF8CEB7B), pend = Color(0xFFF2C057), error = Color(0xFFFF8A7A), isDark = true,
+    acc = Color.Unspecified, pend = Color.Unspecified, error = Color(0xFFFF8A7A), isDark = true,
 )
 
 private val LightBase = ActColors(
     bg = Color(0xFFF1F0E9), sf = Color(0xFFFAF9F3), sf2 = Color(0xFFE6E5DC), ln = Color(0xFFD3D1C5),
     ink = Color(0xFF161713), dim = Color(0xFF5F6157), onAcc = Color(0xFFFAF9F3),
-    acc = Color(0xFF2E7B33), pend = Color(0xFFA86A12), error = Color(0xFFB3261E), isDark = false,
+    acc = Color.Unspecified, pend = Color.Unspecified, error = Color(0xFFB3261E), isDark = false,
 )
 
 /** The accent and its `pend` partner, which has to differ from it. Hexes approximate the design's oklch values. */
