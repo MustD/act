@@ -9,7 +9,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -69,6 +71,7 @@ import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_WATCH_STATUS_TAG
 import io.challenge_workshop.mal_ui.auth.animePageRelatedOnListTag
 import io.challenge_workshop.mal_ui.auth.animePageRelatedTag
 import io.challenge_workshop.mal_ui.auth.animePageSavingTag
+import io.challenge_workshop.mal_ui.theme.actColors
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -442,6 +445,22 @@ class AnimePageScreenTest {
                 listOf(ListEdit.AddEpisodes(1), ListEdit.AddEpisodes(-1), ListEdit.SetEpisodes(12), ListEdit.SetEpisodes(2)),
                 recorded.edits,
             )
+        }
+    }
+
+    @Test
+    fun plus_keeps_its_accent_fill_once_the_page_has_loaded() {
+        // The page opens Loading, with + disabled, and is enabled when the fetch lands. That switch once
+        // dropped a layer from the middle of the button's modifier chain and the fill went with it, until a
+        // theme change redrew everything.
+        runComposeUiTest {
+            var shown by mutableStateOf(page(load = AnimePageLoad.Loading))
+            setContent { ThemedSessionRoute(stateWith(shown), RecordedActions().actions) }
+            shown = page(load = AnimePageLoad.Loaded)
+            waitForIdle()
+
+            val plus = onNodeWithTag(ANIME_PAGE_EPISODES_PLUS_TAG).assertIsEnabled().captureToImage().toPixelMap()
+            assertEquals(actColors(dark = true).acc, plus[8, 8])
         }
     }
 

@@ -12,7 +12,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
@@ -24,6 +23,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_SORT_TAG
 import io.challenge_workshop.mal_ui.theme.Act
+import io.challenge_workshop.mal_ui.theme.enabledAlpha
 import mal_ui.app.shared.generated.resources.Res
 import mal_ui.app.shared.generated.resources.swap_vert
 import org.jetbrains.compose.resources.painterResource
@@ -89,7 +89,7 @@ fun AnimeListSortRow(
                 drawLine(c.ln, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 1.dp.toPx())
             }
             .clickable(enabled = enabled, role = Role.Button) { onSelect(selected.next()) }
-            .alpha(if (enabled) 1f else 0.5f)
+            .enabledAlpha(enabled, 0.5f)
             .padding(horizontal = 16.dp)
             .testTag(ANIME_LIST_SORT_TAG),
         verticalAlignment = Alignment.CenterVertically,

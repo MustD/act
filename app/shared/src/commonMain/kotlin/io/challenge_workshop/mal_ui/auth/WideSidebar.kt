@@ -17,7 +17,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -37,6 +36,7 @@ import io.challenge_workshop.mal_ui.animelist.tabKey
 import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.theme.Act
 import io.challenge_workshop.mal_ui.theme.ActMedium
+import io.challenge_workshop.mal_ui.theme.enabledAlpha
 
 /**
  * The sidebar from [SIDE_PANEL_MIN_WIDTH]: the prompt, the name, the six Watch Statuses and the
@@ -127,7 +127,7 @@ private fun SidebarWatchStatus(filter: WatchStatus?, active: Boolean, enabled: B
         Modifier.fillMaxWidth().height(38.dp).clip(ActMedium)
             .background(if (active) c.sf2 else Color.Transparent)
             .selectable(selected = active, enabled = enabled, role = Role.Tab, onClick = onClick)
-            .alpha(if (enabled) 1f else 0.5f)
+            .enabledAlpha(enabled, 0.5f)
             .padding(horizontal = 8.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
@@ -145,7 +145,7 @@ private fun SidebarAction(text: String, enabled: Boolean, onClick: () -> Unit) {
     Box(
         Modifier.fillMaxWidth().height(34.dp)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .alpha(if (enabled) 1f else 0.5f)
+            .enabledAlpha(enabled, 0.5f)
             .padding(horizontal = 8.dp),
         contentAlignment = Alignment.CenterStart,
     ) {

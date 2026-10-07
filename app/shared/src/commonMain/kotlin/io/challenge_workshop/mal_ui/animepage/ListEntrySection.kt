@@ -15,13 +15,13 @@ import io.challenge_workshop.mal_ui.theme.EpisodeCells
 import io.challenge_workshop.mal_ui.theme.ActMedium
 import io.challenge_workshop.mal_ui.theme.ActEasing
 import io.challenge_workshop.mal_ui.theme.Act
+import io.challenge_workshop.mal_ui.theme.enabledAlpha
 import io.challenge_workshop.mal_ui.theme.motion
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -331,7 +331,7 @@ private fun StepButton(
             .clip(ActMedium)
             .background(if (filled) c.acc else Color.Transparent)
             .then(if (filled) Modifier else Modifier.border(1.dp, c.ln, ActMedium))
-            .alpha(if (enabled) 1f else 0.4f)
+            .enabledAlpha(enabled, 0.4f)
             .clickable(interactionSource = interaction, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
             .testTag(tag)
             .semantics { contentDescription = description },

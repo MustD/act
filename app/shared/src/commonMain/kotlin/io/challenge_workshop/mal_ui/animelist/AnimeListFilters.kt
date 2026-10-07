@@ -10,13 +10,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import io.challenge_workshop.mal_ui.theme.Act
+import io.challenge_workshop.mal_ui.theme.enabledAlpha
 import io.challenge_workshop.mal_ui.theme.motion
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -153,7 +153,7 @@ private fun WatchStatusTab(label: String, active: Boolean, enabled: Boolean, onC
             .drawBehind {
                 drawRect(underline, Offset(0f, size.height - 2.dp.toPx()), Size(size.width, 2.dp.toPx()))
             }
-            .alpha(if (enabled) 1f else DISABLED_ALPHA),
+            .enabledAlpha(enabled, DISABLED_ALPHA),
         contentAlignment = Alignment.Center,
     ) {
         Text(label, style = Act.type.body, color = text)
