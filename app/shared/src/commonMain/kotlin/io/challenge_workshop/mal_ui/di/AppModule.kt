@@ -2,6 +2,7 @@ package io.challenge_workshop.mal_ui.di
 
 import io.challenge_workshop.mal_ui.animelist.AnimeListRepository
 import io.challenge_workshop.mal_ui.animelist.LayoutPreference
+import io.challenge_workshop.mal_ui.theme.ThemePreference
 import io.challenge_workshop.mal_ui.animepage.AnimePageRepository
 import io.challenge_workshop.mal_ui.auth.SignIn
 import io.challenge_workshop.mal_ui.auth.StartupRedirect
@@ -63,6 +64,15 @@ val appModule: Module = module {
     // shipped default on screen for the rest of the launch.
     single {
         LayoutPreference(
+            store = get(),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+        )
+    }
+
+    // A `single` for the same reasons as the Layout above. Not a Screen State input: `App()` reads it
+    // directly, because the Theme applies to all four destinations.
+    single {
+        ThemePreference(
             store = get(),
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
         )

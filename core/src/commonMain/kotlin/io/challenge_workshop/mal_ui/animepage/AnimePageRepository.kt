@@ -23,6 +23,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Clock
+import kotlin.time.TimeSource
 
 /**
  * The open Anime Pages, for as long as there is a Session — the same rule, kept the same way, as
@@ -55,6 +56,14 @@ class AnimePageRepository(
 
     /** The current Session's open pages, or none when there is no Session. */
     val state: StateFlow<AnimePageHistory> = _state.asStateFlow()
+
+    private val _log = MutableStateFlow(SaveLog())
+
+    /**
+     * The last PATCH sent and whether any save is pending, for the log bar. Unlike [state] it is not
+     * cleared by [close]: a save outlives its page. It ends with the Session.
+     */
+    val log: StateFlow<SaveLog> = _log.asStateFlow()
 
     private var sessionScope: CoroutineScope? = null
 
@@ -91,6 +100,7 @@ class AnimePageRepository(
         saves.clear()
         draining.clear()
         _state.value = AnimePageHistory()
+        _log.value = SaveLog()
     }
 
     /**
@@ -162,7 +172,7 @@ class AnimePageRepository(
         if (target == shown) return
         saves[id] = save.copy(target = target, error = null)
         publish(id)
-        startSaving(id, sessionScope, page.listEntry!!)
+        startSaving(id, page.anime.title, sessionScope, page.listEntry!!)
     }
 
     /**
@@ -184,7 +194,7 @@ class AnimePageRepository(
         if (saves.containsKey(id)) return
         saves[id] = PageSave(target = newListEntry(watchStatus, today(), page.anime.totalEpisodes))
         publish(id)
-        startSaving(id, sessionScope, NOT_ON_LIST)
+        startSaving(id, page.anime.title, sessionScope, NOT_ON_LIST)
     }
 
     /**
@@ -192,11 +202,11 @@ class AnimePageRepository(
      * Undispatched, so the first tap is at MAL before the second can be made, whatever the
      * dispatcher: the loop is what makes the later ones wait, and it must already be there.
      */
-    private fun startSaving(id: Long, sessionScope: CoroutineScope, confirmed: ListEntry) {
+    private fun startSaving(id: Long, title: String, sessionScope: CoroutineScope, confirmed: ListEntry) {
         if (draining.add(id)) {
             sessionScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 try {
-                    drain(id, confirmed)
+                    drain(id, title, confirmed)
                 } finally {
                     // A loop cancelled by the Session ending must not release a later Session's guard.
                     if (sessionScope === this@AnimePageRepository.sessionScope) draining.remove(id)
@@ -212,7 +222,7 @@ class AnimePageRepository(
      * does not repeat an earlier one. MAL's answer becomes the confirmed value; a refusal ends the
      * loop and puts the page back on the last one.
      */
-    private suspend fun drain(id: Long, confirmed: ListEntry) {
+    private suspend fun drain(id: Long, title: String, confirmed: ListEntry) {
         var baseline = confirmed
         while (true) {
             val target = saves[id]?.target ?: return
@@ -220,17 +230,22 @@ class AnimePageRepository(
             if (update.isEmpty) {
                 saves.remove(id)
                 publish(id)
+                _log.update { it.copy(pending = saves.isNotEmpty()) }
                 return
             }
             saves[id] = saves.getValue(id).copy(inFlight = target)
             publish(id)
+            val sentAt = TimeSource.Monotonic.markNow()
+            logSave(title, update, SaveOutcome.Sent)
             val answer = try {
                 session.animeClient().updateListEntry(id, update)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                val message = e.message ?: e.toString()
                 saves.remove(id)
-                publish(id, error = e.message ?: e.toString())
+                publish(id, error = message, errorFields = update)
+                logSave(title, update, SaveOutcome.Refused(message))
                 return
             }
             baseline = target
@@ -238,12 +253,23 @@ class AnimePageRepository(
             val now = saves.getValue(id)
             if (now.target == target) saves.remove(id) else saves[id] = now.copy(inFlight = null)
             publish(id, confirmed = answer)
+            logSave(title, update, SaveOutcome.Accepted(sentAt.elapsedNow().inWholeMilliseconds))
         }
     }
 
+    /** Records [update] as the last PATCH, with what became of it; `pending` is read off [saves] each time. */
+    private fun logSave(title: String, update: ListEntryUpdate, outcome: SaveOutcome) {
+        _log.value = SaveLog(LoggedSave(title, update, outcome), pending = saves.isNotEmpty())
+    }
+
     /** Puts [saves]' word for [animeId] on every open page of it, and MAL's [confirmed] answer if there is one. */
-    private fun publish(animeId: Long, confirmed: ListEntry? = null, error: String? = null) {
-        val save = saves[animeId] ?: PageSave(error = error)
+    private fun publish(
+        animeId: Long,
+        confirmed: ListEntry? = null,
+        error: String? = null,
+        errorFields: ListEntryUpdate = ListEntryUpdate(),
+    ) {
+        val save = saves[animeId] ?: PageSave(error = error, errorFields = errorFields)
         replace(animeId) { it.copy(save = save, listEntry = confirmed ?: it.listEntry) }
     }
 

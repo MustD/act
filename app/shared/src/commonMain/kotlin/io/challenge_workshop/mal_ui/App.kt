@@ -1,6 +1,6 @@
 package io.challenge_workshop.mal_ui
 
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -27,6 +27,8 @@ import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.screen.ScreenStateSource
 import io.challenge_workshop.mal_ui.session.MalSessionRepository
 import io.challenge_workshop.mal_ui.session.SessionControls
+import io.challenge_workshop.mal_ui.theme.ActTheme
+import io.challenge_workshop.mal_ui.theme.ThemePreference
 import org.koin.compose.koinInject
 
 /**
@@ -48,6 +50,7 @@ fun App(
     animeList: AnimeListRepository = koinInject(),
     animePages: AnimePageRepository = koinInject(),
     layout: LayoutPreference = koinInject(),
+    theme: ThemePreference = koinInject(),
 ) {
     // Coil's singleton, replaced here at the root because its default cannot fetch over the network
     // on the web Target — see [malImageLoader]. `setSingletonImageLoaderFactory` remembers the
@@ -57,9 +60,12 @@ fun App(
     // how two of the three Targets would end up without one.
     setSingletonImageLoaderFactory { context -> malImageLoader(context) }
 
-    MaterialTheme {
+    val systemDark = isSystemInDarkTheme()
+    val dark = theme.value.collectAsStateWithLifecycle().value.isDark(systemDark)
+
+    ActTheme(dark = dark) {
         Surface(modifier = Modifier) {
-            AppScreen(repository, signIn, controls, animeList, animePages, layout)
+            AppScreen(repository, signIn, controls, animeList, animePages, layout, theme)
         }
     }
 }
@@ -93,6 +99,7 @@ internal fun AppScreen(
     animeList: AnimeListRepository,
     animePages: AnimePageRepository,
     layout: LayoutPreference,
+    theme: ThemePreference,
 ) {
     val channel = rememberAuthRedirectChannel()
     val uriHandler = LocalUriHandler.current
@@ -105,14 +112,15 @@ internal fun AppScreen(
             animeList = animeList.state,
             layout = layout.value,
             animePages = animePages.state,
+            saveLog = animePages.log,
             signIn = signIn.state,
             controls = controls.state,
             scope = scope,
         )
     }
 
-    val actions = remember(signIn, controls, animeList, animePages, layout, channel, uriHandler) {
-        screenActions(signIn, controls, animeList, animePages, layout, channel, uriHandler::openUri)
+    val actions = remember(signIn, controls, animeList, animePages, layout, theme, channel, uriHandler) {
+        screenActions(signIn, controls, animeList, animePages, layout, theme, channel, uriHandler::openUri)
     }
 
     SessionRoute(source.state.collectAsStateWithLifecycle().value, actions)

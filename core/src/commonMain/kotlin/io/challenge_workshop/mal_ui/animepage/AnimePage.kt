@@ -54,12 +54,14 @@ sealed interface AnimePageLoad {
  * and would otherwise be chased for ever.
  *
  * [error] is why the last save was refused. The page has by then gone back to MAL's last confirmed
- * values, and the next edit clears it.
+ * values, and the next edit clears it. [errorFields] are the fields that refused save carried, so
+ * the page can say it under the section each belongs to; empty for a refused add, which has no fields.
  */
 data class PageSave(
     val target: ListEntry? = null,
     val inFlight: ListEntry? = null,
     val error: String? = null,
+    val errorFields: ListEntryUpdate = ListEntryUpdate(),
 )
 
 /**

@@ -37,6 +37,12 @@ enum class WatchStatus(
 }
 
 /**
+ * The filter every Session opens on. Watching rather than All: the list people open the app for is
+ * what they are in the middle of, and All is the sixth and last tab.
+ */
+internal val DEFAULT_WATCH_STATUS: WatchStatus = WatchStatus.Watching
+
+/**
  * What the anime itself is doing — true for everyone, and unrelated to any user's list.
  *
  * [Unknown] exists for the same reason as [WatchStatus.Unknown].
@@ -199,7 +205,7 @@ internal object AiringStatusSerializer : WireEnumSerializer<AiringStatus>(
 )
 
 /**
- * How the Anime List is drawn: a grid of cards with cover art, or a dense list of rows.
+ * How the Anime List is drawn: cards with cover art, dense rows, or an `ls -l` table.
  *
  * Presentation, and yet it lives here rather than beside the composables, for the reason
  * [AnimeListSortOrder] does: it is the *choice*, not the drawing of it, and the choice is the half
@@ -213,8 +219,12 @@ internal object AiringStatusSerializer : WireEnumSerializer<AiringStatus>(
  * [Cards] is the default. The feature was asked for as a grid of cover art, and a first launch that
  * opened on the dense list would be showing the Layout nobody chose.
  *
+ * [List] is drawn and labelled as **rows**: the name stayed because it is what an earlier build
+ * stored, and renaming it would silently reset that preference. [Table] was added after it, so
+ * the order — cards, rows, table — is the order the Layout button cycles through.
+ *
  * Serialized **by name**, because it is what `JsonTokenStore`'s fourth record holds. That makes the
- * two names below a stored format: renaming one is a preference silently reset, not a compile error.
+ * three names below a stored format: renaming one is a preference silently reset, not a compile error.
  * A value this build has no name for reads as the default rather than throwing — see
  * `JsonTokenStore.readLayout`.
  */
@@ -222,4 +232,5 @@ internal object AiringStatusSerializer : WireEnumSerializer<AiringStatus>(
 enum class AnimeListLayout {
     Cards,
     List,
+    Table,
 }

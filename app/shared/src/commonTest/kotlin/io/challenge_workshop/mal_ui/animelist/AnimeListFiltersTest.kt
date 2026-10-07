@@ -27,9 +27,17 @@ class AnimeListFiltersTest {
      * status or none. Modelling it as null is what keeps that true all the way down to the query.
      */
     @Test
-    fun all_is_the_first_filter_and_is_the_absence_of_a_watch_status() {
-        assertEquals(null, ANIME_LIST_FILTERS.first())
+    fun all_is_the_last_filter_and_is_the_absence_of_a_watch_status() {
+        assertEquals(null, ANIME_LIST_FILTERS.last())
         assertEquals(1, ANIME_LIST_FILTERS.count { it == null })
+    }
+
+    @Test
+    fun the_filters_run_watching_completed_on_hold_dropped_plan_to_watch_all() {
+        assertEquals(
+            listOf("Watching", "Completed", "On hold", "Dropped", "Plan to watch", "All"),
+            ANIME_LIST_FILTERS.map { it.filterLabel() },
+        )
     }
 
     @Test

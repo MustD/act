@@ -19,7 +19,7 @@ import kotlin.coroutines.cancellation.CancellationException
  */
 private data class Paging(
     val entries: List<AnimeListEntry> = emptyList(),
-    val watchStatus: WatchStatus? = null,
+    val watchStatus: WatchStatus? = DEFAULT_WATCH_STATUS,
     val sortOrder: AnimeListSortOrder = AnimeListSortOrder.LastUpdated,
     /** A first page is in flight — with or without the previous query's entries still behind it. */
     val loadingFirstPage: Boolean = false,
@@ -93,7 +93,7 @@ private data class Paging(
 internal class AnimeListPager(
     private val client: MalAnimeListClient,
     private val pageSize: Int = MalAnimeListClient.DEFAULT_PAGE_SIZE,
-    watchStatus: WatchStatus? = null,
+    watchStatus: WatchStatus? = DEFAULT_WATCH_STATUS,
     sortOrder: AnimeListSortOrder = AnimeListSortOrder.LastUpdated,
 ) {
     private val paging = MutableStateFlow(Paging(watchStatus = watchStatus, sortOrder = sortOrder))

@@ -102,15 +102,6 @@ val ANIME_LIST_FILTERS_TAG: String = "${SessionScreenTag.SignedIn.tag}.filters"
 val ANIME_LIST_SORT_TAG: String = "${SessionScreenTag.SignedIn.tag}.sort"
 
 /**
- * The Sort Order menu itself, once opened.
- *
- * Its own tag because the thing worth asserting about it is *how many* entries it has: MAL offers
- * four orderings and no way to reverse any of them, and a fifth entry — a "Reverse" toggle most of
- * all — is a well-meant addition that could only reverse the pages already loaded. See ADR-0003.
- */
-val ANIME_LIST_SORT_MENU_TAG: String = "$ANIME_LIST_SORT_TAG.menu"
-
-/**
  * The Layout toggle above the Anime List — the control that picks cards or the dense list.
  *
  * A sibling of the list like the other two controls, and for one more reason besides theirs: it is
@@ -130,6 +121,12 @@ val ANIME_LIST_LAYOUT_TAG: String = "${SessionScreenTag.SignedIn.tag}.layout"
  * the profile row and the debug panel.
  */
 val SESSION_TOP_BAR_TAG: String = "${SessionScreenTag.SignedIn.tag}.topBar"
+
+/** The Theme button on the prompt row. */
+val SESSION_THEME_TAG: String = "$SESSION_TOP_BAR_TAG.theme"
+
+/** The screen title under the prompt row: the bare filter label. */
+val ANIME_LIST_TITLE_TAG: String = "${SessionScreenTag.SignedIn.tag}.title"
 
 /**
  * The user's name in the top app bar.
@@ -155,7 +152,7 @@ val SESSION_MENU_BUTTON_TAG: String = "$SESSION_TOP_BAR_TAG.moreButton"
 /**
  * The overflow menu itself, once opened: Reload, Sign out, Session diagnostics.
  *
- * Its own tag for the reason [ANIME_LIST_SORT_MENU_TAG] has one — what is worth asserting is *what
+ * Its own tag because what is worth asserting is *what
  * is in it*, and the three entries in it are the three things the Anime List taking over this screen
  * could otherwise have cost.
  */
@@ -179,17 +176,29 @@ val ANIME_LIST_ROW_COLUMN_TAG: String = "$ANIME_LIST_TAG.rowColumn"
  */
 val ANIME_PAGE_TAG: String = "${SessionScreenTag.SignedIn.tag}.animePage"
 
-/** The page's ← button, shown only when there is a page to go back to. */
+/** The page's ← button on a phone, where it also closes the last page; in the side panel, only with a page to go back to. */
 val ANIME_PAGE_BACK_TAG: String = "$ANIME_PAGE_TAG.back"
 
-/** The page's ✕ button, which closes the whole history. */
+/** The side panel's ✕ button, which closes the whole history. */
 val ANIME_PAGE_CLOSE_TAG: String = "$ANIME_PAGE_TAG.close"
+
+/** The page's open-on-myanimelist.net button. */
+val ANIME_PAGE_OPEN_TAG: String = "$ANIME_PAGE_TAG.open"
+
+/** The page's path in its top bar. */
+val ANIME_PAGE_PATH_TAG: String = "$ANIME_PAGE_TAG.path"
+
+/** The score's clear action. */
+val ANIME_PAGE_SCORE_CLEAR_TAG: String = "$ANIME_PAGE_TAG.scoreClear"
 
 /** The placeholder shown while `GET /anime/{id}` is in flight, over what the page opened with. */
 val ANIME_PAGE_LOADING_TAG: String = "$ANIME_PAGE_TAG.loading"
 
 /** The failed-fetch card and its retry. Nothing becomes editable behind it. */
 val ANIME_PAGE_ERROR_TAG: String = "$ANIME_PAGE_TAG.error"
+
+/** The `more ▾` / `less ▴` toggle under a clamped synopsis, present only when the text overflows three lines. */
+val ANIME_PAGE_SYNOPSIS_TOGGLE_TAG: String = "$ANIME_PAGE_TAG.synopsisToggle"
 
 /** The synopsis text, which is the one thing only the fetch can supply. */
 val ANIME_PAGE_SYNOPSIS_TAG: String = "$ANIME_PAGE_TAG.synopsis"
@@ -223,10 +232,12 @@ val ANIME_PAGE_EPISODES_PLUS_TAG: String = "$ANIME_PAGE_TAG.episodesPlus"
 /** The score button, which opens the picker of MAL's labels. */
 val ANIME_PAGE_SCORE_TAG: String = "$ANIME_PAGE_TAG.score"
 
-/** Each date's button, which opens the DatePicker, and its clear action. */
+/** Each date's value as MAL holds it, then its `set today` action (which opens the DatePicker) and its `clear` action. */
 val ANIME_PAGE_START_DATE_TAG: String = "$ANIME_PAGE_TAG.startDate"
+val ANIME_PAGE_START_DATE_SET_TAG: String = "$ANIME_PAGE_TAG.startDateSet"
 val ANIME_PAGE_START_DATE_CLEAR_TAG: String = "$ANIME_PAGE_TAG.startDateClear"
 val ANIME_PAGE_FINISH_DATE_TAG: String = "$ANIME_PAGE_TAG.finishDate"
+val ANIME_PAGE_FINISH_DATE_SET_TAG: String = "$ANIME_PAGE_TAG.finishDateSet"
 val ANIME_PAGE_FINISH_DATE_CLEAR_TAG: String = "$ANIME_PAGE_TAG.finishDateClear"
 
 /** The Related Anime section, absent until the fetch has landed and when the anime has none. */
@@ -237,3 +248,12 @@ fun animePageRelatedTag(animeId: Long): String = "$ANIME_PAGE_TAG.related.$anime
 
 /** The "On your list" mark on a Related Anime row. */
 fun animePageRelatedOnListTag(animeId: Long): String = "$ANIME_PAGE_TAG.related.$animeId.onList"
+
+/** The 208dp sidebar shown from [SIDE_PANEL_MIN_WIDTH]; it replaces the tabs and the More menu. */
+val SESSION_SIDEBAR_TAG: String = "${SessionScreenTag.SignedIn.tag}.sidebar"
+
+/** The request-log bar at the bottom of the signed-in screen, its description, its result and the wide key hints. */
+val LOG_BAR_TAG: String = "${SessionScreenTag.SignedIn.tag}.logBar"
+val LOG_BAR_TEXT_TAG: String = "$LOG_BAR_TAG.text"
+val LOG_BAR_RESULT_TAG: String = "$LOG_BAR_TAG.result"
+val LOG_BAR_HINTS_TAG: String = "$LOG_BAR_TAG.hints"

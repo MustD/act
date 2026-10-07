@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onNodeWithTag
@@ -21,8 +22,10 @@ import io.challenge_workshop.mal_ui.auth.ANIME_LIST_TAG
 import io.challenge_workshop.mal_ui.auth.SESSION_DIAGNOSTICS_TAG
 import io.challenge_workshop.mal_ui.auth.SESSION_MENU_BUTTON_TAG
 import io.challenge_workshop.mal_ui.auth.SESSION_MENU_TAG
+import io.challenge_workshop.mal_ui.auth.SESSION_THEME_TAG
 import io.challenge_workshop.mal_ui.auth.SESSION_TOP_BAR_TAG
 import io.challenge_workshop.mal_ui.auth.SESSION_USER_NAME_TAG
+import io.challenge_workshop.mal_ui.animelist.WatchStatus
 import io.challenge_workshop.mal_ui.mal.MalUser
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -49,10 +52,10 @@ class SignedInTopBarTest {
      */
     @Test
     fun the_overflow_menu_carries_reload_sign_out_and_session_diagnostics() {
-        val entries = listOf("Reload", "Sign out", "Session diagnostics")
+        val entries = listOf("reload", "diagnostics", "sign out")
         val actions = RecordedActions()
         runComposeUiTest {
-            setContent { SessionRoute(signedIn(), actions.actions) }
+            setContent { PhoneSessionRoute(signedIn(), actions.actions) }
 
             // None of the three is on the screen itself: they live behind one button.
             for (entry in entries) {
@@ -74,9 +77,9 @@ class SignedInTopBarTest {
             )
 
             // Each entry closes the menu before it acts, so each has to be reopened.
-            onNodeWithText("Reload").performClick()
+            onNodeWithText("reload").performClick()
             onNodeWithTag(SESSION_MENU_BUTTON_TAG).performClick()
-            onNodeWithText("Sign out").performClick()
+            onNodeWithText("sign out").performClick()
 
             assertEquals(listOf("reload", "signOut"), actions.calls)
         }
@@ -96,7 +99,7 @@ class SignedInTopBarTest {
             var height = 0.dp
             runComposeUiTest {
                 setContent {
-                    SessionRoute(signedIn(user = MalUser(1, name)), RecordedActions().actions)
+                    ThemedSessionRoute(signedIn(user = MalUser(1, name)), RecordedActions().actions)
                 }
                 waitForIdle()
                 onNodeWithTag(SESSION_USER_NAME_TAG).assertTextContains(name.take(1), substring = true)
@@ -115,6 +118,44 @@ class SignedInTopBarTest {
     }
 
     /**
+     * The prompt row reads like a shell prompt over the slice on screen: the user, then `ls` of the
+     * Watch Status's wire key, and `ls` alone for All.
+     */
+    @Test
+    fun the_prompt_names_the_user_and_the_slice_on_screen() {
+        runComposeUiTest {
+            var watchStatus by mutableStateOf<WatchStatus?>(WatchStatus.OnHold)
+            setContent {
+                ThemedSessionRoute(
+                    signedIn(list = loadedList(watchStatus = watchStatus)),
+                    RecordedActions().actions,
+                )
+            }
+
+            onNodeWithTag(SESSION_USER_NAME_TAG).assertTextEquals("someone@mal:~$ ls on_hold/")
+
+            watchStatus = null
+            waitForIdle()
+
+            onNodeWithTag(SESSION_USER_NAME_TAG).assertTextEquals("someone@mal:~$ ls")
+        }
+    }
+
+    /** The Theme button asks to flip what is showing, and reaches nothing else. */
+    @Test
+    fun the_theme_button_asks_for_the_opposite_of_what_is_showing() {
+        val actions = RecordedActions()
+        runComposeUiTest {
+            setContent { PhoneSessionRoute(signedIn(), actions.actions) }
+
+            onNodeWithTag(SESSION_THEME_TAG).performClick()
+
+            assertEquals(listOf("toggleTheme"), actions.calls)
+            assertEquals(1, actions.themes.size)
+        }
+    }
+
+    /**
      * A Session refresh is not a navigation. `ScreenState.SignedIn` carries `refreshing` precisely so
      * the screen can say so without being swapped out, and a list that unmounted for it would lose
      * every page the user has scrolled through.
@@ -123,7 +164,7 @@ class SignedInTopBarTest {
     fun a_session_refresh_does_not_blank_the_signed_in_screen() {
         runComposeUiTest {
             var refreshing by mutableStateOf(false)
-            setContent { SessionRoute(signedIn(refreshing = refreshing), RecordedActions().actions) }
+            setContent { ThemedSessionRoute(signedIn(refreshing = refreshing), RecordedActions().actions) }
             onNodeWithText(FIXTURE_TITLES.first()).assertIsDisplayed()
 
             refreshing = true
@@ -145,7 +186,7 @@ class SignedInTopBarTest {
     @Test
     fun session_diagnostics_opens_the_debug_panel_in_a_dialog() {
         runComposeUiTest {
-            setContent { SessionRoute(signedIn(), RecordedActions().actions) }
+            setContent { PhoneSessionRoute(signedIn(), RecordedActions().actions) }
 
             // "Force 401" writes an invalid token into the store, so it must not be a stray tap away.
             onNodeWithText("Force 401").assertDoesNotExist()
@@ -183,7 +224,7 @@ class SignedInTopBarTest {
     fun each_debug_panel_button_reaches_its_own_action() {
         val actions = RecordedActions()
         runComposeUiTest {
-            setContent { SessionRoute(signedIn(diagnostics = TEST_DIAGNOSTICS), actions.actions) }
+            setContent { PhoneSessionRoute(signedIn(diagnostics = TEST_DIAGNOSTICS), actions.actions) }
             openDiagnostics()
 
             onNodeWithText("Reload diagnostics").performClick()

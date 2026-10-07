@@ -1,6 +1,7 @@
 package io.challenge_workshop.mal_ui.session
 
 import io.challenge_workshop.mal_ui.animelist.AnimeListLayout
+import io.challenge_workshop.mal_ui.theme.Theme
 import io.challenge_workshop.mal_ui.mal.MalTokens
 import io.challenge_workshop.mal_ui.mal.MalUser
 import kotlinx.serialization.json.Json
@@ -34,6 +35,7 @@ class JsonTokenStore(
         /** Only so [discardLegacyClientId] can name the old record; nothing reads or writes it. */
         const val CLIENT_ID_KEY: String = "mal.clientId.v1"
         const val LAYOUT_KEY: String = "mal.layout.v1"
+        const val THEME_KEY: String = "mal.theme.v1"
     }
 
     suspend fun readSession(): StoredSession? = readOrDiscard(SESSION_KEY)
@@ -109,10 +111,18 @@ class JsonTokenStore(
         write(LAYOUT_KEY, layout)
     }
 
+    /** The Theme, or [Theme.System] when absent, corrupt or a name this build does not know. Never an error. */
+    suspend fun readTheme(): Theme = readOrDiscard<Theme>(THEME_KEY) ?: Theme.System
+
+    /** Writes the Theme. Presentation only. */
+    suspend fun writeTheme(theme: Theme) {
+        write(THEME_KEY, theme)
+    }
+
     /**
      * Everything this store owns **about the user**. Used when a refresh is rejected and on sign-out.
      *
-     * Deliberately not the Layout: it is a device preference, and one that reset on every
+     * Deliberately not the Layout or the Theme: they are device preferences, and one that reset on every
      * sign-out would be a choice the user has to make again for no reason they can see.
      */
     suspend fun clear() {

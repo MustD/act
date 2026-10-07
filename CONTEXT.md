@@ -115,8 +115,13 @@ The chosen ordering of an Anime List, as a whole — the field and its direction
 _Avoid_: Sorting, order by
 
 **Layout**:
-Which shape the Anime List is drawn in — cards or list. A presentation choice that changes no data and no query.
-_Avoid_: View, mode (a "view" in a Compose codebase is an Android widget)
+Which shape the Anime List is drawn in — cards, rows or table. A presentation choice that changes no data and no
+query. _Avoid_: View, mode (a "view" in a Compose codebase is an Android widget), density (the redesign handoff's word
+for it)
+
+**Theme**:
+Whether the app is drawn dark or light, or follows the device. Like the Layout, a presentation choice the user makes once
+and that outlives a Session. _Avoid_: Mode, appearance
 
 **Reload**:
 Discarding every loaded page of the Anime List and fetching it again from the start under the filter and Sort Order

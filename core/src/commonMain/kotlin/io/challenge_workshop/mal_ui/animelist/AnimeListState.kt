@@ -10,7 +10,7 @@ package io.challenge_workshop.mal_ui.animelist
  */
 data class AnimeListState(
     val content: AnimeListContent = AnimeListContent.NotRequested,
-    val watchStatus: WatchStatus? = null,
+    val watchStatus: WatchStatus? = DEFAULT_WATCH_STATUS,
     val sortOrder: AnimeListSortOrder = AnimeListSortOrder.LastUpdated,
     /**
      * Bumped every time a first page *replaces* what is on screen — the first page of a Session, a

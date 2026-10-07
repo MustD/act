@@ -22,5 +22,5 @@ fun scoreLabel(score: Int): String = when (score) {
     else -> "No score"
 }
 
-/** What a score reads as in a picker or on the page: "8 – Very Good", or "No score". */
-fun scoreText(score: Int): String = if (score in 1..10) "$score – ${scoreLabel(score)}" else scoreLabel(0)
+/** What a score reads as in a picker or on the page: "8 — Very Good", or "No score". */
+fun scoreText(score: Int): String = if (score in 1..10) "$score — ${scoreLabel(score)}" else scoreLabel(0)

@@ -1,7 +1,21 @@
 package io.challenge_workshop.mal_ui.auth
 
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.background
+import io.challenge_workshop.mal_ui.theme.rememberSpinnerGlyph
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.foundation.layout.height
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import io.challenge_workshop.mal_ui.getPlatform
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -9,12 +23,15 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -33,6 +50,26 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusTarget
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import io.challenge_workshop.mal_ui.animelist.AnimeListContent
+import io.challenge_workshop.mal_ui.animelist.AnimeListLayout
+import io.challenge_workshop.mal_ui.animepage.ListEdit
+import io.challenge_workshop.mal_ui.animepage.KeyCommand
+import io.challenge_workshop.mal_ui.animepage.adjacentIndex
+import io.challenge_workshop.mal_ui.animepage.keyCommand
+import io.challenge_workshop.mal_ui.animepage.steppedWatchStatus
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,6 +77,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.testTag
@@ -47,10 +87,17 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.challenge_workshop.mal_ui.animelist.AnimeListFilters
-import io.challenge_workshop.mal_ui.animelist.AnimeListSortMenu
+import io.challenge_workshop.mal_ui.animelist.AnimeListSortRow
+import io.challenge_workshop.mal_ui.animelist.filterLabel
+import io.challenge_workshop.mal_ui.theme.Act
+import io.challenge_workshop.mal_ui.theme.ActEasing
+import io.challenge_workshop.mal_ui.theme.motion
 import io.challenge_workshop.mal_ui.animelist.LoadMoreWhenNearEnd
 import io.challenge_workshop.mal_ui.animelist.animeListItems
 import io.challenge_workshop.mal_ui.animelist.gridCells
+import io.challenge_workshop.mal_ui.animelist.gridPadding
+import io.challenge_workshop.mal_ui.animelist.gridSpacing
+import io.challenge_workshop.mal_ui.animepage.AnimePage
 import io.challenge_workshop.mal_ui.animepage.AnimePageScreen
 import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.screen.ShownError
@@ -63,8 +110,13 @@ import io.challenge_workshop.mal_ui.screen.ShownError
  */
 @Composable
 fun RestoringScreen(modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
+    Box(modifier.fillMaxSize().background(Act.colors.bg), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            ActWordmark(size = 32)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("${rememberSpinnerGlyph()} restoring session", style = Act.type.meta, color = Act.colors.dim)
+            }
+        }
     }
 }
 
@@ -93,66 +145,84 @@ fun AuthorizingScreen(
     LaunchedEffect(state.signInError) { if (state.signInError != null) troubleOpen = true }
 
     ScreenColumn(modifier) {
-        Text("Waiting for MyAnimeList…", style = MaterialTheme.typography.headlineSmall)
-        LinearProgressIndicator(Modifier.fillMaxWidth())
+        ActWordmark()
+        PromptLine("mal auth --wait")
+        Text("Waiting for MyAnimeList…", style = Act.type.pageTitle, color = Act.colors.ink)
+        TerminalProgress(Modifier.fillMaxWidth())
         Text(
             "Finish signing in in the browser window that opened.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = Act.type.body,
+            color = Act.colors.dim,
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            TextButton(onClick = actions.onCancelSignIn, enabled = !state.signIn.busy) { Text("Cancel") }
-            if (state.signIn.busy) CircularProgressIndicator(Modifier.padding(4.dp))
+            TerminalButton("Cancel", onClick = actions.onCancelSignIn, enabled = !state.signIn.busy)
+            if (state.signIn.busy) Text(rememberSpinnerGlyph().toString(), style = Act.type.body, color = Act.colors.pend)
         }
 
         state.signInError?.let { ErrorCard("Could not complete the sign-in", it.withRelayAdvice()) }
 
-        HorizontalDivider()
-        TextButton(onClick = { troubleOpen = !troubleOpen }) { Text("Having trouble?") }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Act.colors.ln))
+        TerminalLink("Having trouble?", onClick = { troubleOpen = !troubleOpen })
         if (troubleOpen) {
             Text(
                 "If you land on a page that will not load, copy the whole address from the address bar " +
                     "and paste it below.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = Act.type.body,
+                color = Act.colors.dim,
             )
 
             @Suppress("DEPRECATION")
             // `LocalClipboard` supersedes this, but its `ClipEntry` has no common constructor from text
             // in Compose 1.11 — a copy button through it would need three actuals to write a string.
             val clipboard = LocalClipboardManager.current
-            OutlinedTextField(
+            TerminalField(
                 value = state.authorizationUrl,
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Authorization URL") },
-                modifier = Modifier.fillMaxWidth(),
-                supportingText = { Text("Didn't open? Copy this and paste it into a browser.") },
-                // Selecting a long URL out of a text field by hand is exactly the friction that makes
-                // people give up on the fallback, and the fallback is the only mechanism that always
-                // works. Never logged: under `plain` PKCE the code verifier is inside this string.
-                trailingIcon = {
-                    TextButton(onClick = { clipboard.setText(AnnotatedString(state.authorizationUrl)) }) {
-                        Text("Copy")
-                    }
-                },
+                label = "Authorization URL",
+                hint = "Didn't open? Copy this and paste it into a browser.",
             )
-            OutlinedTextField(
+            // Selecting a long URL out of a text field by hand is exactly the friction that makes
+            // people give up on the fallback, and the fallback is the only mechanism that always
+            // works. Never logged: under `plain` PKCE the code verifier is inside this string.
+            TerminalButton("Copy", onClick = { clipboard.setText(AnnotatedString(state.authorizationUrl)) })
+            TerminalField(
                 value = state.signIn.pastedRedirect,
                 onValueChange = actions.onPastedRedirectChange,
-                label = { Text("Redirect URL or authorization code") },
+                label = "Redirect URL or authorization code",
                 enabled = !state.signIn.busy,
                 minLines = 2,
-                modifier = Modifier.fillMaxWidth(),
             )
-            Button(onClick = actions.onCompleteSignIn, enabled = state.signIn.canComplete) {
-                Text("Complete sign-in")
-            }
+            TerminalButton("Complete sign-in", onClick = actions.onCompleteSignIn, enabled = state.signIn.canComplete, primary = true)
         }
     }
+}
+
+/**
+ * Where the sweeping segment is, 0…1. Reduced motion parks it mid-rule — still an indeterminate bar, but nothing
+ * travels, and no infinite transition is left running to ask for frames.
+ */
+@Composable
+private fun sweepPosition(): Float {
+    if (Act.reducedMotion) return 0.5f
+    val at by rememberInfiniteTransition(label = "sweep")
+        .animateFloat(0f, 1f, infiniteRepeatable(tween(1400, easing = LinearEasing)), label = "at")
+    return at
+}
+
+/** An indeterminate bar: a 2dp rule in `ln` with an accent segment sweeping along it. */
+@Composable
+private fun TerminalProgress(modifier: Modifier = Modifier) {
+    val c = Act.colors
+    val at = sweepPosition()
+    Box(modifier.height(2.dp).background(c.ln).drawBehind {
+        val w = size.width * 0.25f
+        val x = (size.width + w) * at - w
+        drawRect(c.acc, Offset(x.coerceAtLeast(0f), 0f), Size((x + w).coerceAtMost(size.width) - x.coerceAtLeast(0f), size.height))
+    })
 }
 
 /**
@@ -180,7 +250,7 @@ fun AuthorizingScreen(
  * fetches anything.
  *
  * Everything that is *not* a query over the list has left the list entirely: the name, the Layout
- * toggle, Reload, Sign out and the debug panel are in [SignedInTopBar], which neither scrolls nor
+ * toggle, Reload, Sign out and the debug panel are in [SignedInPromptRow], which neither scrolls nor
  * competes with the entries. The filter row and the Sort Order stay between the bar and the list,
  * because those two are the query.
  */
@@ -229,42 +299,83 @@ fun SignedInScreen(
     // Measured rather than a window size class: the same decision the list's rows make about their
     // own width, and no dependency. The list's own state — its scroll position included — is hoisted
     // above this, so it survives the panel opening and closing and a resize across the line.
-    BoxWithConstraints(modifier.fillMaxSize().safeContentPadding()) {
+    val keys = remember { FocusRequester() }
+    // Again when the page closes: the node that held focus leaves composition with it.
+    // Not on opening: the page takes focus itself, for Esc, and must keep it.
+    LaunchedEffect(state.animePages.isOpen) { if (!state.animePages.isOpen) runCatching { keys.requestFocus() } }
+    val scope = rememberCoroutineScope()
+    // No text field lives under this screen (Paste-the-code is on the Authorizing screen and the date
+    // picker is its own dialog window), so there is nothing for these keys to steal from.
+    val keyboard = getPlatform().hasKeyboard
+    BoxWithConstraints(
+        modifier.fillMaxSize().safeContentPadding().focusRequester(keys).focusTarget()
+            .onPreviewKeyEvent { event ->
+                if (!keyboard || event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                // Browser and OS shortcuts (ctrl+- zoom, alt+arrows) are not ours. Shift stays: `+` is shift-`=`.
+                if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) return@onPreviewKeyEvent false
+                val command = keyCommand(event.key) ?: return@onPreviewKeyEvent false
+                handleKeyCommand(command, state, actions, gridState, scope)
+                true
+            },
+    ) {
         val sideBySide = maxWidth >= SIDE_PANEL_MIN_WIDTH
-        if (page != null && !sideBySide) {
-            // Narrow: an open page is the whole screen, and closing it lands where the list was left.
-            AnimePageScreen(
-                page = page,
-                canGoBack = canGoBack,
-                actions = pageActions,
-                modifier = Modifier.fillMaxSize()
-            )
-        } else {
-            // The screen tag is on this wrapper rather than on the list, because the list carries its
-            // own and a second `testTag` would replace it.
-            Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-                SignedInTopBar(
-                    state = state,
-                    actions = actions,
-                    onShowDiagnostics = { diagnosticsOpen = true },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                if (page == null) {
-                    AnimeListPane(state, actions, gridState, Modifier.weight(1f).fillMaxWidth())
-                } else {
-                    Row(Modifier.weight(1f).fillMaxWidth()) {
-                        AnimeListPane(state, actions, gridState, Modifier.weight(1f).fillMaxHeight())
-                        VerticalDivider()
-                        AnimePageScreen(
-                            page = page,
-                            canGoBack = canGoBack,
-                            actions = pageActions,
-                            modifier = Modifier.width(SIDE_PANEL_WIDTH).fillMaxHeight()
-                                .testTag(ANIME_PAGE_PANEL_TAG).padding(16.dp),
+        val phoneProgress by animateFloatAsState(
+            if (page != null && !sideBySide) 1f else 0f,
+            motion(tween(SIDE_PANEL_MS, easing = ActEasing)),
+            label = "phonePage",
+        )
+        // Held so that closing can run the slide backwards: `page` is already null by then.
+        val heldPhonePage = remember { mutableStateOf(page) }
+        if (page != null) heldPhonePage.value = page
+        else if (phoneProgress == 0f) heldPhonePage.value = null
+        Column(Modifier.fillMaxSize()) {
+            // The page's slide-in stays inside this box, so the bar below it never slides away with it.
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                // The list is always laid out; on a phone the page slides in over it and the list steps back.
+                Row(
+                    Modifier.fillMaxSize().graphicsLayer {
+                        if (!sideBySide) {
+                            translationX = -PHONE_LIST_SHIFT * size.width * phoneProgress
+                            alpha = 1f - (1f - PHONE_LIST_DIM) * phoneProgress
+                        }
+                    },
+                ) {
+                    if (sideBySide) {
+                        WideSidebar(state, actions, onShowDiagnostics = { diagnosticsOpen = true })
+                    }
+                    Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        SignedInPromptRow(
+                            state = state,
+                            actions = actions,
+                            onShowDiagnostics = { diagnosticsOpen = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            wide = sideBySide,
                         )
+                        AnimeListPane(state, actions, gridState, Modifier.weight(1f).fillMaxWidth(), tabs = !sideBySide)
+                    }
+                    if (sideBySide) {
+                        AnimePageSidePanel(page, canGoBack, pageActions)
                     }
                 }
+                val shown = heldPhonePage.value
+                if (!sideBySide && shown != null && (page != null || phoneProgress > 0f)) {
+                    AnimePageScreen(
+                        page = shown,
+                        canGoBack = canGoBack,
+                        actions = pageActions,
+                        open = page != null,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer { translationX = (1f - phoneProgress) * size.width }
+                            .shadow(24.dp)
+                            .background(Act.colors.bg)
+                            // The list is still underneath: a node that listens for pointers, even to nothing,
+                            // is what stops the page's empty areas letting a tap fall through to it.
+                            .pointerInput(Unit) {},
+                    )
+                }
             }
+            LogBar(state.saveLog, keyHints = sideBySide && keyboard)
         }
     }
 
@@ -277,11 +388,102 @@ fun SignedInScreen(
     }
 }
 
+/**
+ * One bound key. Moves go through [SignedInActions.onOpenAnime], edits through the page's own
+ * [AnimePageActions.onEdit], so the save loop and [AnimePage.canEdit] apply as for a tap.
+ */
+private fun handleKeyCommand(
+    command: KeyCommand,
+    state: ScreenState.SignedIn,
+    actions: SignedInActions,
+    gridState: LazyGridState,
+    scope: CoroutineScope,
+) {
+    val page = state.animePages.current
+    when (command) {
+        is KeyCommand.Move -> {
+            val entries = (state.list.content as? AnimeListContent.Entries)?.entries ?: return
+            val current = entries.indexOfFirst { it.animeId == page?.animeId }
+            val next = adjacentIndex(current, command.delta, entries.size) ?: return
+            // At the end of what is loaded, `j` asks for more, as scrolling would.
+            if (command.delta > 0 && next == current) actions.onLoadMore()
+            if (next == current) return
+            actions.onOpenAnime(entries[next])
+            val offset = if (state.layout == AnimeListLayout.Table) 1 else 0
+            scope.launch { gridState.animateScrollToItem(next + offset) }
+        }
+
+        is KeyCommand.Edit -> if (page?.canEdit == true) actions.animePage.onEdit(command.edit)
+
+        is KeyCommand.StepWatchStatus -> {
+            val entry = page?.shownListEntry?.takeIf { page.canEdit } ?: return
+            val stepped = steppedWatchStatus(entry.watchStatus, command.delta)
+            if (stepped != entry.watchStatus) actions.animePage.onEdit(ListEdit.SetWatchStatus(stepped))
+        }
+    }
+}
+
+/** How far, as a fraction of its width, the list steps back while a phone's page is over it, and how dim it gets. */
+private const val PHONE_LIST_SHIFT = 0.22f
+private const val PHONE_LIST_DIM = 0.35f
+
 /** The window width from which the Anime Page sits beside the list instead of replacing it. */
 internal val SIDE_PANEL_MIN_WIDTH = 840.dp
 
 /** The Anime Page's width as a side panel; the list takes the rest. */
 internal val SIDE_PANEL_WIDTH = 480.dp
+
+/** How long the side panel takes to open or close. */
+internal const val SIDE_PANEL_MS = 400
+
+/** How far to the right the panel's content starts, and fades in from. */
+private val SIDE_PANEL_SLIDE = 24.dp
+
+/**
+ * The Anime Page beside the list. Its *width* animates between 0 and [SIDE_PANEL_WIDTH], so the
+ * list reflows as it goes, while the content is laid out at the full 480dp the whole time and is
+ * only clipped — a page that re-wrapped on every frame of the animation would be unreadable.
+ * The content fades in from [SIDE_PANEL_SLIDE] to the right as the width grows.
+ *
+ * Closing reverses it, which needs the page that was open: [page] is already null by then, so the
+ * last one is held until the width is back at 0.
+ */
+@Composable
+private fun AnimePageSidePanel(
+    page: AnimePage?,
+    canGoBack: Boolean,
+    actions: AnimePageActions,
+) {
+    val held = remember { mutableStateOf(page) }
+    if (page != null) held.value = page
+    val width by animateDpAsState(
+        if (page != null) SIDE_PANEL_WIDTH else 0.dp,
+        motion(tween(SIDE_PANEL_MS, easing = ActEasing)),
+        label = "sidePanelWidth",
+    )
+    val shown = held.value
+    if (shown == null || width == 0.dp && page == null) return
+    val progress = (width / SIDE_PANEL_WIDTH).coerceIn(0f, 1f)
+    Row(Modifier.width(width).fillMaxHeight().clipToBounds()) {
+        VerticalDivider()
+        AnimePageScreen(
+            page = shown,
+            canGoBack = canGoBack,
+            actions = actions,
+            sidePanel = true,
+            open = page != null,
+            modifier = Modifier
+                .wrapContentWidth(Alignment.Start, unbounded = true)
+                .width(SIDE_PANEL_WIDTH)
+                .fillMaxHeight()
+                .graphicsLayer {
+                    alpha = progress
+                    translationX = (1f - progress) * SIDE_PANEL_SLIDE.toPx()
+                }
+                .testTag(ANIME_PAGE_PANEL_TAG),
+        )
+    }
+}
 
 /** The filter row, the Sort Order and the entries: everything that is a query over the Anime List. */
 @OptIn(ExperimentalLayoutApi::class)
@@ -291,14 +493,24 @@ private fun AnimeListPane(
     actions: SignedInActions,
     gridState: LazyGridState,
     modifier: Modifier = Modifier,
+    tabs: Boolean = true,
 ) {
     val list = state.list
     val layout = state.layout
     Column(modifier) {
-        // Outside the lazy grid, so both controls stay put while the list scrolls under them.
-        // Both are as wide as the window, so the controls line up with the entries they act on:
-        // the grid pads its own entries with `contentPadding`, and this carries the same 16dp.
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth()) {
+        // Outside the lazy grid, so the title and both query controls stay put while the list
+        // scrolls under them. The title is the bare filter label — MAL's list is paged and nothing
+        // here knows the totals, so there is no count to put beside it.
+        Text(
+            list.watchStatus.filterLabel(),
+            style = Act.type.screenTitle,
+            color = Act.colors.ink,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag(ANIME_LIST_TITLE_TAG),
+        )
+        // The sidebar carries the Watch Statuses from the side-panel width.
+        if (tabs) {
             AnimeListFilters(
                 selected = list.watchStatus,
                 // Both read the same decision, because both go through the same reset — see
@@ -306,28 +518,17 @@ private fun AnimeListPane(
                 enabled = list.queryControlsEnabled,
                 onSelect = actions.onSelectWatchStatus,
             )
-            // Still a `FlowRow` with one child in it, now that the Layout toggle has gone to the
-            // top app bar: the Sort Order button names its direction in words ("Last updated
-            // (newest first)"), which is wider than a narrow phone, and a `FlowRow` is what lets it
-            // take the line it needs rather than being clipped off the edge — with no size class
-            // and nothing to keep in step with every Target.
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                itemVerticalAlignment = Alignment.CenterVertically,
-            ) {
-                AnimeListSortMenu(
-                    selected = list.sortOrder,
-                    enabled = list.queryControlsEnabled,
-                    onSelect = actions.onSelectSortOrder,
-                )
-            }
-            // Above the list rather than at the bottom of it, so a failed sign-out, Reload or
-            // profile reload is visible from where the user actually is — and outside the grid, so
-            // it does not scroll away from the controls that caused it. Under the `FlowRow` rather
-            // than in it: it is a card the width of the pane, not a control to lay out beside one.
-            state.error?.let { ErrorCard("Something went wrong", it.withRelayAdvice()) }
+        }
+        AnimeListSortRow(
+            selected = list.sortOrder,
+            enabled = list.queryControlsEnabled,
+            onSelect = actions.onSelectSortOrder,
+        )
+        // Above the list rather than at the bottom of it, so a failed sign-out, Reload or profile
+        // reload is visible from where the user actually is — and outside the grid, so it does not
+        // scroll away from the controls that caused it.
+        state.error?.let {
+            ErrorCard("Something went wrong", it.withRelayAdvice(), Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
         }
         LazyVerticalGrid(
             // The Layout is entirely this: how many columns the entries get. Everything inside `animeListItems` is written once.
@@ -340,9 +541,9 @@ private fun AnimeListPane(
                 .fillMaxWidth()
                 .testTag(ANIME_LIST_TAG),
             state = gridState,
-            contentPadding = PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = layout.gridPadding(),
+            horizontalArrangement = Arrangement.spacedBy(layout.gridSpacing()),
+            verticalArrangement = Arrangement.spacedBy(layout.gridSpacing()),
         ) {
             animeListItems(
                 state = list,
@@ -363,6 +564,7 @@ internal fun ScreenColumn(modifier: Modifier = Modifier, content: @Composable ()
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(Act.colors.bg)
             .safeContentPadding()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
@@ -370,7 +572,7 @@ internal fun ScreenColumn(modifier: Modifier = Modifier, content: @Composable ()
     ) {
         Column(
             modifier = Modifier.paneItem(),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             content()
         }
@@ -400,36 +602,14 @@ internal fun ShownError.withRelayAdvice(): String =
 
 /** Internal, not private: the Anime List reuses it rather than growing an error card of its own. */
 @Composable
-internal fun ErrorCard(title: String, body: String) {
-    MessageCard(
-        title = title,
-        body = body,
-        container = MaterialTheme.colorScheme.errorContainer,
-        content = MaterialTheme.colorScheme.onErrorContainer,
-    )
-}
-
-@Composable
-internal fun MessageCard(title: String, body: String, container: Color, content: Color) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
-    ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
-            Text(body, style = MaterialTheme.typography.bodySmall)
-        }
-    }
+internal fun ErrorCard(title: String, body: String, modifier: Modifier = Modifier) {
+    TerminalMessage(title, body, modifier)
 }
 
 @Composable
 internal fun LabelledValue(label: String, value: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            "$label:",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(value, style = MaterialTheme.typography.bodySmall, overflow = TextOverflow.Ellipsis, maxLines = 1)
+        Text("$label:", style = Act.type.meta, color = Act.colors.dim)
+        Text(value, style = Act.type.meta, color = Act.colors.ink, overflow = TextOverflow.Ellipsis, maxLines = 1)
     }
 }

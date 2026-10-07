@@ -16,9 +16,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.v2.runComposeUiTest
+import io.challenge_workshop.mal_ui.theme.ActTheme
 import io.challenge_workshop.mal_ui.animelist.AnimeListRepository
 import io.challenge_workshop.mal_ui.animepage.AnimePageRepository
 import io.challenge_workshop.mal_ui.animelist.LayoutPreference
+import io.challenge_workshop.mal_ui.theme.ThemePreference
 import io.challenge_workshop.mal_ui.auth.LoopbackRedirectListener
 import io.challenge_workshop.mal_ui.auth.LoopbackRedirectListenerTest
 import io.challenge_workshop.mal_ui.auth.MAL_HOME_URL
@@ -108,6 +110,7 @@ class WelcomeScreenTest {
         val animeList = AnimeListRepository(repository, listScope)
         val animePages = AnimePageRepository(repository, animeList, listScope)
         val layout = LayoutPreference(store, listScope)
+        val theme = ThemePreference(store, listScope)
         val opened = Collections.synchronizedList(mutableListOf<String>())
         try {
             runComposeUiTest {
@@ -115,7 +118,8 @@ class WelcomeScreenTest {
                     // Otherwise the desktop `UriHandler` really does launch a browser from a unit
                     // test.
                     CompositionLocalProvider(LocalUriHandler provides RecordingUriHandler(opened)) {
-                        AppScreen(repository, signIn, controls, animeList, animePages, layout)
+                        // `App()` provides the theme in production; `AppScreen` is below it.
+                        ActTheme { AppScreen(repository, signIn, controls, animeList, animePages, layout, theme) }
                     }
                 }
 
@@ -170,7 +174,7 @@ class WelcomeScreenTest {
     fun the_welcome_page_shows_the_signed_out_reason_it_is_given() {
         val state = signedOut(SignedOutReason.RefreshRejected)
         runComposeUiTest {
-            setContent { SessionRoute(state, RecordedActions().actions) }
+            setContent { ThemedSessionRoute(state, RecordedActions().actions) }
 
             assertEquals(state.explanation, onNodeWithTag(SIGNED_OUT_REASON_TAG).textContent())
         }
@@ -180,7 +184,7 @@ class WelcomeScreenTest {
     @Test
     fun the_welcome_page_shows_no_reason_for_a_first_visit() {
         runComposeUiTest {
-            setContent { SessionRoute(signedOut(SignedOutReason.NeverSignedIn), RecordedActions().actions) }
+            setContent { ThemedSessionRoute(signedOut(SignedOutReason.NeverSignedIn), RecordedActions().actions) }
 
             onNodeWithText("Welcome to ACT").assertIsDisplayed()
             onNodeWithText("Anime Control Terminal").assertIsDisplayed()
@@ -192,7 +196,7 @@ class WelcomeScreenTest {
     fun a_build_without_a_client_id_says_so_and_disables_the_button() {
         runComposeUiTest {
             setContent {
-                SessionRoute(
+                ThemedSessionRoute(
                     signedOut(signIn = SignInState(clientIdMissing = true)),
                     RecordedActions().actions,
                 )
@@ -209,7 +213,7 @@ class WelcomeScreenTest {
         runComposeUiTest {
             setContent {
                 CompositionLocalProvider(LocalUriHandler provides RecordingUriHandler(opened)) {
-                    SessionRoute(signedOut(), RecordedActions().actions)
+                    ThemedSessionRoute(signedOut(), RecordedActions().actions)
                 }
             }
 
@@ -233,7 +237,7 @@ class WelcomeScreenTest {
     fun the_relay_advice_appears_only_when_the_state_says_so() {
         runComposeUiTest {
             var state by mutableStateOf(signedOut(error = "Failed to fetch"))
-            setContent { SessionRoute(state, RecordedActions().actions) }
+            setContent { ThemedSessionRoute(state, RecordedActions().actions) }
 
             onNodeWithText("try again later", substring = true).assertDoesNotExist()
 
@@ -249,7 +253,7 @@ class WelcomeScreenTest {
     fun the_relay_advice_goes_on_the_card_it_is_about() {
         runComposeUiTest {
             setContent {
-                SessionRoute(
+                ThemedSessionRoute(
                     signedOut(
                         error = "invalid_grant",
                         signIn = SignInState(phase = SignInPhase.Failed("Failed to fetch")),

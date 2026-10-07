@@ -1,19 +1,32 @@
 package io.challenge_workshop.mal_ui.animelist
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
-import io.challenge_workshop.mal_ui.auth.ANIME_LIST_SORT_MENU_TAG
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_SORT_TAG
+import io.challenge_workshop.mal_ui.theme.Act
+import io.challenge_workshop.mal_ui.theme.enabledAlpha
+import mal_ui.app.shared.generated.resources.Res
+import mal_ui.app.shared.generated.resources.swap_vert
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * The four orderings MAL supports, in the order they are drawn — the default first.
@@ -52,48 +65,56 @@ fun AnimeListSortOrder.sortLabel(): String = when (this) {
 }
 
 /**
- * The Sort Order control: a button naming the current ordering, and a menu of the four.
+ * The Sort Order row: `[swap_vert] sort: <ordering>`, and a tap moves to the next of the four.
  *
- * A menu rather than a second chip row, because only one of the two controls above the list should
- * read as a set of alternatives the user picks between at a glance — and because the labels are
- * sentences rather than words, which is what a row of chips cannot carry.
+ * A cycle rather than a menu, because there are four orderings and each is a sentence the row already
+ * says in full. The ordering is named with its *direction*, since "score" alone reads as ascending to
+ * about half of everyone and there is no toggle to say it with.
  *
- * [enabled] is false while the replacement first page is in flight, for the same reason the filter
- * row's is: the entries still on screen are the *previous* ordering's, so a live control would be
- * inviting a second pick against a list that has not changed yet.
+ * [enabled] is false while the replacement first page is in flight, for the same reason the tabs'
+ * is: the entries still on screen are the *previous* ordering's, so a live control would be inviting
+ * a second pick against a list that has not changed yet.
  */
 @Composable
-fun AnimeListSortMenu(
+fun AnimeListSortRow(
     selected: AnimeListSortOrder,
     enabled: Boolean,
     onSelect: (AnimeListSortOrder) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var open by remember { mutableStateOf(false) }
-    Box(modifier) {
-        TextButton(
-            onClick = { open = true },
-            enabled = enabled,
-            modifier = Modifier.testTag(ANIME_LIST_SORT_TAG),
-        ) {
-            // The current ordering, not a bare "Sort": it is the only place the direction is
-            // written down, and the menu is shut for almost all of the time the list is on screen.
-            Text("Sort: ${selected.sortLabel()}")
-        }
-        DropdownMenu(
-            expanded = open,
-            onDismissRequest = { open = false },
-            modifier = Modifier.testTag(ANIME_LIST_SORT_MENU_TAG),
-        ) {
-            for (sortOrder in ANIME_LIST_SORT_ORDERS) {
-                DropdownMenuItem(
-                    text = { Text(sortOrder.sortLabel()) },
-                    onClick = {
-                        open = false
-                        onSelect(sortOrder)
-                    },
-                )
+    val c = Act.colors
+    Row(
+        modifier.fillMaxWidth().height(36.dp)
+            .drawBehind {
+                drawLine(c.ln, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 1.dp.toPx())
             }
-        }
+            .clickable(enabled = enabled, role = Role.Button) { onSelect(selected.next()) }
+            .enabledAlpha(enabled, 0.5f)
+            .padding(horizontal = 16.dp)
+            .testTag(ANIME_LIST_SORT_TAG),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(painterResource(Res.drawable.swap_vert), contentDescription = null, tint = c.dim, modifier = Modifier.size(16.dp))
+        // Written as one string so the row reads as one line of terminal output; the value is the
+        // part that changes, so it is the part in `ink`.
+        val text = selected.sortRowText()
+        val prefix = "sort: "
+        Text(
+            buildAnnotatedString {
+                append(prefix)
+                withStyle(SpanStyle(color = c.ink)) { append(text.removePrefix(prefix)) }
+            },
+            style = Act.type.meta,
+            color = c.dim,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
+
+/** The sort row's text: the current ordering, lowercased as the terminal style has it. */
+fun AnimeListSortOrder.sortRowText(): String = "sort: ${sortLabel().lowercase()}"
+
+/** The ordering a tap on the sort row moves to: the next of the four, wrapping to the first. */
+fun AnimeListSortOrder.next(): AnimeListSortOrder = ANIME_LIST_SORT_ORDERS[(ordinal + 1) % ANIME_LIST_SORT_ORDERS.size]

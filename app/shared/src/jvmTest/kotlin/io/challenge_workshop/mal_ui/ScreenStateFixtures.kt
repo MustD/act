@@ -2,6 +2,8 @@
 
 package io.challenge_workshop.mal_ui
 
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.width
 import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -22,6 +24,7 @@ import io.challenge_workshop.mal_ui.animelist.AnimeListState
 import io.challenge_workshop.mal_ui.animelist.AnimeListTail
 import io.challenge_workshop.mal_ui.animelist.WatchStatus
 import io.challenge_workshop.mal_ui.animepage.AnimePageHistory
+import io.challenge_workshop.mal_ui.animepage.SaveLog
 import io.challenge_workshop.mal_ui.animepage.ListEdit
 import io.challenge_workshop.mal_ui.animepage.RelatedAnime
 import io.challenge_workshop.mal_ui.auth.AnimePageActions
@@ -98,6 +101,7 @@ internal fun signedIn(
     list: AnimeListState = loadedList(),
     layout: AnimeListLayout = AnimeListLayout.Cards,
     animePages: AnimePageHistory = AnimePageHistory(),
+    saveLog: SaveLog = SaveLog(),
     busy: Boolean = false,
     error: String? = null,
     diagnostics: SessionDiagnostics? = null,
@@ -108,6 +112,7 @@ internal fun signedIn(
     list = list,
     layout = layout,
     animePages = animePages,
+    saveLog = saveLog,
     busy = busy,
     error = error?.let { ShownError(it, relayHint) },
     diagnostics = diagnostics,
@@ -188,6 +193,7 @@ internal class RecordedActions {
     val watchStatuses: MutableList<WatchStatus?> = mutableListOf()
     val sortOrders: MutableList<AnimeListSortOrder> = mutableListOf()
     val layouts: MutableList<AnimeListLayout> = mutableListOf()
+    val themes: MutableList<Boolean> = mutableListOf()
     val opened: MutableList<AnimeListEntry> = mutableListOf()
     val edits: MutableList<ListEdit> = mutableListOf()
     val added: MutableList<WatchStatus> = mutableListOf()
@@ -209,6 +215,7 @@ internal class RecordedActions {
             onSelectWatchStatus = { watchStatuses += it; calls += "selectWatchStatus" },
             onSelectSortOrder = { sortOrders += it; calls += "selectSortOrder" },
             onSelectLayout = { layouts += it; calls += "selectLayout" },
+            onToggleTheme = { themes += it; calls += "toggleTheme" },
             onSignOut = { calls += "signOut" },
             onOpenAnime = { opened += it; calls += "openAnime" },
             animePage = AnimePageActions(
@@ -254,12 +261,11 @@ internal fun SemanticsNodeInteraction.textContent(): String =
 /**
  * Opens the diagnostics dialog the way a person does: the overflow menu, then its last entry.
  *
- * The menu closes on the way, which is what keeps "Session diagnostics" unambiguous — the menu entry
- * and the dialog's own title share those words and are never on screen at once.
+ * The menu closes on the way, so its "diagnostics" entry and the dialog are never on screen at once.
  */
 internal fun ComposeUiTest.openDiagnostics() {
     onNodeWithTag(SESSION_MENU_BUTTON_TAG).performClick()
-    onNodeWithText("Session diagnostics").performClick()
+    onNodeWithText("diagnostics").performClick()
     waitForIdle()
 }
 
@@ -280,4 +286,22 @@ internal class RecordingUriHandler(private val opened: MutableList<String>) : Ur
     override fun openUri(uri: String) {
         opened += uri
     }
+}
+
+/**
+ * [SessionRoute] inside the Theme `App()` would have put it in. The screens read their colours and
+ * type from `Act`, which has no default on purpose: a screen drawn outside the Theme should fail
+ * loudly rather than in the wrong colours.
+ */
+@androidx.compose.runtime.Composable
+internal fun ThemedSessionRoute(state: ScreenState, actions: ScreenActions) {
+    io.challenge_workshop.mal_ui.theme.ActTheme(dark = true) { SessionRoute(state, actions) }
+}
+
+/** [ThemedSessionRoute] at phone width, where the tabs and the More menu are what is on screen. */
+@androidx.compose.runtime.Composable
+internal fun PhoneSessionRoute(state: ScreenState, actions: ScreenActions) {
+    androidx.compose.foundation.layout.Box(
+        androidx.compose.ui.Modifier.width(400.dp),
+    ) { ThemedSessionRoute(state, actions) }
 }
