@@ -44,20 +44,20 @@ sealed interface AnimePageLoad {
 }
 
 /**
- * Where saving the user's edits to one Anime Page has got to.
+ * Where one anime's Save has got to, as its Anime Page shows it.
  *
  * [target] is what the user wants the entry to be, and **is what the page shows** while it is set.
  * [inFlight] is the target as it stood when the PATCH now at MAL was sent: at most one exists per
- * anime, so saves cannot arrive out of order, and edits made meanwhile only move [target]. When the
+ * anime, so PATCHes cannot arrive out of order, and edits made meanwhile only move [target]. When the
  * PATCH is answered, another is sent if [target] has moved on from [inFlight]. It is **not**
  * compared with MAL's answer, which can legitimately differ (progress is clamped, a score rounded)
  * and would otherwise be chased for ever.
  *
- * [error] is why the last save was refused. The page has by then gone back to MAL's last confirmed
- * values, and the next edit clears it. [errorFields] are the fields that refused save carried, so
+ * [error] is why the last Save was refused. The page has by then gone back to MAL's last confirmed
+ * values, and the next edit clears it. [errorFields] are the fields that refused Save carried, so
  * the page can say it under the section each belongs to; empty for a refused add, which has no fields.
  */
-data class PageSave(
+data class Save(
     val target: ListEntry? = null,
     val inFlight: ListEntry? = null,
     val error: String? = null,
@@ -78,7 +78,7 @@ data class AnimePage(
     val listEntry: ListEntry?,
     val synopsis: String?,
     val load: AnimePageLoad,
-    val save: PageSave = PageSave(),
+    val save: Save = Save(),
     /** Empty until the fetch lands. */
     val related: List<RelatedAnime> = emptyList(),
 ) {
@@ -108,6 +108,15 @@ data class AnimePage(
      * An anime that is not on the list has no entry to edit.
      */
     val canEdit: Boolean get() = load == AnimePageLoad.Loaded && listEntry != null
+
+    /**
+     * Whether [edit] would change the entry as it is shown, bounds included: `+1` at the last
+     * episode is not a change. False when there is no entry to edit.
+     */
+    fun wouldChange(edit: ListEdit): Boolean {
+        val shown = shownListEntry ?: return false
+        return edit.applyTo(shown, anime.totalEpisodes) != shown
+    }
 
     /** This page with the fetch's answer in place of what it opened with. */
     internal fun loadedWith(details: AnimeDetails): AnimePage = copy(

@@ -50,17 +50,6 @@ class AnimePageAddTest {
     }
 
     @Test
-    fun plan_to_watch_sends_the_status_alone() = runTest {
-        val h = harness(animeDetails = notOnList, updateListEntry = { _, form -> saved(form) })
-        h.openUnlisted()
-
-        h.pages.add(WatchStatus.PlanToWatch)
-        h.awaitPage { it.listEntry != null }
-
-        assertEquals(mapOf("status" to listOf("plan_to_watch")), h.mal.listStatusPatches.single().form.asMap())
-    }
-
-    @Test
     fun a_refused_add_goes_back_to_not_on_your_list_with_the_error() = runTest {
         val h = harness(animeDetails = notOnList)
         h.openUnlisted()

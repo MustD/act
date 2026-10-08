@@ -3,7 +3,7 @@ package io.challenge_workshop.mal_ui.screen
 import io.challenge_workshop.mal_ui.animelist.AnimeListLayout
 import io.challenge_workshop.mal_ui.animelist.AnimeListState
 import io.challenge_workshop.mal_ui.animepage.AnimePageHistory
-import io.challenge_workshop.mal_ui.animepage.SaveLog
+import io.challenge_workshop.mal_ui.animepage.PatchLog
 import io.challenge_workshop.mal_ui.auth.SignInState
 import io.challenge_workshop.mal_ui.mal.MalAuthConfig
 import io.challenge_workshop.mal_ui.mal.MalEndpoints
@@ -38,8 +38,8 @@ import kotlinx.coroutines.flow.stateIn
  *  - `animePages` is `AnimePageRepository.state`, and only the signed-in variant carries it: the
  *    history ends with the Session, so no other variant has anything to show.
  *
- *  - `saveLog` is `AnimePageRepository.log`: the last PATCH sent and whether any save is pending. Not in
- *    `animePages` because it outlives the pages — a save runs on after its page is closed.
+ *  - `patchLog` is `AnimePageRepository.log`: the last PATCH sent and whether any Save is pending. Not in
+ *    `animePages` because it outlives the pages — a Save runs on after its page is closed.
  *
  * The eight flows are the whole constructor. Where this build sends MAL traffic is *not* an eighth
  * parameter: [platformMalEndpoints] is an `expect fun` and therefore already this Target's answer, and
@@ -58,7 +58,7 @@ class ScreenStateSource(
     animeList: StateFlow<AnimeListState>,
     layout: StateFlow<AnimeListLayout>,
     animePages: StateFlow<AnimePageHistory>,
-    saveLog: StateFlow<SaveLog>,
+    patchLog: StateFlow<PatchLog>,
     signIn: StateFlow<SignInState>,
     controls: StateFlow<SessionControlsState>,
     scope: CoroutineScope,
@@ -75,11 +75,11 @@ class ScreenStateSource(
             config,
             animeList,
             layout,
-            combine(signIn, controls, animePages, saveLog) { signIn, controls, animePages, saveLog ->
-                Inputs(signIn, controls, animePages, saveLog)
+            combine(signIn, controls, animePages, patchLog) { signIn, controls, animePages, patchLog ->
+                Inputs(signIn, controls, animePages, patchLog)
             },
-        ) { session, config, animeList, layout, (signIn, controls, animePages, saveLog) ->
-            screenState(session, config, animeList, layout, animePages, saveLog, signIn, controls)
+        ) { session, config, animeList, layout, (signIn, controls, animePages, patchLog) ->
+            screenState(session, config, animeList, layout, animePages, patchLog, signIn, controls)
         }.stateIn(
             scope = scope,
             started = SharingStarted.Eagerly,
@@ -89,7 +89,7 @@ class ScreenStateSource(
                 animeList = animeList.value,
                 layout = layout.value,
                 animePages = animePages.value,
-                saveLog = saveLog.value,
+                patchLog = patchLog.value,
                 signIn = signIn.value,
                 controls = controls.value,
             ),
@@ -103,7 +103,7 @@ class ScreenStateSource(
         val signIn: SignInState,
         val controls: SessionControlsState,
         val animePages: AnimePageHistory,
-        val saveLog: SaveLog,
+        val patchLog: PatchLog,
     )
 
     /**
@@ -121,7 +121,7 @@ class ScreenStateSource(
         animeList: AnimeListState,
         layout: AnimeListLayout,
         animePages: AnimePageHistory,
-        saveLog: SaveLog,
+        patchLog: PatchLog,
         signIn: SignInState,
         controls: SessionControlsState,
     ): ScreenState {
@@ -149,7 +149,7 @@ class ScreenStateSource(
                 list = animeList,
                 layout = layout,
                 animePages = animePages,
-                saveLog = saveLog,
+                patchLog = patchLog,
                 busy = controls.busy,
                 error = routing.shown(controls.error),
                 diagnostics = controls.diagnostics,

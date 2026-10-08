@@ -80,7 +80,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 
-/** The sections of the List Entry, in the order they are drawn; the one a refused save is reported under comes from it. */
+/** The sections of the List Entry, in the order they are drawn; the one a refused Save is reported under comes from it. */
 private enum class EntrySection { Episodes, WatchStatus, Score, Dates }
 
 private fun ListEntryUpdate.sections(): Set<EntrySection> = buildSet {
@@ -94,9 +94,9 @@ private fun ListEntryUpdate.sections(): Set<EntrySection> = buildSet {
  * The user's List Entry, editable once [AnimePage.canEdit]: `// episodes`, `// watch status`,
  * `// score` and `// dates`.
  *
- * It draws [AnimePage.shownListEntry] — the pending target while a save is under way — so a change
+ * It draws [AnimePage.shownListEntry] — the pending target while a Save is under way — so a change
  * shows the moment it is made, and each section whose field is in [AnimePage.pendingChange] has a
- * saving indicator beside its label for as long as MAL has not confirmed it. A refused save shows
+ * saving indicator beside its label for as long as MAL has not confirmed it. A refused Save shows
  * its error card under the first section it carried a field of, or under `// episodes` when it carried none.
  * Before the fetch has succeeded the same fields are drawn, disabled: the row the page opened from
  * may be stale and has no dates. For an anime that is not on the list it is an "Add to list as…"
@@ -140,7 +140,10 @@ internal fun ListEntrySection(page: AnimePage, onEdit: (ListEdit) -> Unit, onAdd
         val enabled = page.canEdit
         Section("episodes", ANIME_PAGE_EPISODES_TAG, saving = pending.episodesWatched != null) {
             ErrorUnder(EntrySection.Episodes)
-            EpisodesBox(entry.episodesWatched, page.anime.totalEpisodes, enabled, onEdit)
+            EpisodesBox(
+                entry.episodesWatched, page.anime.totalEpisodes, enabled,
+                canStepUp = page.wouldChange(ListEdit.AddEpisodes(1)), onEdit = onEdit,
+            )
         }
         Section("watch status", ANIME_PAGE_WATCH_STATUS_TAG, saving = pending.watchStatus != null) {
             ErrorUnder(EntrySection.WatchStatus)
@@ -266,7 +269,7 @@ private fun ScoreEditor(score: Int, enabled: Boolean, onPick: (Int) -> Unit) {
  * edit, in `:core`. The number carries [ANIME_PAGE_EPISODES_TAG].
  */
 @Composable
-private fun EpisodesBox(watched: Int, total: Int, enabled: Boolean, onEdit: (ListEdit) -> Unit) {
+private fun EpisodesBox(watched: Int, total: Int, enabled: Boolean, canStepUp: Boolean, onEdit: (ListEdit) -> Unit) {
     val c = Act.colors
     Column(
         Modifier.fillMaxWidth().background(c.sf, ActMedium).border(1.dp, c.ln, ActMedium).padding(14.dp),
@@ -291,7 +294,7 @@ private fun EpisodesBox(watched: Int, total: Int, enabled: Boolean, onEdit: (Lis
                 )
             }
             StepButton(
-                "+", "One episode more", filled = true, enabled = enabled && (total == 0 || watched < total),
+                "+", "One episode more", filled = true, enabled = enabled && canStepUp,
                 tag = ANIME_PAGE_EPISODES_PLUS_TAG,
             ) { onEdit(ListEdit.AddEpisodes(1)) }
         }

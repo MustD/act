@@ -9,44 +9,38 @@ import kotlinx.datetime.LocalDate
  *
  * An edit is a function from the entry as it is shown (the pending target, if there is one) to the
  * entry that is now wanted, so **three quick "+1"s are three additions to a target and not three
- * requests**. Whatever an edit implies beyond what was asked — the automatic rules — belongs in
- * [applyTo] and nowhere else.
+ * requests**. `applyTo` says only what was asked; whatever an edit implies beyond that — the
+ * automatic rules — is `ListEntrySaves`' to add, to the entry as it is shown.
  */
 sealed interface ListEdit {
-    /** What [entry] becomes under this edit, for an anime with [totalEpisodes] (0 when unknown). */
-    fun applyTo(entry: ListEntry, totalEpisodes: Int): ListEntry
-
-    data class SetWatchStatus(val watchStatus: WatchStatus) : ListEdit {
-        override fun applyTo(entry: ListEntry, totalEpisodes: Int) = entry.copy(watchStatus = watchStatus)
-    }
+    data class SetWatchStatus(val watchStatus: WatchStatus) : ListEdit
 
     /** Sets progress, held to `0…total`, or to `0…` while the total is unknown. */
-    data class SetEpisodes(val count: Int) : ListEdit {
-        override fun applyTo(entry: ListEntry, totalEpisodes: Int) =
-            entry.copy(episodesWatched = count.withinTotal(totalEpisodes))
-    }
+    data class SetEpisodes(val count: Int) : ListEdit
 
     /** Moves progress by [delta] from what is shown, held to the same bounds. */
-    data class AddEpisodes(val delta: Int) : ListEdit {
-        override fun applyTo(entry: ListEntry, totalEpisodes: Int) =
-            entry.copy(
-                episodesWatched = (entry.episodesWatched.toLong() + delta).coerceIn(0, Int.MAX_VALUE.toLong())
-                .toInt().withinTotal(totalEpisodes))
-    }
+    data class AddEpisodes(val delta: Int) : ListEdit
 
     /** 0–10, where 0 is "no score". */
-    data class SetScore(val score: Int) : ListEdit {
-        override fun applyTo(entry: ListEntry, totalEpisodes: Int) = entry.copy(score = score.coerceIn(0, 10))
-    }
+    data class SetScore(val score: Int) : ListEdit
 
     /** A null [date] clears it. */
-    data class SetStartDate(val date: LocalDate?) : ListEdit {
-        override fun applyTo(entry: ListEntry, totalEpisodes: Int) = entry.copy(startDate = date?.toString())
-    }
+    data class SetStartDate(val date: LocalDate?) : ListEdit
 
-    data class SetFinishDate(val date: LocalDate?) : ListEdit {
-        override fun applyTo(entry: ListEntry, totalEpisodes: Int) = entry.copy(finishDate = date?.toString())
-    }
+    data class SetFinishDate(val date: LocalDate?) : ListEdit
+}
+
+/** What [entry] becomes under this edit, for an anime with [totalEpisodes] (0 when unknown). */
+internal fun ListEdit.applyTo(entry: ListEntry, totalEpisodes: Int): ListEntry = when (this) {
+    is ListEdit.SetWatchStatus -> entry.copy(watchStatus = watchStatus)
+    is ListEdit.SetEpisodes -> entry.copy(episodesWatched = count.withinTotal(totalEpisodes))
+    is ListEdit.AddEpisodes -> entry.copy(
+        episodesWatched = (entry.episodesWatched.toLong() + delta).coerceIn(0, Int.MAX_VALUE.toLong())
+            .toInt().withinTotal(totalEpisodes),
+    )
+    is ListEdit.SetScore -> entry.copy(score = score.coerceIn(0, 10))
+    is ListEdit.SetStartDate -> entry.copy(startDate = date?.toString())
+    is ListEdit.SetFinishDate -> entry.copy(finishDate = date?.toString())
 }
 
 private fun Int.withinTotal(totalEpisodes: Int): Int =

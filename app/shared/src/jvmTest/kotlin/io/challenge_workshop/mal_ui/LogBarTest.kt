@@ -16,9 +16,9 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import io.challenge_workshop.mal_ui.animepage.DateUpdate
 import io.challenge_workshop.mal_ui.animepage.ListEntryUpdate
-import io.challenge_workshop.mal_ui.animepage.LoggedSave
-import io.challenge_workshop.mal_ui.animepage.SaveLog
-import io.challenge_workshop.mal_ui.animepage.SaveOutcome
+import io.challenge_workshop.mal_ui.animepage.LoggedPatch
+import io.challenge_workshop.mal_ui.animepage.PatchLog
+import io.challenge_workshop.mal_ui.animepage.PatchOutcome
 import io.challenge_workshop.mal_ui.animepage.logDescription
 import io.challenge_workshop.mal_ui.auth.KEY_HINTS
 import io.challenge_workshop.mal_ui.auth.LOG_BAR_HINTS_TAG
@@ -33,11 +33,11 @@ import kotlin.test.assertEquals
 /** The log bar: how a save is worded, and what the bar shows for pending, accepted and refused. */
 class LogBarTest {
 
-    private fun saved(update: ListEntryUpdate, outcome: SaveOutcome) = LoggedSave("Dandadan", update, outcome)
+    private fun saved(update: ListEntryUpdate, outcome: PatchOutcome) = LoggedPatch("Dandadan", update, outcome)
 
-    private fun draw(log: SaveLog, width: Int = 400, check: androidx.compose.ui.test.ComposeUiTest.() -> Unit) =
+    private fun draw(log: PatchLog, width: Int = 400, check: androidx.compose.ui.test.ComposeUiTest.() -> Unit) =
         runComposeUiTest {
-            setContent { Box(Modifier.width(width.dp)) { ThemedSessionRoute(signedIn(saveLog = log), RecordedActions().actions) } }
+            setContent { Box(Modifier.width(width.dp)) { ThemedSessionRoute(signedIn(patchLog = log), RecordedActions().actions) } }
             check()
         }
 
@@ -52,13 +52,13 @@ class LogBarTest {
         )
         assertEquals(
             "> PATCH dandadan ep=12 score=7 status=completed start=2026-01-02 finish=-",
-            logDescription(saved(update, SaveOutcome.Sent)),
+            logDescription(saved(update, PatchOutcome.Sent)),
         )
-        assertEquals("> PATCH dandadan ep=8", logDescription(saved(ListEntryUpdate(episodesWatched = 8), SaveOutcome.Sent)))
+        assertEquals("> PATCH dandadan ep=8", logDescription(saved(ListEntryUpdate(episodesWatched = 8), PatchOutcome.Sent)))
     }
 
     @Test
-    fun the_bar_is_28dp_and_empty_before_the_first_save() = draw(SaveLog()) {
+    fun the_bar_is_28dp_and_empty_before_the_first_save() = draw(PatchLog()) {
         onNodeWithTag(LOG_BAR_TAG).assertHeightIsEqualTo(28.dp)
         onNodeWithTag(LOG_BAR_TEXT_TAG).assertTextEquals("")
         onAllNodesWithTag(LOG_BAR_RESULT_TAG).assertCountEquals(0)
@@ -66,20 +66,20 @@ class LogBarTest {
 
     @Test
     fun an_accepted_save_shows_the_duration() =
-        draw(SaveLog(saved(ListEntryUpdate(episodesWatched = 8), SaveOutcome.Accepted(214)))) {
+        draw(PatchLog(saved(ListEntryUpdate(episodesWatched = 8), PatchOutcome.Accepted(214)))) {
             onNodeWithTag(LOG_BAR_TEXT_TAG).assertTextEquals("> PATCH dandadan ep=8")
             onNodeWithTag(LOG_BAR_RESULT_TAG).assertTextEquals("✓ 214ms")
         }
 
     @Test
     fun a_refusal_shows_the_message() =
-        draw(SaveLog(saved(ListEntryUpdate(score = 3), SaveOutcome.Refused("HTTP 400")))) {
+        draw(PatchLog(saved(ListEntryUpdate(score = 3), PatchOutcome.Refused("HTTP 400")))) {
             onNodeWithTag(LOG_BAR_RESULT_TAG).assertTextEquals("✗ HTTP 400")
         }
 
     @Test
     fun anything_pending_shows_a_spinner_frame_instead_of_the_last_result() =
-        draw(SaveLog(saved(ListEntryUpdate(score = 3), SaveOutcome.Accepted(90)), pending = true)) {
+        draw(PatchLog(saved(ListEntryUpdate(score = 3), PatchOutcome.Accepted(90)), pending = true)) {
             val shown = onNodeWithTag(LOG_BAR_RESULT_TAG).fetchSemanticsNode()
                 .config[SemanticsProperties.Text].joinToString("") { it.text }
             assert(shown.length <= 3 && shown.none { it.isLetterOrDigit() }) { "expected a spinner glyph, got '$shown'" }
@@ -87,7 +87,7 @@ class LogBarTest {
 
     @Test
     fun key_hints_are_wide_only() {
-        draw(SaveLog(), width = 600) { onAllNodesWithTag(LOG_BAR_HINTS_TAG).assertCountEquals(0) }
-        draw(SaveLog(), width = 1000) { onNodeWithTag(LOG_BAR_HINTS_TAG).assertTextEquals(KEY_HINTS) }
+        draw(PatchLog(), width = 600) { onAllNodesWithTag(LOG_BAR_HINTS_TAG).assertCountEquals(0) }
+        draw(PatchLog(), width = 1000) { onNodeWithTag(LOG_BAR_HINTS_TAG).assertTextEquals(KEY_HINTS) }
     }
 }

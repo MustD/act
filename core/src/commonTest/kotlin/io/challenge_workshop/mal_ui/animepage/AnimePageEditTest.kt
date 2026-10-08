@@ -17,9 +17,10 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * Editing the List Entry on an Anime Page: pending values, the target, one PATCH in flight, and the
- * way a failure goes back. Over the real repositories and a fake MAL that keeps a List Entry of its
- * own, so a PATCH really does change what the next one is compared against.
+ * Editing the List Entry on an Anime Page: what pages add on top of `ListEntrySaves` (whose own
+ * rules are in `ListEntrySavesTest`) — when an edit is accepted, what a page shows while one is
+ * pending, a Save outliving its page, and the Session's end. Over the real repositories and a fake
+ * MAL that keeps a List Entry of its own.
  */
 class AnimePageEditTest {
 
@@ -57,8 +58,9 @@ class AnimePageEditTest {
         val hold: suspend (Long) -> Unit = {
             inFlight++
             maxInFlight = maxOf(maxInFlight, inFlight)
+            val held = gate
             arrived.complete(Unit)
-            gate?.await()
+            held?.await()
         }
     }
 
@@ -135,90 +137,6 @@ class AnimePageEditTest {
     }
 
     @Test
-    fun three_rapid_plus_ones_send_two_patches_and_end_at_plus_three() = runTest {
-        val mal = Mal().apply { gate = CompletableDeferred() }
-        val h = loadedHarness(mal)
-
-        h.pages.edit(ListEdit.AddEpisodes(1))
-        h.pages.edit(ListEdit.AddEpisodes(1))
-        h.pages.edit(ListEdit.AddEpisodes(1))
-        assertEquals(6, h.history.current!!.shown.episodesWatched, "every tap counts on the target")
-
-        mal.gate!!.complete(Unit)
-        val saved = h.awaitPage { !it.isSaving }
-
-        assertEquals(6, saved.listEntry!!.episodesWatched)
-        assertEquals(6, mal.entry.watched)
-        val sent = h.mal.listStatusPatches.map { it.form["num_watched_episodes"] }
-        assertEquals(listOf("4", "6"), sent, "the first tap went at once, the other two as one")
-    }
-
-    @Test
-    fun there_is_never_more_than_one_patch_in_flight() = runTest {
-        val mal = Mal().apply { gate = CompletableDeferred() }
-        val h = loadedHarness(mal)
-
-        repeat(5) { h.pages.edit(ListEdit.AddEpisodes(1)) }
-        h.pages.edit(ListEdit.SetScore(2))
-        mal.arrived.await()
-        assertEquals(1, mal.inFlight)
-        mal.gate!!.complete(Unit)
-        h.awaitPage { !it.isSaving }
-
-        assertEquals(1, mal.maxInFlight)
-        assertEquals(8, mal.entry.watched)
-        assertEquals(2, mal.entry.score)
-    }
-
-    @Test
-    fun a_second_edit_of_another_field_rides_the_follow_up_and_repeats_nothing() = runTest {
-        val mal = Mal().apply { gate = CompletableDeferred() }
-        val h = loadedHarness(mal)
-
-        h.pages.edit(ListEdit.SetWatchStatus(WatchStatus.OnHold))
-        h.pages.edit(ListEdit.SetScore(7))
-        mal.gate!!.complete(Unit)
-        h.awaitPage { !it.isSaving }
-
-        val forms = h.mal.listStatusPatches.map { p -> p.form.entries().associate { it.key to it.value } }
-        assertEquals(
-            listOf(mapOf("status" to listOf("on_hold")), mapOf("score" to listOf("7"))),
-            forms,
-        )
-    }
-
-    @Test
-    fun a_refusal_goes_back_to_the_last_confirmed_values_with_an_error() = runTest {
-        val mal = Mal().apply { gate = CompletableDeferred(); failCall = 2 }
-        val h = loadedHarness(mal)
-        // The first PATCH will be confirmed; the follow-up carrying the later edits is refused.
-        h.pages.edit(ListEdit.AddEpisodes(1))
-        h.pages.edit(ListEdit.AddEpisodes(1))
-        h.pages.edit(ListEdit.SetScore(9))
-        mal.gate!!.complete(Unit)
-
-        val failed = h.awaitPage { !it.isSaving }
-
-        assertEquals(4, failed.shown.episodesWatched, "back to what MAL last confirmed, not to the start")
-        assertEquals(5, failed.shown.score)
-        assertNotNull(failed.save.error)
-        assertTrue(failed.save.error!!.isNotBlank())
-    }
-
-    @Test
-    fun a_refusal_says_which_fields_the_refused_save_carried() = runTest {
-        val mal = Mal().apply { failNext = true }
-        val h = loadedHarness(mal)
-
-        h.pages.edit(ListEdit.SetScore(1))
-        val failed = h.awaitPage { it.save.error != null }
-
-        assertEquals(1, failed.save.errorFields.score)
-        assertNull(failed.save.errorFields.episodesWatched)
-        assertNull(failed.save.errorFields.watchStatus)
-    }
-
-    @Test
     fun a_refused_edit_leaves_the_list_entry_alone_and_the_next_edit_clears_the_error() = runTest {
         val mal = Mal().apply { failNext = true }
         val h = loadedHarness(mal)
@@ -232,40 +150,6 @@ class AnimePageEditTest {
         assertNull(h.history.current!!.save.error, "trying again starts clean")
         h.awaitPage { !it.isSaving }
         assertEquals(2, h.history.current!!.shown.score)
-    }
-
-    @Test
-    fun mals_own_answer_is_the_confirmed_value_even_when_it_differs_and_nothing_loops() = runTest {
-        val mal = Mal(total = 12)
-        // The page thinks the total is 26; MAL knows better and clamps.
-        val h = loadedHarness(mal, pageTotal = 26)
-
-        h.pages.edit(ListEdit.SetEpisodes(20))
-        val saved = h.awaitPage { !it.isSaving }
-
-        assertEquals(12, saved.listEntry!!.episodesWatched)
-        assertEquals(12, saved.shown.episodesWatched)
-        assertEquals(1, h.mal.listStatusPatches.size, "a clamp is not a difference to chase")
-    }
-
-    @Test
-    fun progress_is_limited_to_zero_through_the_total_and_unlimited_when_the_total_is_unknown() = runTest {
-        val bounded = loadedHarness(Mal())
-        bounded.pages.edit(ListEdit.SetEpisodes(400))
-        assertEquals(26, bounded.history.current!!.shown.episodesWatched)
-        bounded.awaitPage { !it.isSaving }
-        bounded.pages.edit(ListEdit.AddEpisodes(-100))
-        assertEquals(0, bounded.history.current!!.shown.episodesWatched)
-        bounded.awaitPage { !it.isSaving }
-
-        val unbounded = harness(
-            animeDetails = { AnimeDetailsResponse.Found(FakeAnimeDetails(it, "One", numEpisodes = 0)) },
-            updateListEntry = { _, form -> ListStatusResponse.Saved(FakeListStatus().applying(form)) },
-        )
-        unbounded.pages.open(unbounded.entry(1))
-        unbounded.awaitLoaded()
-        unbounded.pages.edit(ListEdit.SetEpisodes(5000))
-        assertEquals(5000, unbounded.history.current!!.shown.episodesWatched)
     }
 
     @Test
@@ -284,34 +168,6 @@ class AnimePageEditTest {
         assertEquals(order, entries.map { it.animeId }, "no re-sorting")
         assertEquals(WatchStatus.Completed, entries.first { it.animeId == 1L }.watchStatus)
         assertEquals(before.revision, after.revision, "no reload, no re-filtering")
-    }
-
-    @Test
-    fun dates_are_set_as_yyyy_mm_dd_and_cleared_by_sending_the_field_empty() = runTest {
-        val mal = Mal().apply { entry = entry.copy(startDate = "2024") }
-        val h = loadedHarness(mal)
-
-        h.pages.edit(ListEdit.SetFinishDate(LocalDate(2026, 9, 30)))
-        h.awaitPage { !it.isSaving }
-        h.pages.edit(ListEdit.SetStartDate(null))
-        val done = h.awaitPage { !it.isSaving }
-
-        assertEquals("2026-09-30", h.mal.listStatusPatches[0].form["finish_date"])
-        assertEquals(listOf(""), h.mal.listStatusPatches[1].form.getAll("start_date"))
-        assertEquals("2026-09-30", done.listEntry!!.finishDate)
-        assertNull(done.listEntry!!.startDate)
-    }
-
-    @Test
-    fun an_edit_that_changes_nothing_sends_nothing() = runTest {
-        val h = loadedHarness(Mal())
-
-        h.pages.edit(ListEdit.SetScore(5))
-        h.pages.edit(ListEdit.AddEpisodes(0))
-        runCurrent()
-
-        assertTrue(h.mal.listStatusPatches.isEmpty())
-        assertTrue(!h.history.current!!.isSaving)
     }
 
     @Test
@@ -378,16 +234,76 @@ class AnimePageEditTest {
         assertEquals("2026-09-30", form["finish_date"])
     }
 
+
     @Test
-    fun what_a_rule_added_goes_back_with_the_edit_that_triggered_it() = runTest {
-        val mal = Mal(total = 4).apply { failNext = true }
+    fun a_refused_saves_error_is_still_there_when_the_page_is_reopened() = runTest {
+        val mal = Mal().apply { failNext = true }
         val h = loadedHarness(mal)
+        h.pages.edit(ListEdit.SetScore(1))
+        h.awaitPage { it.save.error != null }
 
-        h.pages.edit(ListEdit.SetEpisodes(4))
-        val back = h.awaitPage { !it.isSaving && it.save.error != null }
+        h.pages.close()
+        h.pages.open(h.entry(1))
 
-        assertEquals(WatchStatus.Watching, back.shown.watchStatus)
-        assertEquals(3, back.shown.episodesWatched)
-        assertNull(back.shown.finishDate)
+        assertNotNull(h.history.current!!.save.error, "drawn with it at once")
+        assertEquals(ListEntryUpdate(score = 1), h.history.current!!.save.errorFields)
+        assertNotNull(h.awaitLoaded().save.error, "and the fetch does not take it away")
+        h.pages.edit(ListEdit.SetScore(2))
+        assertNull(h.history.current!!.save.error, "the next edit does")
+        h.awaitPage { !it.isSaving }
+    }
+
+    @Test
+    fun a_fetch_landing_mid_save_does_not_replace_the_shown_value() = runTest {
+        val mal = Mal().apply { gate = CompletableDeferred() }
+        val h = loadedHarness(mal)
+        h.pages.edit(ListEdit.SetScore(9))
+
+        h.pages.close()
+        h.pages.open(h.entry(1))
+        val reopened = h.awaitLoaded()
+
+        assertEquals(9, reopened.shown.score, "the fetch predates the Save")
+        mal.gate!!.complete(Unit)
+        assertEquals(9, h.awaitPage { !it.isSaving }.listEntry!!.score)
+    }
+
+    @Test
+    fun a_stale_fetch_then_a_refusal_falls_back_to_the_saves_last_answer() = runTest {
+        val first = CompletableDeferred<Unit>()
+        val mal = Mal().apply { gate = first; failCall = 2 }
+        val h = loadedHarness(mal)
+        h.pages.edit(ListEdit.AddEpisodes(1))
+        h.pages.edit(ListEdit.SetScore(9))
+        mal.arrived.await()
+        val second = CompletableDeferred<Unit>()
+        mal.gate = second
+        first.complete(Unit)
+        h.awaitPage { it.listEntry!!.episodesWatched == 4 }
+
+        h.pages.close()
+        h.pages.open(h.entry(1))
+        assertEquals(3, h.awaitLoaded().listEntry!!.episodesWatched, "the fetch predates the first answer")
+        second.complete(Unit)
+        val failed = h.awaitPage { it.save.error != null }
+
+        assertEquals(4, failed.listEntry!!.episodesWatched, "not the stale fetch's 3")
+        assertEquals(5, failed.shown.score)
+    }
+
+    @Test
+    fun the_log_outlives_a_closed_page_and_ends_with_the_session() = runTest {
+        val mal = Mal().apply { gate = CompletableDeferred() }
+        val h = loadedHarness(mal)
+        h.pages.edit(ListEdit.SetScore(9))
+
+        h.pages.close()
+        assertTrue(h.pages.log.value.pending, "the bar is the only place the save is still visible")
+        mal.gate!!.complete(Unit)
+        h.pages.log.first { !it.pending && it.last != null }
+
+        h.session.signOut()
+        h.pages.log.first { it == PatchLog() }
+        assertTrue(!h.history.isOpen)
     }
 }

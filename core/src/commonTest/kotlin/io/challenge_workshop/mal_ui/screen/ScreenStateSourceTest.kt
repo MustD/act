@@ -10,9 +10,9 @@ import io.challenge_workshop.mal_ui.animelist.WatchStatus
 import io.challenge_workshop.mal_ui.animepage.AnimePage
 import io.challenge_workshop.mal_ui.animepage.AnimePageHistory
 import io.challenge_workshop.mal_ui.animepage.ListEntryUpdate
-import io.challenge_workshop.mal_ui.animepage.LoggedSave
-import io.challenge_workshop.mal_ui.animepage.SaveLog
-import io.challenge_workshop.mal_ui.animepage.SaveOutcome
+import io.challenge_workshop.mal_ui.animepage.LoggedPatch
+import io.challenge_workshop.mal_ui.animepage.PatchLog
+import io.challenge_workshop.mal_ui.animepage.PatchOutcome
 import io.challenge_workshop.mal_ui.animepage.AnimePageLoad
 import io.challenge_workshop.mal_ui.auth.SignInPhase
 import io.challenge_workshop.mal_ui.auth.SignInState
@@ -54,7 +54,7 @@ class ScreenStateSourceTest {
     private val animeList = MutableStateFlow(AnimeListState())
     private val layout = MutableStateFlow(AnimeListLayout.Cards)
     private val animePages = MutableStateFlow(AnimePageHistory())
-    private val saveLog = MutableStateFlow(SaveLog())
+    private val patchLog = MutableStateFlow(PatchLog())
     private val signIn = MutableStateFlow(SignInState())
     private val controls = MutableStateFlow(SessionControlsState())
 
@@ -64,7 +64,7 @@ class ScreenStateSourceTest {
         animeList = animeList,
         layout = layout,
         animePages = animePages,
-        saveLog = saveLog,
+        patchLog = patchLog,
         signIn = signIn,
         controls = controls,
         scope = CoroutineScope(Dispatchers.Unconfined),
@@ -167,13 +167,13 @@ class ScreenStateSourceTest {
      * *deciding* when it closes is `AnimePageRepository`'s. Nothing here re-decides it.
      */
     @Test
-    fun the_save_log_reaches_the_signed_in_screen_as_it_is() {
+    fun the_patch_log_reaches_the_signed_in_screen_as_it_is() {
         session.value = SessionState.SignedIn(MalUser(1, "someone"))
-        assertEquals(SaveLog(), signedIn().saveLog, "nothing has been saved to begin with")
+        assertEquals(PatchLog(), signedIn().patchLog, "nothing has been saved to begin with")
 
-        val log = SaveLog(LoggedSave("One", ListEntryUpdate(score = 7), SaveOutcome.Accepted(214)), pending = true)
-        saveLog.value = log
-        assertEquals(log, signedIn().saveLog)
+        val log = PatchLog(LoggedPatch("One", ListEntryUpdate(score = 7), PatchOutcome.Accepted(214)), pending = true)
+        patchLog.value = log
+        assertEquals(log, signedIn().patchLog)
     }
 
     @Test

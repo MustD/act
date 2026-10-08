@@ -1,3 +1,5 @@
 - 2026-10-06 main menu navigation, dedicated about page, about and privacy pages reachable
 - clean login page move links in to about page, information what is that app for and how to create mal account
-- create design, implement dark mode
+- move support info to about page
+- investigate why i have to login every time on web (tested on mobile) - every time after page closed
+- investigate why it have problems with touch scroling (web on mobile) (gather data)  - human
