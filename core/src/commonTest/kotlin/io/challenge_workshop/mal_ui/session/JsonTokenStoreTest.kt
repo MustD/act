@@ -321,3 +321,80 @@ class JsonTokenStoreTest {
         assertEquals(Theme.Dark, store.readTheme())
     }
 }
+
+class JsonTokenStoreRoutingTest {
+
+    private val durable = FakeKeyValueStore()
+    private val tabScoped = FakeKeyValueStore()
+    private val store = JsonTokenStore(durable, tabScoped = tabScoped, clock = FakeClock())
+
+    @Test
+    fun the_pending_authorization_lives_in_the_tab_scoped_store_only() = runTest {
+        store.writePending("verifier", "state", "https://r", "client")
+
+        assertNull(durable.read(JsonTokenStore.PENDING_KEY))
+        assertEquals("verifier", store.readPending()?.codeVerifier)
+        assertTrue(tabScoped.read(JsonTokenStore.PENDING_KEY) != null)
+
+        store.clearPending()
+
+        assertNull(tabScoped.read(JsonTokenStore.PENDING_KEY))
+    }
+
+    @Test
+    fun session_layout_and_theme_live_in_the_durable_store_only() = runTest {
+        store.writeSession(TOKENS, USER)
+        store.writeLayout(AnimeListLayout.Cards)
+        store.writeTheme(Theme.System)
+
+        assertTrue(durable.read(JsonTokenStore.SESSION_KEY) != null)
+        assertTrue(durable.read(JsonTokenStore.LAYOUT_KEY) != null)
+        assertTrue(durable.read(JsonTokenStore.THEME_KEY) != null)
+        assertNull(tabScoped.read(JsonTokenStore.SESSION_KEY))
+        assertNull(tabScoped.read(JsonTokenStore.LAYOUT_KEY))
+        assertNull(tabScoped.read(JsonTokenStore.THEME_KEY))
+    }
+
+    @Test
+    fun clear_ends_the_session_and_the_pending_authorization_in_their_own_stores() = runTest {
+        store.writeSession(TOKENS, USER)
+        store.writePending("v", "s", "https://r", "c")
+
+        store.clear()
+
+        assertNull(durable.read(JsonTokenStore.SESSION_KEY))
+        assertNull(tabScoped.read(JsonTokenStore.PENDING_KEY))
+    }
+
+    @Test
+    fun with_one_instance_for_both_stores_nothing_changes() = runTest {
+        val one = FakeKeyValueStore()
+        val single = JsonTokenStore(one, clock = FakeClock())
+
+        single.writeSession(TOKENS, USER)
+        single.writeLayout(AnimeListLayout.Cards)
+        single.writeTheme(Theme.System)
+        single.writePending("v", "s", "https://r", "c")
+        single.discardLegacyTabScopedRecords()
+
+        assertEquals(TOKENS, single.readSession()?.tokens)
+        assertTrue(one.read(JsonTokenStore.LAYOUT_KEY) != null)
+        assertTrue(one.read(JsonTokenStore.THEME_KEY) != null)
+    }
+
+    @Test
+    fun the_legacy_cleanup_removes_session_layout_and_theme_from_the_tab_scoped_store_without_copying() = runTest {
+        tabScoped.write(JsonTokenStore.SESSION_KEY, "old")
+        tabScoped.write(JsonTokenStore.LAYOUT_KEY, "old")
+        tabScoped.write(JsonTokenStore.THEME_KEY, "old")
+        tabScoped.write(JsonTokenStore.PENDING_KEY, "keep")
+
+        store.discardLegacyTabScopedRecords()
+
+        assertNull(tabScoped.read(JsonTokenStore.SESSION_KEY))
+        assertNull(tabScoped.read(JsonTokenStore.LAYOUT_KEY))
+        assertNull(tabScoped.read(JsonTokenStore.THEME_KEY))
+        assertEquals("keep", tabScoped.read(JsonTokenStore.PENDING_KEY))
+        assertNull(durable.read(JsonTokenStore.SESSION_KEY))
+    }
+}

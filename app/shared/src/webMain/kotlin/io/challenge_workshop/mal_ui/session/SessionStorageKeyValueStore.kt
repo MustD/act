@@ -21,14 +21,13 @@ private fun sessionStorageRemove(key: String) {
 }
 
 /**
- * Web [KeyValueStore]: `sessionStorage`.
+ * Web [KeyValueStore] for what belongs to one tab: `sessionStorage`, which holds the Pending
+ * Authorization and nothing else. The Session, Layout and Theme are in [LocalStorageKeyValueStore];
+ * see `docs/adr/0007-web-session-in-local-storage.md`.
  *
- * The whole Session — refresh token included — lives here, deliberately and against the letter of
- * `draft-ietf-oauth-browser-based-apps`. See `docs/adr/0001-refresh-token-in-web-session-storage.md`:
- * in-memory storage would make every reload a fresh login and would make the full-page-redirect
- * fallback impossible, because the code verifier has to survive a document that is destroyed by
- * design. `localStorage` is never an option — it is shared across tabs, so two tabs could race
- * each other's refresh.
+ * Per-tab is the point: shared between tabs, two simultaneous sign-ins would overwrite each other's
+ * PKCE verifier, and the full-page-redirect fallback needs the verifier to survive a document that
+ * is destroyed by design.
  *
  * **A popup gets its own copy of this storage, not a shared view.** So the popup document must
  * never read or clear the Pending Authorization: its clear would not reach the opener.

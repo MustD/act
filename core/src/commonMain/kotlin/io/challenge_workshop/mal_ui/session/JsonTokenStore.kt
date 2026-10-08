@@ -20,12 +20,18 @@ import kotlin.time.Clock
  *    launch. Discarding is safe for every record here: the two about the user are recoverable
  *    by signing in again, and the preference falls back to a default the user can re-pick.
  *
+ * **Two stores.** [kv] holds everything durable (Session, Layout, Theme); [tabScoped] holds the
+ * Pending Authorization alone, because it belongs to the tab that started the Sign-in — see
+ * `docs/adr/0007-web-session-in-local-storage.md`. Android and desktop pass one instance for both.
+ * That routing rule is [storeFor], and nothing outside it chooses a store.
+ *
  * [clock] is injected, and stamps [StoredSession.obtainedAtEpochMs] /
  * [PendingAuthorization.startedAtEpochMs] here rather than at call sites, so no caller can
  * write a stamp that disagrees with the value it is stored beside.
  */
 class JsonTokenStore(
     private val kv: KeyValueStore,
+    private val tabScoped: KeyValueStore = kv,
     private val json: Json = Json { ignoreUnknownKeys = true },
     private val clock: Clock = Clock.System,
 ) {
@@ -37,6 +43,8 @@ class JsonTokenStore(
         const val LAYOUT_KEY: String = "mal.layout.v1"
         const val THEME_KEY: String = "mal.theme.v1"
     }
+
+    private fun storeFor(key: String): KeyValueStore = if (key == PENDING_KEY) tabScoped else kv
 
     suspend fun readSession(): StoredSession? = readOrDiscard(SESSION_KEY)
 
@@ -68,7 +76,7 @@ class JsonTokenStore(
     suspend fun updateUser(user: MalUser?): StoredSession? =
         readSession()?.copy(user = user)?.also { write(SESSION_KEY, it) }
 
-    suspend fun clearSession() = kv.remove(SESSION_KEY)
+    suspend fun clearSession() = storeFor(SESSION_KEY).remove(SESSION_KEY)
 
     suspend fun readPending(): PendingAuthorization? = readOrDiscard(PENDING_KEY)
 
@@ -86,7 +94,7 @@ class JsonTokenStore(
             startedAtEpochMs = clock.now().toEpochMilliseconds(),
         ).also { write(PENDING_KEY, it) }
 
-    suspend fun clearPending() = kv.remove(PENDING_KEY)
+    suspend fun clearPending() = storeFor(PENDING_KEY).remove(PENDING_KEY)
 
     /**
      * Removes the record an earlier build kept for the Client ID the user typed. The Client ID is now
@@ -94,6 +102,19 @@ class JsonTokenStore(
      * differently from every other.
      */
     suspend fun discardLegacyClientId() = kv.remove(CLIENT_ID_KEY)
+
+    /**
+     * Removes the Session, Layout and Theme records an earlier build left in the tab-scoped store,
+     * when that store is not the durable one. Not copied: each tab signs in once more.
+     *
+     * A no-op when [tabScoped] *is* [kv] (Android, desktop): there those records are the real ones.
+     */
+    suspend fun discardLegacyTabScopedRecords() {
+        if (tabScoped === kv) return
+        tabScoped.remove(SESSION_KEY)
+        tabScoped.remove(LAYOUT_KEY)
+        tabScoped.remove(THEME_KEY)
+    }
 
     /**
      * How the user last chose to read their Anime List, or [AnimeListLayout.Cards] if they never
@@ -131,16 +152,17 @@ class JsonTokenStore(
     }
 
     private suspend inline fun <reified T> readOrDiscard(key: String): T? {
-        val raw = kv.read(key) ?: return null
+        val store = storeFor(key)
+        val raw = store.read(key) ?: return null
         return try {
             json.decodeFromString<T>(raw)
         } catch (_: Exception) {
-            kv.remove(key)
+            store.remove(key)
             null
         }
     }
 
     private suspend inline fun <reified T> write(key: String, value: T) {
-        kv.write(key, json.encodeToString(value))
+        storeFor(key).write(key, json.encodeToString(value))
     }
 }

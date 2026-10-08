@@ -5,7 +5,9 @@ import io.challenge_workshop.mal_ui.auth.WebStartupRedirect
 import io.challenge_workshop.mal_ui.session.KeyValueStore
 import io.challenge_workshop.mal_ui.session.MalSessionRepository
 import io.challenge_workshop.mal_ui.session.SessionStorageKeyValueStore
+import io.challenge_workshop.mal_ui.session.LocalStorageKeyValueStore
 import org.koin.core.context.stopKoin
+import org.koin.core.qualifier.named
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertIs
@@ -16,10 +18,11 @@ class PlatformModuleWebTest {
     fun tearDown() = stopKoin()
 
     @Test
-    fun initKoin_wires_the_session_storage_store() {
+    fun initKoin_wires_local_storage_as_durable_and_session_storage_as_tab_scoped() {
         val koin = initKoin().koin
 
-        assertIs<SessionStorageKeyValueStore>(koin.get<KeyValueStore>())
+        assertIs<LocalStorageKeyValueStore>(koin.get<KeyValueStore>())
+        assertIs<SessionStorageKeyValueStore>(koin.get<KeyValueStore>(named(TAB_SCOPED_STORE)))
 
         koin.get<MalSessionRepository>().close()
     }

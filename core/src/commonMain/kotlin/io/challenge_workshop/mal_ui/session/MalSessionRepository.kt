@@ -120,6 +120,7 @@ class MalSessionRepository(
         // A Client ID remembered by an earlier build would otherwise sit in the store for good, read
         // by nothing. Removing an absent key is a no-op, so this needs no "already done" marker.
         store.discardLegacyClientId()
+        store.discardLegacyTabScopedRecords()
 
         val pending = store.readPending()
         if (pending != null) {

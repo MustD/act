@@ -10,6 +10,7 @@ import io.challenge_workshop.mal_ui.mal.HttpClientFactory
 import io.challenge_workshop.mal_ui.mal.MAL_CLIENT_ID
 import io.challenge_workshop.mal_ui.mal.MalAuthConfig
 import io.challenge_workshop.mal_ui.session.JsonTokenStore
+import io.challenge_workshop.mal_ui.session.KeyValueStore
 import io.challenge_workshop.mal_ui.session.MalSessionRepository
 import io.challenge_workshop.mal_ui.session.SessionControls
 import kotlinx.coroutines.CoroutineScope
@@ -19,8 +20,12 @@ import kotlinx.serialization.json.Json
 import org.koin.core.KoinApplication
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 import kotlin.time.Clock
+
+/** Koin qualifier of the store that holds the Pending Authorization, where a target has one apart from the durable store. */
+const val TAB_SCOPED_STORE: String = "tabScoped"
 
 /**
  * Everything shared by every target.
@@ -35,7 +40,16 @@ val appModule: Module = module {
     // turning a stored Session into a corrupt blob on the next launch.
     single { Json { ignoreUnknownKeys = true; isLenient = true } }
 
-    single { JsonTokenStore(kv = get(), json = get(), clock = get()) }
+    // Only web binds a second store; everywhere else the tab-scoped store is the durable one.
+    single {
+        val durable = get<KeyValueStore>()
+        JsonTokenStore(
+            kv = durable,
+            tabScoped = getOrNull<KeyValueStore>(named(TAB_SCOPED_STORE)) ?: durable,
+            json = get(),
+            clock = get(),
+        )
+    }
 
     single { HttpClientFactory.Default }
 

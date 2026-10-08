@@ -199,6 +199,15 @@ or system), and `clear()` drops neither. An earlier build also kept `mal.clientI
 The Pending Authorization keeps its own `clientId`, so an authorization started before an app update exchanges against
 the ID it was started with.
 
+**Web storage is split** (ADR-0007): the Session, Layout and Theme are in `localStorage` (`LocalStorageKeyValueStore`),
+so a new tab or a browser restart finds them; the Pending Authorization is in `sessionStorage`
+(`SessionStorageKeyValueStore`), because a popup gets a *copy* of it and two tabs must not share a PKCE verifier.
+`JsonTokenStore` takes both stores and owns the routing (`storeFor`); Android and desktop pass one instance for both,
+and the web platform module binds the tab-scoped one under the `TAB_SCOPED_STORE` qualifier. On startup `restore()`
+deletes the old Session/Layout/Theme records from the tab-scoped store (`discardLegacyTabScopedRecords`) — a no-op when
+the two are the same instance, which is what stops it deleting the real Session on Android and desktop. A refresh
+token now outlives the tab: a shared machine needs an explicit sign-out.
+
 ## Deployment
 
 The web target ships to `https://act.io-workshop.net`: the production Wasm bundle at `/`, the Relay at `/mal` and
