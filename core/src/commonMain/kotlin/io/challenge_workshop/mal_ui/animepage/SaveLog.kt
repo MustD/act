@@ -1,9 +1,9 @@
 package io.challenge_workshop.mal_ui.animepage
 
 /**
- * What the log bar says: the last `PATCH` the save loop sent, and whether any save is still going.
+ * What the log bar says: the last `PATCH` a Save sent, and whether any save is still going.
  *
- * Fed from [AnimePageRepository]'s save loop alone — never from the HTTP client — so a GET is never
+ * Fed from [ListEntrySaves] alone — never from the HTTP client — so a GET is never
  * in it. Separate from the open pages because it outlives them: a save keeps running after its
  * page is closed, and the bar is the only place left that shows it. Ends with the Session.
  */
