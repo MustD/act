@@ -215,7 +215,7 @@ val ANIME_PAGE_PANEL_TAG: String = "$ANIME_PAGE_TAG.panel"
  */
 fun animePageSavingTag(fieldTag: String): String = "$fieldTag.saving"
 
-/** Why the last save was refused. The fields have already gone back to what MAL holds. */
+/** Why the last Save was refused. The fields have already gone back to what MAL holds. */
 val ANIME_PAGE_SAVE_ERROR_TAG: String = "$ANIME_PAGE_TAG.saveError"
 
 /** The "Add to list as…" button, shown instead of the List Entry's fields for an anime that is not on the list. */

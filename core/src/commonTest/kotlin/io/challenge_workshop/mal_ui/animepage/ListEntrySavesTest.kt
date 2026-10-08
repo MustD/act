@@ -86,7 +86,7 @@ class ListEntrySavesTest {
         today = { today },
     )
 
-    private val ListEntrySaves.save get() = state.value.saves[1L]
+    private val ListEntrySaves.save get() = state.value[1L]
 
     // region the automatic rules
 
@@ -437,11 +437,11 @@ class ListEntrySavesTest {
 
     // endregion
 
-    // region the Save Log
+    // region the Patch Log
 
     @Test
     fun the_log_is_empty_before_the_first_save() = runTest {
-        assertEquals(SaveLog(), saves(ScriptedMal(entry(Watching))).state.value.log)
+        assertEquals(PatchLog(), saves(ScriptedMal(entry(Watching))).state.value.log)
     }
 
     @Test
@@ -455,7 +455,7 @@ class ListEntrySavesTest {
         val log = saves.state.value.log
         assertEquals("Frieren", log.last!!.animeTitle)
         assertEquals(ListEntryUpdate(score = 9), log.last!!.update)
-        assertTrue(assertIs<SaveOutcome.Accepted>(log.last!!.outcome).millis >= 0)
+        assertTrue(assertIs<PatchOutcome.Accepted>(log.last!!.outcome).millis >= 0)
         assertTrue(!log.pending)
     }
 
@@ -469,7 +469,7 @@ class ListEntrySavesTest {
 
         val log = saves.state.value.log
         assertTrue(log.pending)
-        assertEquals(SaveOutcome.Sent, log.last!!.outcome)
+        assertEquals(PatchOutcome.Sent, log.last!!.outcome)
         mal.gate!!.complete(Unit)
         runCurrent()
     }
@@ -484,7 +484,7 @@ class ListEntrySavesTest {
 
         val log = saves.state.value.log
         assertEquals(ListEntryUpdate(score = 1), log.last!!.update)
-        assertEquals("MAL said no", assertIs<SaveOutcome.Refused>(log.last!!.outcome).message)
+        assertEquals("MAL said no", assertIs<PatchOutcome.Refused>(log.last!!.outcome).message)
         assertTrue(!log.pending, "an error left to show is not a save still going")
     }
 

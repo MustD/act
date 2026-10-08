@@ -93,15 +93,17 @@ which is kept to the wire types. _Avoid_: Item, row, anime (an anime exists inde
 The page for one anime: what it is, the anime related to it, and — first and foremost — this user's List Entry for it,
 editable: Watch Status, episodes watched, score, start and finish date. The anime need not be on the list; then there is
 no List Entry yet, and choosing a Watch Status is what adds it. Reached from the Anime List and from another Anime
-Page's related anime. Every edit reaches MAL as soon as it is made — there is no draft and no Save — and until MAL has
-confirmed it, the edit is shown as pending and is undone if MAL refuses it. _Avoid_: Entry page, details screen
+Page's related anime. Every edit reaches MAL as soon as it is made — there is no draft, and no button to save — as a **Save**
+that belongs to the anime rather than the page; until MAL has confirmed it, the edit is shown as pending and is undone
+if MAL refuses it. _Avoid_: Entry page, details screen
 
 **Save**:
 One anime's List Entry edits on their way to MAL — from the first edit, through every request it takes, to MAL's last
 answer or its refusal. Edits made while one request is at MAL are merged into the next, never queued behind it, so a
 Save is never more than one request ahead of MAL. It belongs to the anime, not to its Anime Page: closing the page does
 not stop it, reopening shows it, and a refusal is still shown on reopening until the next edit. Ends with the Session.
-In code, every anime's Save for one Session is `ListEntrySaves`. _Avoid_: Save queue (nothing waits its turn), draft
+In code, every anime's Save for one Session is `ListEntrySaves`, and one anime's is `Save`; the requests it makes are
+logged as `LoggedPatch`s in the `PatchLog`, never called saves. _Avoid_: Save queue (nothing waits its turn), draft
 (there is none — see **Anime Page**)
 
 **Related Anime**:

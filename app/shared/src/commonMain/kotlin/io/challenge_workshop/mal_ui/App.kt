@@ -112,7 +112,7 @@ internal fun AppScreen(
             animeList = animeList.state,
             layout = layout.value,
             animePages = animePages.state,
-            saveLog = animePages.log,
+            patchLog = animePages.log,
             signIn = signIn.state,
             controls = controls.state,
             scope = scope,

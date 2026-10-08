@@ -375,7 +375,7 @@ fun SignedInScreen(
                     )
                 }
             }
-            LogBar(state.saveLog, keyHints = sideBySide && keyboard)
+            LogBar(state.patchLog, keyHints = sideBySide && keyboard)
         }
     }
 
@@ -390,7 +390,7 @@ fun SignedInScreen(
 
 /**
  * One bound key. Moves go through [SignedInActions.onOpenAnime], edits through the page's own
- * [AnimePageActions.onEdit], so the save loop and [AnimePage.canEdit] apply as for a tap.
+ * [AnimePageActions.onEdit], so the Save and [AnimePage.canEdit] apply as for a tap.
  */
 private fun handleKeyCommand(
     command: KeyCommand,

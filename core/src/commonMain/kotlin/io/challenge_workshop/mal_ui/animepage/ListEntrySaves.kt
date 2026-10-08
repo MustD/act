@@ -17,9 +17,25 @@ import kotlin.time.TimeSource
 /** Every anime's Save for one Session, and the log of what was sent. */
 data class ListEntrySavesState(
     /** By anime: a Save under way, or the error of the last one that was refused. Settled ones are absent. */
-    val saves: Map<Long, PageSave> = emptyMap(),
-    val log: SaveLog = SaveLog(),
-)
+    private val byAnime: Map<Long, Save> = emptyMap(),
+    val log: PatchLog = PatchLog(),
+) {
+    /** [animeId]'s unsettled Save, or null when it has none. */
+    operator fun get(animeId: Long): Save? = byAnime[animeId]
+
+    /** [animeId]'s Save, an empty one when it has none — what a page of it is drawn with. */
+    fun of(animeId: Long): Save = byAnime[animeId] ?: Save()
+
+    /** Whether [animeId] has an edit not yet confirmed by MAL; a refusal's leftover error is not one. */
+    fun isSaving(animeId: Long): Boolean = byAnime[animeId]?.target != null
+
+    internal fun withSave(animeId: Long, save: Save?): ListEntrySavesState {
+        val saves = if (save == null) byAnime - animeId else byAnime + (animeId to save)
+        return copy(byAnime = saves)
+    }
+
+    internal val anySaving: Boolean get() = byAnime.values.any { it.target != null }
+}
 
 /**
  * The Saves of one Session: an edit worked out, sent as a PATCH, and its outcome — one module,
@@ -62,20 +78,20 @@ class ListEntrySaves(
     private val answers = mutableMapOf<Long, ListEntry>()
 
     /**
-     * Applies [edit] to [anime]'s List Entry and saves it, immediately if nothing is in flight for
+     * Applies [change] to [anime]'s List Entry and saves it, immediately if nothing is in flight for
      * that anime and as the next PATCH if something is. Does nothing for an edit that changes nothing.
      *
      * @param confirmed the page's List Entry, only the starting point: a Save's own target, or its
      * last answer, takes precedence.
      */
-    fun edit(anime: Anime, confirmed: ListEntry, edit: ListEdit) {
+    fun edit(anime: Anime, confirmed: ListEntry, change: ListEdit) {
         val id = anime.animeId
-        val current = _state.value.saves[id]
+        val current = _state.value[id]
         val shown = current?.target ?: answers[id] ?: confirmed
         val total = anime.totalEpisodes
-        val target = applyAutomaticRules(shown, edit.applyTo(shown, total), today(), total)
+        val target = applyAutomaticRules(shown, change.applyTo(shown, total), today(), total)
         if (target == shown) return
-        set(id, PageSave(target = target, inFlight = current?.inFlight))
+        set(id, Save(target = target, inFlight = current?.inFlight))
         start(id, anime.title, confirmed)
     }
 
@@ -86,8 +102,8 @@ class ListEntrySaves(
      */
     fun add(anime: Anime, watchStatus: WatchStatus) {
         val id = anime.animeId
-        if (_state.value.saves[id]?.target != null) return
-        set(id, PageSave(target = newListEntry(watchStatus, today(), anime.totalEpisodes)))
+        if (_state.value.isSaving(id)) return
+        set(id, Save(target = newListEntry(watchStatus, today(), anime.totalEpisodes)))
         start(id, anime.title, NOT_ON_LIST)
     }
 
@@ -116,14 +132,14 @@ class ListEntrySaves(
     private suspend fun drain(id: Long, title: String, confirmed: ListEntry) {
         var baseline = confirmed
         while (true) {
-            val target = _state.value.saves[id]?.target ?: return
+            val target = _state.value[id]?.target ?: return
             val update = target.diffFrom(baseline)
             if (update.isEmpty) {
                 answers.remove(id)
                 set(id, null)
                 return
             }
-            set(id, PageSave(target = target, inFlight = target), LoggedSave(title, update, SaveOutcome.Sent))
+            set(id, Save(target = target, inFlight = target), LoggedPatch(title, update, PatchOutcome.Sent))
             val sentAt = TimeSource.Monotonic.markNow()
             val answer = try {
                 send(id, update)
@@ -135,8 +151,8 @@ class ListEntrySaves(
                 answers.remove(id)?.let { onConfirmed(id, it) }
                 set(
                     id,
-                    PageSave(error = message, errorFields = update),
-                    LoggedSave(title, update, SaveOutcome.Refused(message)),
+                    Save(error = message, errorFields = update),
+                    LoggedPatch(title, update, PatchOutcome.Refused(message)),
                 )
                 return
             }
@@ -144,8 +160,8 @@ class ListEntrySaves(
             answers[id] = answer
             // Before the Save moves on, so a page never shows neither the target nor the answer.
             onConfirmed(id, answer)
-            val now = _state.value.saves.getValue(id)
-            val accepted = LoggedSave(title, update, SaveOutcome.Accepted(sentAt.elapsedNow().inWholeMilliseconds))
+            val now = _state.value.of(id)
+            val accepted = LoggedPatch(title, update, PatchOutcome.Accepted(sentAt.elapsedNow().inWholeMilliseconds))
             if (now.target == target) {
                 answers.remove(id)
                 set(id, null, accepted)
@@ -156,13 +172,10 @@ class ListEntrySaves(
     }
 
     /** Replaces [id]'s Save (none, when null) and, when there is one, records [logged] as the last PATCH. */
-    private fun set(id: Long, save: PageSave?, logged: LoggedSave? = null) {
+    private fun set(id: Long, save: Save?, logged: LoggedPatch? = null) {
         _state.update { state ->
-            val saves = if (save == null) state.saves - id else state.saves + (id to save)
-            state.copy(
-                saves = saves,
-                log = SaveLog(logged ?: state.log.last, pending = saves.values.any { it.target != null }),
-            )
+            val next = state.withSave(id, save)
+            next.copy(log = PatchLog(logged ?: state.log.last, pending = next.anySaving))
         }
     }
 }

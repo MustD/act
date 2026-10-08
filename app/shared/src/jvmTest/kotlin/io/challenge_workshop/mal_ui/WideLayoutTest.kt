@@ -31,7 +31,7 @@ import io.challenge_workshop.mal_ui.animelist.ListEntry
 import io.challenge_workshop.mal_ui.animepage.AnimePage
 import io.challenge_workshop.mal_ui.animepage.AnimePageHistory
 import io.challenge_workshop.mal_ui.animepage.AnimePageLoad
-import io.challenge_workshop.mal_ui.animepage.PageSave
+import io.challenge_workshop.mal_ui.animepage.Save
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_FILTERS_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_PANEL_TAG
@@ -136,7 +136,7 @@ class WideLayoutTest {
         listEntry = ListEntry(WatchStatus.Watching, 8, 3, null, null, null),
         synopsis = null,
         load = AnimePageLoad.Loading,
-        save = PageSave(),
+        save = Save(),
         related = emptyList(),
     )
 }

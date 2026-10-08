@@ -16,8 +16,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import io.challenge_workshop.mal_ui.animepage.SaveLog
-import io.challenge_workshop.mal_ui.animepage.SaveOutcome
+import io.challenge_workshop.mal_ui.animepage.PatchLog
+import io.challenge_workshop.mal_ui.animepage.PatchOutcome
 import io.challenge_workshop.mal_ui.animepage.logDescription
 import io.challenge_workshop.mal_ui.animepage.logResult
 import io.challenge_workshop.mal_ui.theme.Act
@@ -26,13 +26,13 @@ import io.challenge_workshop.mal_ui.theme.rememberSpinnerGlyph
 internal const val KEY_HINTS = "j/k select · +/− episode · 1–0 score · [ ] status · esc close"
 
 /**
- * The 28dp bar that says what the last save did and whether one is still going. Fed from the save
- * loop alone, so it never mentions a GET. Empty before the session's first save.
+ * The 28dp bar that says what the last PATCH did and whether a Save is still going. Fed from the Saves
+ * alone, so it never mentions a GET. Empty before the Session's first PATCH.
  *
  * [keyHints] is wide-only and keyboard-only: the caller decides, since both are about the window.
  */
 @Composable
-internal fun LogBar(log: SaveLog, keyHints: Boolean, modifier: Modifier = Modifier) {
+internal fun LogBar(log: PatchLog, keyHints: Boolean, modifier: Modifier = Modifier) {
     val c = Act.colors
     Row(
         modifier
@@ -60,7 +60,7 @@ internal fun LogBar(log: SaveLog, keyHints: Boolean, modifier: Modifier = Modifi
         when {
             log.pending -> Text("${rememberSpinnerGlyph()}", style = Act.type.meta, color = c.pend, modifier = Modifier.testTag(LOG_BAR_RESULT_TAG))
             last != null -> {
-                val refused = last.outcome is SaveOutcome.Refused
+                val refused = last.outcome is PatchOutcome.Refused
                 logResult(last.outcome)?.let {
                     Text(
                         it,

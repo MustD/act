@@ -17,7 +17,7 @@ class AnimePageWouldChangeTest {
             listEntry = entry(watched),
             synopsis = null,
             load = AnimePageLoad.Loaded,
-            save = PageSave(target = target?.let(::entry)),
+            save = Save(target = target?.let(::entry)),
         )
     }
 

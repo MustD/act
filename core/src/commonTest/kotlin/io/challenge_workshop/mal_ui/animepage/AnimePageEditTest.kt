@@ -303,7 +303,7 @@ class AnimePageEditTest {
         h.pages.log.first { !it.pending && it.last != null }
 
         h.session.signOut()
-        h.pages.log.first { it == SaveLog() }
+        h.pages.log.first { it == PatchLog() }
         assertTrue(!h.history.isOpen)
     }
 }

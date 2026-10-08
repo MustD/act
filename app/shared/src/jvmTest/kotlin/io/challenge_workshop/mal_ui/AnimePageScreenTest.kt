@@ -46,7 +46,7 @@ import io.challenge_workshop.mal_ui.animepage.AnimePage
 import io.challenge_workshop.mal_ui.animepage.AnimePageHistory
 import io.challenge_workshop.mal_ui.animepage.AnimePageLoad
 import io.challenge_workshop.mal_ui.animepage.ListEdit
-import io.challenge_workshop.mal_ui.animepage.PageSave
+import io.challenge_workshop.mal_ui.animepage.Save
 import io.challenge_workshop.mal_ui.animepage.RelatedAnime
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_TAG
 import io.challenge_workshop.mal_ui.auth.ANIME_PAGE_ADD_TAG
@@ -86,7 +86,7 @@ class AnimePageScreenTest {
         load: AnimePageLoad = AnimePageLoad.Loading,
         synopsis: String? = null,
         listEntry: ListEntry? = ListEntry(WatchStatus.Watching, 8, 3, null, null, null),
-        save: PageSave = PageSave(),
+        save: Save = Save(),
         related: List<RelatedAnime> = emptyList(),
     ) = AnimePage(
         anime = Anime(
@@ -254,7 +254,7 @@ class AnimePageScreenTest {
             onAllNodesWithTag(ANIME_PAGE_ADD_TAG).assertCountEquals(0)
         }
         runComposeUiTest {
-            val pending = PageSave(target = ListEntry(WatchStatus.Watching, 0, 0, null, null, null))
+            val pending = Save(target = ListEntry(WatchStatus.Watching, 0, 0, null, null, null))
             setContent {
                 ThemedSessionRoute(
                     stateWith(page(load = AnimePageLoad.Loaded, listEntry = null, save = pending)),
@@ -276,7 +276,7 @@ class AnimePageScreenTest {
                         page(
                             load = AnimePageLoad.Loaded,
                             listEntry = null,
-                            save = PageSave(error = "MAL said no")
+                            save = Save(error = "MAL said no")
                         )
                     ),
                     RecordedActions().actions,
@@ -535,7 +535,7 @@ class AnimePageScreenTest {
             val saving = page(
                 load = AnimePageLoad.Loaded,
                 listEntry = confirmed,
-                save = PageSave(target = pending, inFlight = confirmed.copy(episodesWatched = 4)),
+                save = Save(target = pending, inFlight = confirmed.copy(episodesWatched = 4)),
             )
             setContent { ThemedSessionRoute(stateWith(saving), RecordedActions().actions) }
 
@@ -558,7 +558,7 @@ class AnimePageScreenTest {
         runComposeUiTest {
             setContent {
                 ThemedSessionRoute(
-                    stateWith(page(load = AnimePageLoad.Loaded, save = PageSave(error = "MAL said no"))),
+                    stateWith(page(load = AnimePageLoad.Loaded, save = Save(error = "MAL said no"))),
                     RecordedActions().actions,
                 )
             }

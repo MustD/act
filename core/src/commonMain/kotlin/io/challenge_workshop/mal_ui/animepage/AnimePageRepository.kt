@@ -58,13 +58,13 @@ class AnimePageRepository(
     /** The current Session's open pages, or none when there is no Session. */
     val state: StateFlow<AnimePageHistory> = _state.asStateFlow()
 
-    private val _log = MutableStateFlow(SaveLog())
+    private val _log = MutableStateFlow(PatchLog())
 
     /**
-     * The last PATCH sent and whether any save is pending, for the log bar. Unlike [state] it is not
-     * cleared by [close]: a save outlives its page. It ends with the Session.
+     * The last PATCH sent and whether any Save is pending, for the log bar. Unlike [state] it is not
+     * cleared by [close]: a Save outlives its page. It ends with the Session.
      */
-    val log: StateFlow<SaveLog> = _log.asStateFlow()
+    val log: StateFlow<PatchLog> = _log.asStateFlow()
 
     private var sessionScope: CoroutineScope? = null
 
@@ -105,7 +105,7 @@ class AnimePageRepository(
         saves = null
         fetches.clear()
         _state.value = AnimePageHistory()
-        _log.value = SaveLog()
+        _log.value = PatchLog()
     }
 
     /** MAL's answer to a Save: the Anime List's row, and every open page of that anime. */
@@ -114,11 +114,11 @@ class AnimePageRepository(
         replace(animeId) { it.copy(listEntry = entry) }
     }
 
-    /** Puts each Save on the open page of its anime, and the Save Log on [log]. */
+    /** Puts each Save on the open page of its anime, and the Patch Log on [log]. */
     private fun project(saves: ListEntrySavesState) {
         _log.value = saves.log
         _state.update { history ->
-            AnimePageHistory(history.pages.map { it.copy(save = saves.saves[it.animeId] ?: PageSave()) })
+            AnimePageHistory(history.pages.map { it.copy(save = saves.of(it.animeId)) })
         }
     }
 
@@ -131,21 +131,21 @@ class AnimePageRepository(
     fun open(entry: AnimeListEntry) {
         if (sessionScope == null) return
         cancelFetches()
-        val save = currentSaves().saves[entry.animeId] ?: PageSave()
+        val save = currentSaves().of(entry.animeId)
         _state.value = AnimePageHistory(listOf(AnimePage.from(entry).copy(save = save)))
         fetch(entry.animeId)
     }
 
     /**
      * Opens [related]'s Anime Page **on top of** the history, drawn from its cover and title at
-     * once. The page it came from stays where it is, fetch and saves untouched, for [back].
+     * once. The page it came from stays where it is, fetch and Save untouched, for [back].
      */
     fun open(related: RelatedAnime) {
         if (sessionScope == null) return
         val history = _state.value
         if (!history.isOpen) return
         _state.value = AnimePageHistory(
-            history.pages + AnimePage.from(related).copy(save = currentSaves().saves[related.animeId] ?: PageSave()),
+            history.pages + AnimePage.from(related).copy(save = currentSaves().of(related.animeId)),
         )
         fetch(related.animeId)
     }
@@ -178,15 +178,15 @@ class AnimePageRepository(
     }
 
     /**
-     * Applies [edit] to the current page's List Entry and saves it, immediately if nothing is in
+     * Applies [change] to the current page's List Entry and saves it, immediately if nothing is in
      * flight for that anime and as the next PATCH if something is. Does nothing until the page's
      * fetch has succeeded ([AnimePage.canEdit]), and nothing for an edit that changes nothing.
      */
-    fun edit(edit: ListEdit) {
+    fun edit(change: ListEdit) {
         val saves = saves ?: return
         val page = _state.value.current ?: return
-        if (!page.canEdit) return
-        saves.edit(page.anime, page.listEntry!!, edit)
+        val confirmed = page.listEntry?.takeIf { page.canEdit } ?: return
+        saves.edit(page.anime, confirmed, change)
     }
 
     /**
@@ -222,8 +222,10 @@ class AnimePageRepository(
             try {
                 val details = session.animeClient().anime(animeId)
                 // The list first, so it is never behind a page that already shows the newer List Entry.
-                // A Save under way is shown over this answer, and its own answer replaces it.
-                details.listEntry?.let { animeList.applyListEntry(animeId, it) }
+                // A Save under way is shown over this answer, and its own answer replaces it — on the
+                // Anime List too, so a fetch that predates the Save never puts a stale row there.
+                val saving = currentSaves().isSaving(animeId)
+                if (!saving) details.listEntry?.let { animeList.applyListEntry(animeId, it) }
                 replace(animeId) { it.loadedWith(details) }
             } catch (e: CancellationException) {
                 throw e
