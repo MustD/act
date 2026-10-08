@@ -109,6 +109,15 @@ data class AnimePage(
      */
     val canEdit: Boolean get() = load == AnimePageLoad.Loaded && listEntry != null
 
+    /**
+     * Whether [edit] would change the entry as it is shown, bounds included: `+1` at the last
+     * episode is not a change. False when there is no entry to edit.
+     */
+    fun wouldChange(edit: ListEdit): Boolean {
+        val shown = shownListEntry ?: return false
+        return edit.applyTo(shown, anime.totalEpisodes) != shown
+    }
+
     /** This page with the fetch's answer in place of what it opened with. */
     internal fun loadedWith(details: AnimeDetails): AnimePage = copy(
         // The fetch's answer may lack a picture the list row had.

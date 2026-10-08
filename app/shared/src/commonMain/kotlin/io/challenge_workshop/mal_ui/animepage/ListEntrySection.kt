@@ -140,7 +140,10 @@ internal fun ListEntrySection(page: AnimePage, onEdit: (ListEdit) -> Unit, onAdd
         val enabled = page.canEdit
         Section("episodes", ANIME_PAGE_EPISODES_TAG, saving = pending.episodesWatched != null) {
             ErrorUnder(EntrySection.Episodes)
-            EpisodesBox(entry.episodesWatched, page.anime.totalEpisodes, enabled, onEdit)
+            EpisodesBox(
+                entry.episodesWatched, page.anime.totalEpisodes, enabled,
+                canStepUp = page.wouldChange(ListEdit.AddEpisodes(1)), onEdit = onEdit,
+            )
         }
         Section("watch status", ANIME_PAGE_WATCH_STATUS_TAG, saving = pending.watchStatus != null) {
             ErrorUnder(EntrySection.WatchStatus)
@@ -266,7 +269,7 @@ private fun ScoreEditor(score: Int, enabled: Boolean, onPick: (Int) -> Unit) {
  * edit, in `:core`. The number carries [ANIME_PAGE_EPISODES_TAG].
  */
 @Composable
-private fun EpisodesBox(watched: Int, total: Int, enabled: Boolean, onEdit: (ListEdit) -> Unit) {
+private fun EpisodesBox(watched: Int, total: Int, enabled: Boolean, canStepUp: Boolean, onEdit: (ListEdit) -> Unit) {
     val c = Act.colors
     Column(
         Modifier.fillMaxWidth().background(c.sf, ActMedium).border(1.dp, c.ln, ActMedium).padding(14.dp),
@@ -291,7 +294,7 @@ private fun EpisodesBox(watched: Int, total: Int, enabled: Boolean, onEdit: (Lis
                 )
             }
             StepButton(
-                "+", "One episode more", filled = true, enabled = enabled && (total == 0 || watched < total),
+                "+", "One episode more", filled = true, enabled = enabled && canStepUp,
                 tag = ANIME_PAGE_EPISODES_PLUS_TAG,
             ) { onEdit(ListEdit.AddEpisodes(1)) }
         }

@@ -413,7 +413,7 @@ private fun handleKeyCommand(
             scope.launch { gridState.animateScrollToItem(next + offset) }
         }
 
-        is KeyCommand.Edit -> if (page?.canEdit == true) actions.animePage.onEdit(command.edit)
+        is KeyCommand.Edit -> if (page?.canEdit == true && page.wouldChange(command.edit)) actions.animePage.onEdit(command.edit)
 
         is KeyCommand.StepWatchStatus -> {
             val entry = page?.shownListEntry?.takeIf { page.canEdit } ?: return
