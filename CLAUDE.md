@@ -62,6 +62,12 @@ listener uses `com.sun.net.httpserver`, which is why `:app:desktopApp` declares
 `nativeDistributions { modules("jdk.httpserver") }` — Compose's default runtime modules do not include it, and the gap
 only shows up in a packaged build.
 
+**One desktop process at a time.** `main()` in `:app:desktopApp` takes `SingleInstanceLock` — an OS file lock on
+`instance.lock` beside the state file — before Koin, the window or anything that can bind 18040, so a second launch
+cannot disturb the first one's sign-in. The OS releases it on process death, so a crash leaves no stale lock. The second
+launch shows an "already running" dialog, or writes to stderr when headless, and exits 1. It lives in the entry point,
+not `:app:shared`: the UI module does not decide how many processes the app may have.
+
 Production is `https://act.io-workshop.net` — see [Deployment](#deployment). It is not a port; it is the same web
 bundle and relay, one origin, behind an edge proxy.
 
