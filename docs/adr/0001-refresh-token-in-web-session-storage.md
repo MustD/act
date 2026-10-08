@@ -1,6 +1,6 @@
 # Refresh token in web `sessionStorage`
 
-Status: accepted
+Status: superseded by [ADR-0007](0007-web-session-in-local-storage.md)
 
 The web targets store the whole Session — access token, **refresh token** and cached user — in `sessionStorage`, via the
 same

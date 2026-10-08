@@ -42,12 +42,9 @@ class LayoutPreference(
      * applies to does not exist yet. A default that were *not* the shipped one would be visible; this
      * one is the frame the screen would have drawn anyway.
      *
-     * **Not durable on the web Targets.** `KeyValueStore`'s browser actual is `sessionStorage`, which
-     * is per-tab and goes when the tab does — see
-     * `docs/adr/0001-refresh-token-in-web-session-storage.md`. So this survives a reload but not a
-     * closed tab there, and survives everything on jvm and android. Deliberately not split: one
-     * store, one record, and a preference that lived somewhere the Session does not would be a second
-     * persistence rule to keep in step across every Target.
+     * **Durable on every Target.** On web the durable store is `localStorage`, so this survives a
+     * closed tab and a browser restart, like the Session beside it — see
+     * `docs/adr/0007-web-session-in-local-storage.md`. Only the Pending Authorization is tab-scoped.
      */
     val value: StateFlow<AnimeListLayout> = _value.asStateFlow()
 

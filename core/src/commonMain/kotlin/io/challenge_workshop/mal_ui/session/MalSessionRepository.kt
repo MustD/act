@@ -16,10 +16,14 @@ import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.clearAuthTokens
 import io.ktor.client.plugins.auth.providers.BearerTokens
 import io.ktor.client.plugins.auth.providers.bearer
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -39,11 +43,24 @@ class MalSessionRepository(
     private val clock: Clock = Clock.System,
     initialConfig: MalAuthConfig = MalAuthConfig(clientId = ""),
     clientFactory: HttpClientFactory = HttpClientFactory.Default,
+    /**
+     * Lives as long as the repository: it runs the collector of the Session record's changes. The app
+     * passes a process-scoped, `Dispatchers.Main.immediate` one, as for `LayoutPreference`, which has
+     * no default; this one does only for callers whose store never emits a change. [close] cancels the
+     * collector either way.
+     */
+    scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
 ) {
     private val _state = MutableStateFlow<SessionState>(SessionState.Restoring)
     val state: StateFlow<SessionState> = _state.asStateFlow()
 
     private val _config = MutableStateFlow(initialConfig)
+
+    // Only a removal means anything: a new value is another tab signing in, which is picked up on
+    // reload, and this tab's own writes are never delivered.
+    private val sessionChangesCollector = scope.launch {
+        store.sessionChanges().collect { raw -> if (raw == null) dropSessionIfSignedIn() }
+    }
 
     /** The effective MAL app configuration. The Client ID is entered at runtime, so this moves. */
     val config: StateFlow<MalAuthConfig> = _config.asStateFlow()
@@ -120,6 +137,7 @@ class MalSessionRepository(
         // A Client ID remembered by an earlier build would otherwise sit in the store for good, read
         // by nothing. Removing an absent key is a no-op, so this needs no "already done" marker.
         store.discardLegacyClientId()
+        store.discardLegacyTabScopedRecords()
 
         val pending = store.readPending()
         if (pending != null) {
@@ -255,6 +273,24 @@ class MalSessionRepository(
         return user
     }
 
+    /**
+     * The Session record is gone and this repository did not remove it. Acts only while holding a
+     * Session: in any other state there is nothing to drop, and a [SessionState.SignedOut] already
+     * has the reason that matters.
+     */
+    private fun dropSessionIfSignedIn() {
+        var dropped = false
+        _state.update {
+            if (it is SessionState.SignedIn) {
+                dropped = true
+                SessionState.SignedOut(SignedOutReason.SignedOutElsewhere)
+            } else {
+                it
+            }
+        }
+        if (dropped) authenticatedHttp.clearAuthTokens()
+    }
+
     /** Deliberate sign-out. Drops both records, so nothing is left to resume. */
     suspend fun signOut() {
         store.clear()
@@ -293,6 +329,7 @@ class MalSessionRepository(
     }
 
     fun close() {
+        sessionChangesCollector.cancel()
         tokenHttp.close()
         authenticatedHttp.close()
     }
@@ -308,13 +345,24 @@ class MalSessionRepository(
      * [isRefreshRejection].
      */
     private suspend fun performRefresh(): BearerTokens? {
-        val current = store.readSession() ?: return null
+        val current = store.readSession() ?: run {
+            dropSessionIfSignedIn()
+            return null
+        }
         markRefreshing(true)
         return try {
             val fresh = tokenApi().refresh(current.tokens.refreshToken)
             // Persisted *before* returning, so the retried request cannot outrun the write.
-            store.updateTokens(fresh)
-            fresh.asBearerTokens()
+            if (store.updateTokens(fresh) == null) {
+                // The Session was removed while MAL was answering. Handing Ktor the fresh pair would
+                // cache it and retry with it: a sign-out resurrected. In one process the remover is
+                // our own signOut(), whose reason stands — dropSessionIfSignedIn only acts on
+                // SignedIn.
+                dropSessionIfSignedIn()
+                null
+            } else {
+                fresh.asBearerTokens()
+            }
         } catch (e: MalAuthException) {
             if (isRefreshRejection(e)) {
                 store.clear()

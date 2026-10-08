@@ -70,8 +70,9 @@ build without one cannot start a Sign-in. _Avoid_: API key, app key, client
 secret (a public client has no secret, and `MalAuthConfig.clientSecret` exists only for a `web`-type app)
 
 **Signed Out Reason**:
-Why a Session is absent — never signed in, signed out deliberately, a refresh MAL rejected, or an authorization that
-failed. Carried so the UI can explain itself rather than showing a bare "signed out".
+Why a Session is absent — never signed in, signed out deliberately, signed out from another tab of the same browser, a
+refresh MAL rejected, or an authorization that failed. Carried so the UI can explain itself rather than showing a bare
+"signed out".
 
 ### Anime List
 

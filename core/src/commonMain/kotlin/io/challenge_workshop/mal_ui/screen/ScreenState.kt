@@ -169,4 +169,7 @@ fun explain(reason: SignedOutReason): String? = when (reason) {
 
     SignedOutReason.AuthorizationFailed ->
         "That sign-in attempt did not complete. Starting again mints a fresh code."
+
+    SignedOutReason.SignedOutElsewhere ->
+        "You were signed out from another tab, so this one has signed out too."
 }

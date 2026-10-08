@@ -36,11 +36,11 @@ out the closest candidates.
   `mal.clientId.v1`, existed until the Client ID became build-time only; startup removes it.)
   The preference also differs from the two credentials in how a bad value reads — absent, corrupt or unknown gives
   the default Layout rather than a failure, because a preference is never worth a crash loop. **On the web targets it is
-  not durable**, and that is this ADR's `sessionStorage` choice reaching a record it was not argued for: a Layout
-  survives a reload there and not a closed tab. Deliberately not split — a preference kept somewhere the Session is not
-  would be a second persistence rule to keep in step across four targets, for a record whose worst failure is a first
-  screen in the shipped default. [ADR-0001](0001-refresh-token-in-web-session-storage.md) is where that would be
-  reopened.
-- Web is `sessionStorage` — see [ADR-0001](0001-refresh-token-in-web-session-storage.md).
+  not durable** *(superseded: [ADR-0007](0007-web-session-in-local-storage.md) moves the Layout and Theme to
+  `localStorage` with the Session, and splits only the Pending Authorization off)*. It was this ADR's `sessionStorage`
+  choice reaching a record it was not argued for: a Layout survived a reload there and not a closed tab.
+- Web is `localStorage`, with the Pending Authorization in `sessionStorage` — see [ADR-0007](0007-web-session-in-local-storage.md)
+  (originally `sessionStorage` throughout, [ADR-0001](0001-refresh-token-in-web-session-storage.md)).
+- `KeyValueStore` has since gained an optional `changes(key)` (default `emptyFlow()`), no longer strictly three methods.
 - The cost is four small implementations to maintain and test ourselves. The benefit is no dependency that can go stale
   underneath a four-target build, which is what happened to every library above.

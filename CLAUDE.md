@@ -62,6 +62,12 @@ listener uses `com.sun.net.httpserver`, which is why `:app:desktopApp` declares
 `nativeDistributions { modules("jdk.httpserver") }` — Compose's default runtime modules do not include it, and the gap
 only shows up in a packaged build.
 
+**One desktop process at a time.** `main()` in `:app:desktopApp` takes `SingleInstanceLock` — an OS file lock on
+`instance.lock` beside the state file — before Koin, the window or anything that can bind 18040, so a second launch
+cannot disturb the first one's sign-in. The OS releases it on process death, so a crash leaves no stale lock. The second
+launch shows an "already running" dialog, or writes to stderr when headless, and exits 1. It lives in the entry point,
+not `:app:shared`: the UI module does not decide how many processes the app may have.
+
 Production is `https://act.io-workshop.net` — see [Deployment](#deployment). It is not a port; it is the same web
 bundle and relay, one origin, behind an edge proxy.
 
@@ -198,6 +204,17 @@ purpose, so `:core`'s own tests cannot pick up whatever the developer's machine 
 or system), and `clear()` drops neither. An earlier build also kept `mal.clientId.v1`; `restore()` removes that record on startup (`discardLegacyClientId`), and nothing else reads it.
 The Pending Authorization keeps its own `clientId`, so an authorization started before an app update exchanges against
 the ID it was started with.
+
+**Web storage is split** (ADR-0007): the Session, Layout and Theme are in `localStorage` (`LocalStorageKeyValueStore`),
+so a new tab or a browser restart finds them; the Pending Authorization is in `sessionStorage`
+(`SessionStorageKeyValueStore`), because a popup gets a *copy* of it and two tabs must not share a PKCE verifier.
+`JsonTokenStore` takes both stores and owns the routing (`storeFor`); Android and desktop pass one instance for both,
+and the web platform module binds the tab-scoped one under the `TAB_SCOPED_STORE` qualifier. On startup `restore()`
+deletes the old Session/Layout/Theme records from the tab-scoped store (`discardLegacyTabScopedRecords`) — a no-op when
+the two are the same instance, which is what stops it deleting the real Session on Android and desktop. A refresh
+token now outlives the tab: a shared machine needs an explicit sign-out. Signing out in one tab signs out
+the others: `KeyValueStore.changes` (web: the `storage` event; empty elsewhere) feeds `MalSessionRepository`, which drops
+a signed-in tab to `SignedOut(SignedOutElsewhere)` when the Session record is removed by someone else.
 
 ## Deployment
 

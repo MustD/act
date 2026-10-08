@@ -106,9 +106,8 @@ val ANIME_LIST_SORT_TAG: String = "${SessionScreenTag.SignedIn.tag}.sort"
  *
  * A sibling of the list like the other two controls, and for one more reason besides theirs: it is
  * the only control on this screen whose choice is written to the store, so a test that rebuilds the
- * screen has to be able to find it and read which half is selected. (Written, not necessarily
- * durable: on the web Targets the store is `sessionStorage` and goes with the tab — see
- * `LayoutPreference.value`.)
+ * screen has to be able to find it and read which half is selected. (Written, and durable on
+ * every Target — on web in `localStorage`; see `LayoutPreference.value`.)
  */
 val ANIME_LIST_LAYOUT_TAG: String = "${SessionScreenTag.SignedIn.tag}.layout"
 
