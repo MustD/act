@@ -24,7 +24,10 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.module
 import kotlin.time.Clock
 
-/** Koin qualifier of the store that holds the Pending Authorization, where a target has one apart from the durable store. */
+/**
+ * Koin qualifier of the store that holds the Pending Authorization, where a target has one apart
+ * from the durable store.
+ */
 const val TAB_SCOPED_STORE: String = "tabScoped"
 
 /**
@@ -44,7 +47,7 @@ val appModule: Module = module {
     single {
         val durable = get<KeyValueStore>()
         JsonTokenStore(
-            kv = durable,
+            durable = durable,
             tabScoped = getOrNull<KeyValueStore>(named(TAB_SCOPED_STORE)) ?: durable,
             json = get(),
             clock = get(),

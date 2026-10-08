@@ -21,7 +21,7 @@ import kotlin.time.Clock
  *    launch. Discarding is safe for every record here: the two about the user are recoverable
  *    by signing in again, and the preference falls back to a default the user can re-pick.
  *
- * **Two stores.** [kv] holds everything durable (Session, Layout, Theme); [tabScoped] holds the
+ * **Two stores.** [durable] holds everything durable (Session, Layout, Theme); [tabScoped] holds the
  * Pending Authorization alone, because it belongs to the tab that started the Sign-in — see
  * `docs/adr/0007-web-session-in-local-storage.md`. Android and desktop pass one instance for both.
  * That routing rule is [storeFor], and nothing outside it chooses a store.
@@ -31,8 +31,8 @@ import kotlin.time.Clock
  * write a stamp that disagrees with the value it is stored beside.
  */
 class JsonTokenStore(
-    private val kv: KeyValueStore,
-    private val tabScoped: KeyValueStore = kv,
+    private val durable: KeyValueStore,
+    private val tabScoped: KeyValueStore = durable,
     private val json: Json = Json { ignoreUnknownKeys = true },
     private val clock: Clock = Clock.System,
 ) {
@@ -43,9 +43,15 @@ class JsonTokenStore(
         const val CLIENT_ID_KEY: String = "mal.clientId.v1"
         const val LAYOUT_KEY: String = "mal.layout.v1"
         const val THEME_KEY: String = "mal.theme.v1"
+
+        /**
+         * The records [storeFor] sends to the durable store, and so the ones an earlier build may
+         * have left a tab-scoped copy of.
+         */
+        val DURABLE_KEYS: List<String> = listOf(SESSION_KEY, LAYOUT_KEY, THEME_KEY)
     }
 
-    private fun storeFor(key: String): KeyValueStore = if (key == PENDING_KEY) tabScoped else kv
+    private fun storeFor(key: String): KeyValueStore = if (key == PENDING_KEY) tabScoped else durable
 
     suspend fun readSession(): StoredSession? = readOrDiscard(SESSION_KEY)
 
@@ -108,19 +114,17 @@ class JsonTokenStore(
      * fixed at build time, and a leftover would make this device answer "what does this app store"
      * differently from every other.
      */
-    suspend fun discardLegacyClientId() = kv.remove(CLIENT_ID_KEY)
+    suspend fun discardLegacyClientId() = durable.remove(CLIENT_ID_KEY)
 
     /**
      * Removes the Session, Layout and Theme records an earlier build left in the tab-scoped store,
      * when that store is not the durable one. Not copied: each tab signs in once more.
      *
-     * A no-op when [tabScoped] *is* [kv] (Android, desktop): there those records are the real ones.
+     * A no-op when [tabScoped] *is* [durable] (Android, desktop): there those records are the real ones.
      */
     suspend fun discardLegacyTabScopedRecords() {
-        if (tabScoped === kv) return
-        tabScoped.remove(SESSION_KEY)
-        tabScoped.remove(LAYOUT_KEY)
-        tabScoped.remove(THEME_KEY)
+        if (tabScoped === durable) return
+        DURABLE_KEYS.forEach { tabScoped.remove(it) }
     }
 
     /**

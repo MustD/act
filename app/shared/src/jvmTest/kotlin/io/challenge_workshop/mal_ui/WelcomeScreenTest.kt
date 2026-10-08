@@ -172,11 +172,13 @@ class WelcomeScreenTest {
      */
     @Test
     fun the_welcome_page_shows_the_signed_out_reason_it_is_given() {
-        val state = signedOut(SignedOutReason.RefreshRejected)
-        runComposeUiTest {
-            setContent { ThemedSessionRoute(state, RecordedActions().actions) }
+        for (reason in SignedOutReason.entries - SignedOutReason.NeverSignedIn) {
+            val state = signedOut(reason)
+            runComposeUiTest {
+                setContent { ThemedSessionRoute(state, RecordedActions().actions) }
 
-            assertEquals(state.explanation, onNodeWithTag(SIGNED_OUT_REASON_TAG).textContent())
+                assertEquals(state.explanation, onNodeWithTag(SIGNED_OUT_REASON_TAG).textContent(), "$reason")
+            }
         }
     }
 

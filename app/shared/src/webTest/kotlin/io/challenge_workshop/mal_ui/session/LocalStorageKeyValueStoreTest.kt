@@ -71,7 +71,7 @@ class LocalStorageKeyValueStoreTest {
         store.writeTheme(Theme.System)
         store.writePending("verifier", "state", "https://r", "client")
 
-        for (key in listOf(JsonTokenStore.SESSION_KEY, JsonTokenStore.LAYOUT_KEY, JsonTokenStore.THEME_KEY)) {
+        for (key in JsonTokenStore.DURABLE_KEYS) {
             assertNotNull(localGet("$ns.$key"), key)
             assertNull(sessionGet("$ns.$key"), key)
         }
@@ -86,13 +86,13 @@ class LocalStorageKeyValueStoreTest {
     fun startup_cleanup_removes_old_session_storage_records_and_copies_nothing() = runTest {
         val ns = "cleanup-test"
         val store = JsonTokenStore(LocalStorageKeyValueStore(ns), SessionStorageKeyValueStore(ns))
-        for (key in listOf(JsonTokenStore.SESSION_KEY, JsonTokenStore.LAYOUT_KEY, JsonTokenStore.THEME_KEY)) {
+        for (key in JsonTokenStore.DURABLE_KEYS) {
             sessionPut("$ns.$key", "old")
         }
 
         store.discardLegacyTabScopedRecords()
 
-        for (key in listOf(JsonTokenStore.SESSION_KEY, JsonTokenStore.LAYOUT_KEY, JsonTokenStore.THEME_KEY)) {
+        for (key in JsonTokenStore.DURABLE_KEYS) {
             assertNull(sessionGet("$ns.$key"), key)
             assertNull(localGet("$ns.$key"), key)
         }

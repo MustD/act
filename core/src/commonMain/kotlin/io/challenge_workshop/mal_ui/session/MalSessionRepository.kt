@@ -45,8 +45,9 @@ class MalSessionRepository(
     clientFactory: HttpClientFactory = HttpClientFactory.Default,
     /**
      * Lives as long as the repository: it runs the collector of the Session record's changes. The app
-     * passes a process-scoped, `Dispatchers.Main.immediate` one, as for `LayoutPreference`; the default
-     * only serves callers whose store never emits a change.
+     * passes a process-scoped, `Dispatchers.Main.immediate` one, as for `LayoutPreference`, which has
+     * no default; this one does only for callers whose store never emits a change. [close] cancels the
+     * collector either way.
      */
     scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
 ) {
@@ -55,12 +56,10 @@ class MalSessionRepository(
 
     private val _config = MutableStateFlow(initialConfig)
 
-    init {
-        // Only a removal means anything: a new value is another tab signing in, which is picked up on
-        // reload, and this tab's own writes are never delivered.
-        scope.launch {
-            store.sessionChanges().collect { raw -> if (raw == null) dropSessionIfSignedIn() }
-        }
+    // Only a removal means anything: a new value is another tab signing in, which is picked up on
+    // reload, and this tab's own writes are never delivered.
+    private val sessionChangesCollector = scope.launch {
+        store.sessionChanges().collect { raw -> if (raw == null) dropSessionIfSignedIn() }
     }
 
     /** The effective MAL app configuration. The Client ID is entered at runtime, so this moves. */
@@ -330,6 +329,7 @@ class MalSessionRepository(
     }
 
     fun close() {
+        sessionChangesCollector.cancel()
         tokenHttp.close()
         authenticatedHttp.close()
     }
