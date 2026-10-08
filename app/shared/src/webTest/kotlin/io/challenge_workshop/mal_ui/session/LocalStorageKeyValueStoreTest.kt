@@ -5,7 +5,11 @@ package io.challenge_workshop.mal_ui.session
 import io.challenge_workshop.mal_ui.animelist.AnimeListLayout
 import io.challenge_workshop.mal_ui.mal.MalTokens
 import io.challenge_workshop.mal_ui.theme.Theme
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.yield
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -19,6 +23,14 @@ private fun sessionHas(key: String): Boolean = js("window.sessionStorage.getItem
 private fun sessionRaw(key: String): String = js("window.sessionStorage.getItem(key)")
 private fun sessionPut(key: String, value: String) {
     js("window.sessionStorage.setItem(key, value)")
+}
+
+/** A real one never fires in the document that wrote, so this stands in for another tab. */
+private fun dispatchStorageEvent(key: String, newValue: String?) {
+    js("""{
+        var init = { key: key, newValue: newValue, storageArea: window.localStorage };
+        window.dispatchEvent(new StorageEvent('storage', init));
+    }""")
 }
 
 /** Runs in a real browser, against real `localStorage`. */
@@ -84,5 +96,36 @@ class LocalStorageKeyValueStoreTest {
             assertNull(sessionGet("$ns.$key"), key)
             assertNull(localGet("$ns.$key"), key)
         }
+    }
+
+    @Test
+    fun another_tabs_removal_of_a_key_emits_null_and_a_new_value_emits_it() = runTest {
+        val store = LocalStorageKeyValueStore("changes-test")
+        val seen = mutableListOf<String?>()
+        val job = launch(start = CoroutineStart.UNDISPATCHED) { store.changes("k").toList(seen) }
+        yield() // let the flow's producer register its listener
+
+        dispatchStorageEvent("changes-test.other", null)
+        dispatchStorageEvent("changes-test.k", "v")
+        dispatchStorageEvent("changes-test.k", null)
+        yield()
+        job.cancel()
+
+        assertEquals(listOf("v", null), seen)
+    }
+
+    @Test
+    fun the_stores_own_writes_do_not_emit() = runTest {
+        val store = LocalStorageKeyValueStore("own-writes-test")
+        val seen = mutableListOf<String?>()
+        val job = launch(start = CoroutineStart.UNDISPATCHED) { store.changes("k").toList(seen) }
+        yield() // let the flow's producer register its listener
+
+        store.write("k", "v")
+        store.remove("k")
+        yield()
+        job.cancel()
+
+        assertEquals(emptyList(), seen)
     }
 }

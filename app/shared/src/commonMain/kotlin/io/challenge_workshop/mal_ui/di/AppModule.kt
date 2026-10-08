@@ -65,6 +65,8 @@ val appModule: Module = module {
             // with.
             initialConfig = MalAuthConfig(clientId = MAL_CLIENT_ID),
             clientFactory = get(),
+            // Collects the Session record's changes for the life of the process, like the preferences below.
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
         )
     }
 

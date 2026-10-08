@@ -4,6 +4,7 @@ import io.challenge_workshop.mal_ui.animelist.AnimeListLayout
 import io.challenge_workshop.mal_ui.theme.Theme
 import io.challenge_workshop.mal_ui.mal.MalTokens
 import io.challenge_workshop.mal_ui.mal.MalUser
+import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.Json
 import kotlin.time.Clock
 
@@ -75,6 +76,12 @@ class JsonTokenStore(
     /** Replaces the cached user without disturbing the tokens or their issue stamp. */
     suspend fun updateUser(user: MalUser?): StoredSession? =
         readSession()?.copy(user = user)?.also { write(SESSION_KEY, it) }
+
+    /**
+     * The Session record as someone else changes it: the raw value, `null` for a removal. Never this
+     * store's own writes — see [KeyValueStore.changes]. Empty on every target without a second writer.
+     */
+    fun sessionChanges(): Flow<String?> = storeFor(SESSION_KEY).changes(SESSION_KEY)
 
     suspend fun clearSession() = storeFor(SESSION_KEY).remove(SESSION_KEY)
 

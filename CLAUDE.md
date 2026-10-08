@@ -206,7 +206,9 @@ so a new tab or a browser restart finds them; the Pending Authorization is in `s
 and the web platform module binds the tab-scoped one under the `TAB_SCOPED_STORE` qualifier. On startup `restore()`
 deletes the old Session/Layout/Theme records from the tab-scoped store (`discardLegacyTabScopedRecords`) — a no-op when
 the two are the same instance, which is what stops it deleting the real Session on Android and desktop. A refresh
-token now outlives the tab: a shared machine needs an explicit sign-out.
+token now outlives the tab: a shared machine needs an explicit sign-out. Signing out in one tab signs out
+the others: `KeyValueStore.changes` (web: the `storage` event; empty elsewhere) feeds `MalSessionRepository`, which drops
+a signed-in tab to `SignedOut(SignedOutElsewhere)` when the Session record is removed by someone else.
 
 ## Deployment
 

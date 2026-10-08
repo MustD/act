@@ -39,4 +39,7 @@ enum class SignedOutReason {
     UserSignedOut,
     RefreshRejected,
     AuthorizationFailed,
+
+    /** Another tab signed out (or its refresh was rejected), and the shared store lost the Session. */
+    SignedOutElsewhere,
 }
