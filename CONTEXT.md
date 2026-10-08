@@ -96,6 +96,14 @@ no List Entry yet, and choosing a Watch Status is what adds it. Reached from the
 Page's related anime. Every edit reaches MAL as soon as it is made — there is no draft and no Save — and until MAL has
 confirmed it, the edit is shown as pending and is undone if MAL refuses it. _Avoid_: Entry page, details screen
 
+**Save**:
+One anime's List Entry edits on their way to MAL — from the first edit, through every request it takes, to MAL's last
+answer or its refusal. Edits made while one request is at MAL are merged into the next, never queued behind it, so a
+Save is never more than one request ahead of MAL. It belongs to the anime, not to its Anime Page: closing the page does
+not stop it, reopening shows it, and a refusal is still shown on reopening until the next edit. Ends with the Session.
+In code, every anime's Save for one Session is `ListEntrySaves`. _Avoid_: Save queue (nothing waits its turn), draft
+(there is none — see **Anime Page**)
+
 **Related Anime**:
 The anime MAL links to another by a named relation — sequel, prequel, side story, alternative version and so on — each
 of which opens its own Anime Page, whether or not it is on the list. Manga relations are not included. _Avoid_:
