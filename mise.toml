@@ -3,9 +3,10 @@
 #
 # mise loads the env files per task — never a global [env] — so DIGITALOCEAN_TOKEN reaches only the infra and deploy
 # tasks, not Gradle or an interactive shell. See CLAUDE.md, "Deployment".
-#   .secure.build.env   MAL_CLIENT_ID, DOCKERHUB_USER   (run:desktop*, run:web, build*, deploy*)
-#   .secure.deploy.env  DIGITALOCEAN_TOKEN, AWS_* (state bucket), EDGE_SSH, TF_VAR_*   (infra, deploy)
-# The test tasks load neither: a test must pass the same with or without a Client ID.
+#   .secure.build.env   MAL_CLIENT_ID, DOCKERHUB_USER   (run:desktop*, run:web, build*, deploy, deploy:build, deploy:push)
+#   .secure.deploy.env  DIGITALOCEAN_TOKEN, AWS_* (state bucket), EDGE_SSH, TF_VAR_*   (infra:*, deploy, deploy:status)
+# The test tasks load neither: a test must pass the same with or without a Client ID. (The two that `deploy` runs
+# inherit its build env, Client ID included — lib.sh's `task` strips only the deploy secrets.)
 #
 # Not managed here: docker (with buildx) and ssh, which the deploy tasks expect on the machine.
 [tools]
@@ -54,7 +55,12 @@ run = "./gradlew :app:webApp:wasmJsBrowserDistribution"
 
 [tasks."build:server:dist"]
 description = "The relay's installDist, the act-relay image's build context"
+env = { _ = { file = ".secure.build.env" } }
 run = "./gradlew :server:installDist"
+
+[tasks."generate:mal-config"]
+description = "Only :core's generateMalBuildConfig, for the by-hand cache check in core/build.gradle.kts"
+run = "./gradlew :core:generateMalBuildConfig"
 
 # --- test --------------------------------------------------------------------------------------------------------
 

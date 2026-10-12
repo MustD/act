@@ -198,7 +198,7 @@ actual does filesystem I/O, so it goes one layer up. The Android actual also nee
 | `sealed interface SessionState`, `SignedOutReason`                                | Android `Context` plumbing                                        |
 | `MalSessionRepository` — owns store + client + the `Auth`-configured `HttpClient` |                                                                   |
 
-Keeping the repository in `:core` also means one `mise run test:core` covers it on all four targets, and it is the
+Keeping the repository in `:core` also means one `mise run test:core` covers it on all three targets, and it is the
 code `:server` would need if the relay ever became a
 [backend-for-frontend](#63-token-storage-on-web).
 
@@ -223,7 +223,7 @@ is stable as of Kotlin 2.3 `[docs]`, so `Clock.System.now()` works in `commonMai
 and can be injected as a fake in tests.
 
 **Use the token store, not `SavedStateHandle`.** `SavedStateHandle` exists in KMP but only does real process-death
-restore on Android; the store works on all four targets. (On Android specifically,
+restore on Android; the store works on all three targets. (On Android specifically,
 `SavedStateHandle` would *also* work and is the more idiomatic choice — but then web needs a second mechanism, so prefer
 the one that covers both.)
 
@@ -742,7 +742,7 @@ val generateMalBuildConfig by tasks.registering {
 kotlin.sourceSets.commonMain { kotlin.srcDir(generateMalBuildConfig) }
 ```
 
-A plain `const val` in `commonMain` needs no expect/actual and works on all four targets — the whole advantage over
+A plain `const val` in `commonMain` needs no expect/actual and works on all three targets — the whole advantage over
 BuildKonfig. Document `mal.clientId` in `CLAUDE.md`, and add a `local.properties.example`.
 
 ---

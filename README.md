@@ -1,16 +1,67 @@
 # act
 
-A MyAnimeList client: Kotlin Multiplatform / Compose Multiplatform for Android, Web (Wasm) and Desktop (JVM), plus a
-small Ktor relay the web target needs. Production is <https://act.io-workshop.net>.
+A [MyAnimeList](https://myanimelist.net) client built with Kotlin Multiplatform and Compose Multiplatform.
 
-## Layout
+**Live demo:** [https://act.io-workshop.net](https://act.io-workshop.net)
 
-- [`core`](./core/src) — pure Kotlin Multiplatform, no Compose: sign-in, the Session, the Anime List, the Screen State.
-- [`app/shared`](./app/shared/src) — the Compose UI and the platform abstractions.
-- [`app/androidApp`](./app/androidApp), [`app/desktopApp`](./app/desktopApp), [`app/webApp`](./app/webApp) — thin entry
-  points.
-- [`server`](./server/src/main/kotlin) — the relay: MAL sends no CORS headers, so the browser calls it under `/mal`.
-- [`deploy`](./deploy) — Dockerfiles, Caddy, Compose, Terraform and the deploy scripts.
+## Features
+
+- **OAuth2 Authentication** — Full OAuth2 authorization code flow with PKCE (`code_challenge_method=plain`). Each
+  platform captures the redirect differently (loopback on desktop, popup on web, custom-scheme intent on Android). A
+  paste-the-code fallback covers edge cases across all platforms.
+- **Anime List** — Paginated, filterable, sortable list of your MAL anime entries with multiple layout options
+  (grid/list).
+- **Anime Page** — Detail view for individual anime with related entries, list-edit functionality (score, status,
+  episodes watched), and patch-log tracking.
+- **Session Management** — Token storage with automatic refresh, session diagnostics, and sign-out.
+- **Theming** — Light/dark/system theme preference persisted per-device.
+
+## Tech Stack
+
+- **Language**: Kotlin (Kotlin Multiplatform)
+- **UI**: Compose Multiplatform (shared UI across Android, Desktop, and Web)
+- **Build**: Gradle (Kotlin DSL) with [mise](https://mise.jdx.dev) for tool runtime and task orchestration
+- **Networking**: Ktor HttpClient with custom auth-token refresh plugin
+- **Serialization**: Kotlinx Serialization
+- **Async**: Kotlin Coroutines (flow-based reactive state)
+- **DI**: Koin (`:core` is intentionally Koin-free)
+- **Server**: Ktor server (JVM) — MAL relay for the web target
+- **Image Loading**: Coil (Compose Multiplatform)
+
+## Platform Targets
+
+| Target            | Description                                                       |
+|-------------------|-------------------------------------------------------------------|
+| **Android**       | Native Android app via Compose Multiplatform                      |
+| **Desktop (JVM)** | Desktop app with single-instance lock and loopback OAuth listener |
+| **Web (Wasm)**    | Web app compiled to WebAssembly, served via webpack dev server    |
+
+## Project Layout
+
+| Module                               | Purpose                                                                                                                                                                                              |
+|--------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`core`](./core/src)                 | Pure KMP business logic — no Compose, no Koin. Contains sign-in flow, session management, anime list, anime page, MAL API client, auth (OAuth2/PKCE), and screen state. Targets: JVM, Wasm, Android. |
+| [`app/shared`](./app/shared/src)     | Compose Multiplatform UI + platform abstractions (expect/actual). Contains all screens, navigation, DI setup, theming, and per-platform implementations (auth redirect, key-value store).            |
+| [`app/androidApp`](./app/androidApp) | Thin Android entry point                                                                                                                                                                             |
+| [`app/desktopApp`](./app/desktopApp) | Thin Desktop entry point (single-instance lock, loopback OAuth listener)                                                                                                                             |
+| [`app/webApp`](./app/webApp)         | Thin Web (Wasm) entry point (webpack dev server, `/mal` proxy)                                                                                                                                       |
+| [`server`](./server/src/main/kotlin) | Ktor relay server — forwards MAL API calls under `/mal` so the browser can reach MAL without CORS issues. Supports rate limiting, trusted-proxy X-Forwarded-For, body-size caps, and CORS.           |
+| [`deploy`](./deploy)                 | Dockerfiles, Caddy config, Docker Compose, Terraform, and deploy scripts                                                                                                                             |
+
+## Architecture
+
+- **Repository pattern**: `AnimeListRepository`, `AnimePageRepository`, `MalSessionRepository` encapsulate business
+  logic and API calls.
+- **Flow-based reactive state**: All state flows through Kotlin `StateFlow`/`SharedFlow`. The `ScreenState` source
+  combines multiple flows into a single UI-driving stream.
+- **Expect/actual platform abstraction**: Platform-specific code (auth redirect, storage, HTTP endpoints) is isolated
+  via KMP `expect`/`actual`.
+- **Dependency Injection**: Koin manages the shared graph (`appModule`) plus a per-target `platformModule`. Core stays
+  DI-free.
+- **Single authenticated HttpClient**: One `MalSessionRepository` owns token refresh; repositories share it to avoid
+  race conditions.
+- **`:core` has zero Compose and zero Koin dependencies** — it is pure KMP logic that can be tested independently.
+- **Web relay is same-origin** — the relay runs under the same origin as the web app, so CORS is never an issue.
 
 ## Setup
 
@@ -21,8 +72,8 @@ mise install                                  # the JDK (Azul Zulu 21) and Terra
 cp .secure.build.env.example .secure.build.env   # then fill in MAL_CLIENT_ID
 ```
 
-The Client ID comes from an app registered at myanimelist.net/apiconfig with App Type `other`. Without one the app
-still builds, runs and tests; Sign-in is disabled.
+The Client ID comes from an app registered at [myanimelist.net/apiconfig](https://myanimelist.net/apiconfig) with App
+Type `other`. Without one the app still builds, runs and tests; Sign-in is disabled.
 
 In an IDE, point the Gradle JDK at the mise install (`mise where java`) — Gradle no longer downloads one.
 
@@ -35,6 +86,14 @@ mise run run:server         # relay on :18010
 mise run run:web            # web on :18020 — needs run:server as well
 mise run build:android      # Android debug APK
 ```
+
+### Ports
+
+| Port  | Service                               |
+|-------|---------------------------------------|
+| 18010 | `:server` — Ktor MAL relay            |
+| 18020 | `:app:webApp` dev server              |
+| 18040 | Desktop OAuth callback on `127.0.0.1` |
 
 ## Test
 
@@ -52,3 +111,8 @@ mise run build                                 # compile every target and run ev
 
 `mise run deploy` — see the Deployment section of [`CLAUDE.md`](./CLAUDE.md), which is also the full reference for
 everything above. Needs `docker` (with buildx) and `ssh` on the machine; mise does not manage those.
+
+## More Details
+
+For in-depth documentation on authentication, deployment, build configuration, and development conventions, see [
+`CLAUDE.md`](./CLAUDE.md).

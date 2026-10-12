@@ -31,7 +31,8 @@ starts webpack-dev-server without blocking, so without it Gradle finishes (`BUIL
 and takes the dev server down with it, leaving nothing on the port.
 
 The `run:desktop*`, `run:web` and `build*` tasks load `.secure.build.env` (the Client ID); the `test*` tasks load
-nothing, so a test passes the same with or without one — see [Deployment](#deployment) for the env files.
+nothing, because a test must pass the same with or without one — the two that `deploy` runs inherit its Client ID all
+the same. See [Deployment](#deployment) for the env files.
 
 `:server` reads its configuration from the environment (`RelayConfig`, parsed once in `main()` and passed to
 `Application.module`); with nothing set it binds `127.0.0.1:18010` and allows `RelayConfig.DEFAULT_CORS_ORIGINS` —

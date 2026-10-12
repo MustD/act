@@ -2,7 +2,7 @@
 # Builds both images for the current act.version. The Gradle tasks never see the deploy env (lib.sh, `task`).
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
-# No MAL_CLIENT_ID check: :core:requireMalClientId fails the bundle itself, and also accepts -Pmal.clientId.
+# No MAL_CLIENT_ID check: :core:requireMalClientId fails the bundle itself.
 require_env DOCKERHUB_USER
 VERSION="$(act_version)"
 

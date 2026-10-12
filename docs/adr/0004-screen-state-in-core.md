@@ -14,7 +14,7 @@ what that looks like. Nothing in `:core` imports Compose, and nothing in `Screen
 lambda.
 
 The operational half is `mise run test:core`, which is the one task in this repository that runs a test on jvm,
-js, wasmJs and android in one command. The mapping is the part of this feature that can be wrong the same way on four
+wasmJs and android in one command. The mapping is the part of this feature that can be wrong the same way on three
 Targets; the drawing is the part that can only be tested where a Compose harness already runs.
 
 ## Considered options
