@@ -534,10 +534,10 @@ redirect_uri = http://127.0.0.1:54321/oauth/callback
 # §A and §B only prove MAL will *send* the browser to these URLs. These prove
 # something is listening when it arrives. Start what each one needs first:
 #
-#   ./gradlew :server:run                                            # D1..D3
-#   ./gradlew :app:webApp:wasmJsBrowserDevelopmentRun --continuous    # D4, D6
-#   ./gradlew :app:webApp:jsBrowserDevelopmentRun --continuous        # D5, D7
-#   ./gradlew :app:desktopApp:run, then arm the login flow            # §E
+#   mise run run:server                             # D1..D3
+#   mise run run:web                                # D4, D6
+#   the `js` target's dev server (since removed)    # D5, D7
+#   mise run run:desktop, then arm the login flow   # §E
 ###############################################################################
 
 ### D1 — Relay token endpoint passes MAL's answer through unchanged

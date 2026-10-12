@@ -8,19 +8,30 @@ Kotlin Multiplatform / Compose Multiplatform project targeting Android, Web (Was
 
 ## Commands
 
+**Every command is a mise task.** `mise.toml` is the only place a Gradle command line is written down — the deploy
+scripts call the tasks too — so the task names are the interface and the build tool behind them can change. Do not
+document or script `./gradlew` directly; add a task. `mise tasks` lists them.
+
+mise also provides the tools: `mise install` once per machine fetches the JDK (`java = "zulu-21"`) and Terraform.
+`docker` (with buildx) and `ssh` are **not** managed by mise — the deploy tasks expect them on the machine.
+
 Build / run:
 
 ```bash
-./gradlew :app:androidApp:assembleDebug              # Android APK
-./gradlew :app:desktopApp:run                        # Desktop
-./gradlew :app:desktopApp:hotRun --auto              # Desktop with Compose Hot Reload
-./gradlew :server:run                                            # Ktor server on :18010
-./gradlew :app:webApp:wasmJsBrowserDevelopmentRun --continuous   # Web, Wasm target, on :18020
+mise run build:android      # Android debug APK
+mise run run:desktop        # Desktop
+mise run run:desktop:hot    # Desktop with Compose Hot Reload
+mise run run:server         # Ktor server on :18010
+mise run run:web            # Web, Wasm target, on :18020
+mise run build              # everything: every target compiled, every test run
 ```
 
-`--continuous` is required for the web target, not just for hot reload: the run task starts webpack-dev-server without
-blocking, so without it Gradle finishes (`BUILD SUCCESSFUL` in well under a second) and takes the dev server down with
-it, leaving nothing on the port.
+`run:web` passes Gradle `--continuous`, which is required for the web target, not just for hot reload: the run task
+starts webpack-dev-server without blocking, so without it Gradle finishes (`BUILD SUCCESSFUL` in well under a second)
+and takes the dev server down with it, leaving nothing on the port.
+
+The `run:desktop*`, `run:web` and `build*` tasks load `.secure.build.env` (the Client ID); the `test*` tasks load
+nothing, so a test passes the same with or without one — see [Deployment](#deployment) for the env files.
 
 `:server` reads its configuration from the environment (`RelayConfig`, parsed once in `main()` and passed to
 `Application.module`); with nothing set it binds `127.0.0.1:18010` and allows `RelayConfig.DEFAULT_CORS_ORIGINS` —
@@ -100,25 +111,25 @@ The proxy's origin must also be in `:server`'s CORS allow-list (`RelayConfig.DEF
 `POST` and `PATCH`, Ktor's CORS plugin cannot tell a proxied request is same-origin, and an unlisted origin gets an
 empty 403 — the login succeeds and the token exchange then fails.
 
-Tests — there is no single aggregate target that covers everything; each platform has its own task:
+Tests — each platform has its own task, and `test` runs them all in one Gradle invocation:
 
 ```bash
-./gradlew :app:shared:testAndroidHostTest   # androidHostTest + commonTest
-./gradlew :app:shared:jvmTest               # jvmTest + commonTest
-./gradlew :app:shared:wasmJsTest            # webTest + commonTest
-./gradlew :app:androidApp:testDebugUnitTest # the manifest drift guard, and nothing else
-./gradlew :server:test
-./gradlew build                             # everything
+mise run test:shared:android   # :app:shared androidHostTest + commonTest
+mise run test:shared:jvm       # :app:shared jvmTest + commonTest
+mise run test:shared:web       # :app:shared webTest + commonTest
+mise run test:android          # :app:androidApp — the manifest drift guard, and nothing else
+mise run test:server
+mise run test:core             # :core on jvm, wasmJs and android at once
+mise run test                  # all of the above
 ```
 
-Single test (works for JVM-hosted test tasks):
+Single test — `test:one <suite> <filter>`, where the suite is `core`, `shared`, `server` or `android` and runs on that
+module's JVM-hosted test task (the only kind that can filter):
 
 ```bash
-./gradlew :app:shared:jvmTest --tests "io.challenge_workshop.mal_ui.auth.LoopbackRedirectListenerTest"
-./gradlew :core:jvmTest --tests "*.SignInTest.signing_in_is_blocked_when_the_build_has_no_client_id"
+mise run test:one shared "io.challenge_workshop.mal_ui.auth.LoopbackRedirectListenerTest"
+mise run test:one core "*.SignInTest.signing_in_is_blocked_when_the_build_has_no_client_id"
 ```
-
-`:core` has the same per-target split; `./gradlew :core:allTests` covers all three at once.
 
 ## MAL authentication
 
@@ -156,8 +167,8 @@ relay to its own hostname would reintroduce the original failure.
 Web therefore needs two processes:
 
 ```bash
-./gradlew :server:run                                            # relay on :18010
-./gradlew :app:webApp:wasmJsBrowserDevelopmentRun --continuous   # app on :18020
+mise run run:server   # relay on :18010
+mise run run:web      # app on :18020
 ```
 
 Three things must agree on the `/mal` prefix: `MAL_RELAY_PATH_PREFIX` in `:core`, the reverse-proxy route, and the
@@ -237,27 +248,28 @@ bring the original failure back; the edge must pass `/mal` through with `PATCH` 
 `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`, `EDGE_SSH` and the `TF_VAR_*`. **mise reads them, per task**
 (`env = { _ = { file = ... } }` in `mise.toml`) — never a global `[env]` — so the DO token reaches only `infra:*` and
 `deploy*`; `deploy` and `deploy:status` load the file for `EDGE_SSH` and `unset` the token at once (`terraform output`
-reads the S3 state with the Spaces key alone), and the deploy scripts run Gradle through `lib.sh`'s `gradle`, which
-strips the Spaces key, `EDGE_SSH` and every `TF_VAR_*` as well.
+reads the S3 state with the Spaces key alone), and the deploy scripts reach Gradle only through `lib.sh`'s `task` — a
+nested `mise run` of `build:web:dist`, `build:server:dist`, `test:server` and `test:shared:web`, which inherits the
+caller's environment — so `task` strips the Spaces key, `EDGE_SSH` and every `TF_VAR_*` as well.
 
 **Terraform state** is not local: it lives in the shared `io-workshop-tfstate` Spaces bucket (owned by the
 `io-workshop-hub` stack) under `act/web.tfstate`, via the `backend "s3"` block in `deploy/terraform/versions.tf`, and
 the `AWS_*` pair is a Spaces key scoped to that bucket. There is **no state locking** — Spaces ignores the conditional
 writes `use_lockfile` relies on — so never run two `infra:apply`s at once. Gradle picks `MAL_CLIENT_ID` up
 from the environment itself, so `run:desktop` and `run:web` are prefilled with it (`run:server` loads nothing); plain
-`./gradlew` outside mise does not read these files. `docker login` is done once by hand.
+Gradle run outside mise does not read these files. `docker login` is done once by hand.
 The Client ID ends up in plain text in a public image, deliberately: it is equally public in `webApp.js`.
 
 | Task                                              | Does                                                                                                                                        |
 |---------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
-| `mise run run:desktop` / `run:server` / `run:web` | the Commands above; the two clients with `.secure.build.env` loaded                                                                         |
+| `mise run run:*` / `build*` / `test*`             | the [Commands](#commands) above; the clients and builds with `.secure.build.env` loaded, the tests with nothing                             |
 | `mise run infra:plan` / `infra:apply`             | Terraform (`deploy/terraform/`), by hand — never from a deploy; a replaced droplet moves its private IP, so the edge's upstream must follow |
-| `mise run deploy:build`                           | `wasmJsBrowserDistribution` + `installDist`, then both images (`linux/amd64`)                                                               |
+| `mise run deploy:build`                           | `build:web:dist` + `build:server:dist`, then both images (`linux/amd64`)                                                                    |
 | `mise run deploy:push`                            | pushes both; refuses if either tag exists on Docker Hub                                                                                     |
 | `mise run deploy [version]`                       | the whole path below; with a version, only redeploys that pushed tag                                                                        |
 | `mise run deploy:status`                          | `ACT_VERSION` and `docker compose ps` on the droplet                                                                                        |
 
-`deploy`: refuses a dirty tree; runs `:server:test` and `:app:shared:wasmJsTest`; builds and pushes; copies
+`deploy`: refuses a dirty tree; runs `test:server` and `test:shared:web`; builds and pushes; copies
 `docker-compose.yml` and writes the droplet's `.env` over `ssh -J $EDGE_SSH deploy@<terraform output private_ip>`;
 `pull`, `up -d`, waits for both healthchecks; prunes images other than the current and previous version; then smoke-tests
 through the edge (`deploy/scripts/smoke.sh`: the SPA fallback, `/webApp.js` is JS, `/privacy`, a bogus-bearer call to
@@ -412,7 +424,7 @@ Four things in `app/androidApp/src/main/AndroidManifest.xml` are each a silent f
 
 - **The product version is `act.version` in `gradle.properties`** — `:server`'s `version` and Android's `versionName` read it via `providers.gradleProperty`. Shell tasks read it without Gradle: `grep '^act.version=' gradle.properties | cut -d= -f2`. `versionCode` is separate.
 - **All dependency and plugin versions live in `gradle/libs.versions.toml`.** Build scripts reference `libs.*` aliases only — never inline a version string in a `build.gradle.kts`.
-- Java toolchain is 21 (auto-provisioned via the foojay resolver / `gradle/gradle-daemon-jvm.properties`); Android and Android-KMP modules compile to **JVM target 11**.
+- Java is 21, Azul Zulu, **pinned in `mise.toml` and not downloaded by Gradle**: `gradle/gradle-daemon-jvm.properties` names the vendor and version, there is no foojay resolver and no `toolchainUrl.*`, so a machine without that JDK fails with "No defined toolchain download url" rather than fetching one — the fix is `mise install`, not `updateDaemonJvm` (which would write the URLs back). An IDE's Gradle sync does not go through mise: set its Gradle JDK to the mise install once (`mise where java`). Android and Android-KMP modules compile to **JVM target 11**.
 - Gradle configuration cache and build cache are enabled in `gradle.properties`. Build logic that reads state at execution time will fail configuration-cache validation.
 
 ## Agent skills

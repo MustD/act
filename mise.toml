@@ -1,8 +1,17 @@
-# Operator tasks. mise loads the env files per task — never a global [env] — so DIGITALOCEAN_TOKEN reaches only the
-# infra and deploy tasks, not Gradle or an interactive shell. See CLAUDE.md, "Deployment".
-#   .secure.build.env   MAL_CLIENT_ID, DOCKERHUB_USER   (run:desktop, run:web, build, push, deploy)
+# Every command in this repo is a mise task; these are the only place a Gradle command line is written down, so the
+# deploy scripts and the docs name tasks, not `./gradlew`. See CLAUDE.md, "Commands".
+#
+# mise loads the env files per task — never a global [env] — so DIGITALOCEAN_TOKEN reaches only the infra and deploy
+# tasks, not Gradle or an interactive shell. See CLAUDE.md, "Deployment".
+#   .secure.build.env   MAL_CLIENT_ID, DOCKERHUB_USER   (run:desktop*, run:web, build*, deploy*)
 #   .secure.deploy.env  DIGITALOCEAN_TOKEN, AWS_* (state bucket), EDGE_SSH, TF_VAR_*   (infra, deploy)
+# The test tasks load neither: a test must pass the same with or without a Client ID.
+#
+# Not managed here: docker (with buildx) and ssh, which the deploy tasks expect on the machine.
 [tools]
+# The JDK Gradle runs on. Nothing downloads one any more — gradle-daemon-jvm.properties names the same vendor and
+# version and has no toolchain URLs — so a different JDK fails the build rather than being replaced.
+java = "zulu-21"
 terraform = "1.15.9" # inside versions.tf's "~> 1.15"
 
 # --- run locally -------------------------------------------------------------------------------------------------
@@ -12,6 +21,11 @@ description = "Desktop app, with the Client ID from .secure.build.env"
 env = { _ = { file = ".secure.build.env" } }
 run = "./gradlew :app:desktopApp:run"
 
+[tasks."run:desktop:hot"]
+description = "Desktop app with Compose Hot Reload"
+env = { _ = { file = ".secure.build.env" } }
+run = "./gradlew :app:desktopApp:hotRun --auto"
+
 [tasks."run:server"]
 description = "Ktor relay on :18010"
 run = "./gradlew :server:run"
@@ -20,6 +34,75 @@ run = "./gradlew :server:run"
 description = "Web dev server on :18020 (needs run:server too)"
 env = { _ = { file = ".secure.build.env" } }
 run = "./gradlew :app:webApp:wasmJsBrowserDevelopmentRun --continuous"
+
+# --- build -------------------------------------------------------------------------------------------------------
+
+[tasks.build]
+description = "Everything: every target compiled and every test run"
+env = { _ = { file = ".secure.build.env" } }
+run = "./gradlew build"
+
+[tasks."build:android"]
+description = "Android debug APK"
+env = { _ = { file = ".secure.build.env" } }
+run = "./gradlew :app:androidApp:assembleDebug"
+
+[tasks."build:web:dist"]
+description = "Production Wasm bundle; fails without a Client ID"
+env = { _ = { file = ".secure.build.env" } }
+run = "./gradlew :app:webApp:wasmJsBrowserDistribution"
+
+[tasks."build:server:dist"]
+description = "The relay's installDist, the act-relay image's build context"
+run = "./gradlew :server:installDist"
+
+# --- test --------------------------------------------------------------------------------------------------------
+
+[tasks.test]
+description = "Every test task below, in one Gradle invocation"
+run = "./gradlew :core:allTests :app:shared:jvmTest :app:shared:testAndroidHostTest :app:shared:wasmJsTest :app:androidApp:testDebugUnitTest :server:test"
+
+[tasks."test:core"]
+description = ":core on jvm, wasmJs and android"
+run = "./gradlew :core:allTests"
+
+[tasks."test:shared:jvm"]
+description = ":app:shared jvmTest + commonTest"
+run = "./gradlew :app:shared:jvmTest"
+
+[tasks."test:shared:android"]
+description = ":app:shared androidHostTest + commonTest"
+run = "./gradlew :app:shared:testAndroidHostTest"
+
+[tasks."test:shared:web"]
+description = ":app:shared webTest + commonTest"
+run = "./gradlew :app:shared:wasmJsTest"
+
+[tasks."test:android"]
+description = ":app:androidApp — the manifest drift guard, and nothing else"
+run = "./gradlew :app:androidApp:testDebugUnitTest"
+
+[tasks."test:server"]
+description = ":server"
+run = "./gradlew :server:test"
+
+[tasks."test:one"]
+description = "One test class or method: `test:one <suite> <filter>`, on that suite's JVM-hosted test task"
+usage = """
+arg "<suite>" help="Which module's JVM-hosted tests to run" {
+  choices "core" "shared" "server" "android"
+}
+arg "<filter>" help="Class or method pattern, e.g. '*.SignInTest' or '*.SignInTest.some_method'"
+"""
+run = """
+case "$usage_suite" in
+  core)    task=:core:jvmTest ;;
+  shared)  task=:app:shared:jvmTest ;;
+  server)  task=:server:test ;;
+  android) task=:app:androidApp:testDebugUnitTest ;;
+esac
+./gradlew "$task" --tests "$usage_filter"
+"""
 
 # --- infrastructure ----------------------------------------------------------------------------------------------
 

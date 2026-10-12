@@ -1,48 +1,54 @@
-This is a Kotlin Multiplatform project targeting Android, Web, Desktop (JVM), Server.
+# act
 
-* [/app/shared](./app/shared/src) is for code that will be shared across your Compose Multiplatform applications. It
-  contains several subfolders:
-    - [commonMain](./app/shared/src/commonMain/kotlin) is for code that’s common for all targets.
-    - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name. For
-      example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-      the [iosMain](./app/shared/src/iosMain/kotlin) folder would be the right place for such calls. Similarly, if you
-      want to edit the Desktop (JVM) specific part, the [jvmMain](./app/shared/src/jvmMain/kotlin)
-      folder is the appropriate location.
+A MyAnimeList client: Kotlin Multiplatform / Compose Multiplatform for Android, Web (Wasm) and Desktop (JVM), plus a
+small Ktor relay the web target needs. Production is <https://act.io-workshop.net>.
 
-* [/core](./core/src) is for the code that will be shared between all targets in the project. The most important
-  subfolder is [commonMain](./core/src/commonMain/kotlin). If preferred, you can add code to the platform-specific
-  folders here too.
+## Layout
 
-* [/server](./server/src/main/kotlin) is for the Ktor server application.
+- [`core`](./core/src) — pure Kotlin Multiplatform, no Compose: sign-in, the Session, the Anime List, the Screen State.
+- [`app/shared`](./app/shared/src) — the Compose UI and the platform abstractions.
+- [`app/androidApp`](./app/androidApp), [`app/desktopApp`](./app/desktopApp), [`app/webApp`](./app/webApp) — thin entry
+  points.
+- [`server`](./server/src/main/kotlin) — the relay: MAL sends no CORS headers, so the browser calls it under `/mal`.
+- [`deploy`](./deploy) — Dockerfiles, Caddy, Compose, Terraform and the deploy scripts.
 
-### Running the apps
+## Setup
 
-Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and
-options:
+Everything runs through [mise](https://mise.jdx.dev); `mise tasks` lists every command.
 
-- Android app: `./gradlew :app:androidApp:assembleDebug`
-- Desktop app:
-    - Hot reload: `./gradlew :app:desktopApp:hotRun --auto`
-    - Standard run: `./gradlew :app:desktopApp:run`
-- Server: `./gradlew :server:run`
-- Web app:
-    - `./gradlew :app:webApp:wasmJsBrowserDevelopmentRun --continuous`
+```bash
+mise install                                  # the JDK (Azul Zulu 21) and Terraform
+cp .secure.build.env.example .secure.build.env   # then fill in MAL_CLIENT_ID
+```
 
-### Running tests
+The Client ID comes from an app registered at myanimelist.net/apiconfig with App Type `other`. Without one the app
+still builds, runs and tests; Sign-in is disabled.
 
-Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
+In an IDE, point the Gradle JDK at the mise install (`mise where java`) — Gradle no longer downloads one.
 
-- Android tests: `./gradlew :app:shared:testAndroidHostTest`
-- Desktop tests: `./gradlew :app:shared:jvmTest`
-- Server tests: `./gradlew :server:test`
-- Web tests: `./gradlew :app:shared:wasmJsTest`
+## Run
 
----
+```bash
+mise run run:desktop        # desktop
+mise run run:desktop:hot    # desktop with Compose Hot Reload
+mise run run:server         # relay on :18010
+mise run run:web            # web on :18020 — needs run:server as well
+mise run build:android      # Android debug APK
+```
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html),
-[Compose Multiplatform](https://github.com/JetBrains/compose-multiplatform/#compose-multiplatform),
-[Kotlin/Wasm](https://kotl.in/wasm/)…
+## Test
 
-We would appreciate your feedback on Compose/Web and Kotlin/Wasm in the public Slack
-channel [#compose-web](https://slack-chats.kotlinlang.org/c/compose-web). If you face any issues, please report them
-on [YouTrack](https://youtrack.jetbrains.com/newIssue?project=CMP).
+```bash
+mise run test                                  # everything
+mise run test:core                             # :core on every target
+mise run test:shared:jvm                       # also test:shared:android, test:shared:web
+mise run test:android
+mise run test:server
+mise run test:one core "*.SignInTest"          # one class or method; suites: core, shared, server, android
+mise run build                                 # compile every target and run every test
+```
+
+## Deploy
+
+`mise run deploy` — see the Deployment section of [`CLAUDE.md`](./CLAUDE.md), which is also the full reference for
+everything above. Needs `docker` (with buildx) and `ssh` on the machine; mise does not manage those.

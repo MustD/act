@@ -27,7 +27,8 @@ else
 		echo "Working tree is dirty. Commit or stash first — an image tag must name a commit." >&2
 		exit 1
 	fi
-	gradle :server:test :app:shared:wasmJsTest
+	task test:server
+	task test:shared:web
 	"$ROOT/deploy/scripts/build.sh"
 	"$ROOT/deploy/scripts/push.sh"
 fi

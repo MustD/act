@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.stateIn
 /**
  * The one place a [ScreenState] is decided: eight flows in, one flow out.
  *
- * No Compose and no Koin, so `./gradlew :core:allTests` covers the mapping on every Target and
+ * No Compose and no Koin, so `mise run test:core` covers the mapping on every Target and
  * the alternative — the same `when` written inside a composable — cannot be tested at all without a
  * rendering harness per Target.
  *

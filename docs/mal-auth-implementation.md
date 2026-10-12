@@ -198,7 +198,7 @@ actual does filesystem I/O, so it goes one layer up. The Android actual also nee
 | `sealed interface SessionState`, `SignedOutReason`                                | Android `Context` plumbing                                        |
 | `MalSessionRepository` — owns store + client + the `Auth`-configured `HttpClient` |                                                                   |
 
-Keeping the repository in `:core` also means one `./gradlew :core:allTests` covers it on all four targets, and it is the
+Keeping the repository in `:core` also means one `mise run test:core` covers it on all four targets, and it is the
 code `:server` would need if the relay ever became a
 [backend-for-frontend](#63-token-storage-on-web).
 

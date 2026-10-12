@@ -18,15 +18,16 @@ require_env() {
 	done
 }
 
-# Gradle with nothing from .secure.deploy.env: the DigitalOcean token, the state bucket's Spaces key, the edge's SSH
-# address and every TF_VAR_*.
-# The deploy tasks load that file, and Gradle — with its daemon, plugins and build scans — has no use for any of it.
-gradle() {
+# A mise task with nothing from .secure.deploy.env: the DigitalOcean token, the state bucket's Spaces key, the edge's
+# SSH address and every TF_VAR_*.
+# The deploy tasks load that file, a nested task inherits this environment on top of its own env file, and Gradle —
+# with its daemon, plugins and build scans — has no use for any of it.
+task() {
 	local strip=(-u DIGITALOCEAN_TOKEN -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u EDGE_SSH) v
 	for v in $(compgen -e); do
 		if [[ $v == TF_VAR_* ]]; then strip+=(-u "$v"); fi
 	done
-	env "${strip[@]}" ./gradlew "$@"
+	env "${strip[@]}" mise run "$@"
 }
 
 act_version() { grep '^act.version=' gradle.properties | cut -d= -f2; }

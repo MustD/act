@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
  * In `:core` because the Layout is an input to the Screen State, and the value that combines those
  * inputs cannot depend on anything in `:app:shared` — the same reason [AnimeListRepository] lives
  * here. It also means the ordering below is covered by
- * `./gradlew :core:allTests` on every Target rather than only wherever a Compose test can run.
+ * `mise run test:core` on every Target rather than only wherever a Compose test can run.
  *
  * It owns exactly the piece of state that is *not* the pager's. A Layout change re-draws the entries
  * already loaded and issues no request, which is why the pager has never heard of it.

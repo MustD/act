@@ -1,6 +1,6 @@
 # The act-relay image: :server's installDist on a slim JRE.
 #
-# Build context is server/build/install/server, produced by `./gradlew :server:installDist`. The jars are
+# Build context is server/build/install/server, produced by `mise run build:server:dist`. The jars are
 # built on the host rather than in a multi-stage build because `deploy` has already run Gradle there (tests,
 # the web bundle), so a builder stage would re-download the toolchain and the dependency graph into a cold
 # layer cache for the same jars, and would need the whole repo in the context.
