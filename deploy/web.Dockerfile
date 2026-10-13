@@ -1,4 +1,4 @@
-# The act-web image: Caddy, the production Wasm bundle, privacy.html and the Caddyfile.
+# The act-web image: Caddy, the production Wasm bundle, about.html, privacy.html and the Caddyfile.
 #
 # Build context is the bundle, app/webApp/build/dist/wasmJs/productionExecutable, produced by
 # `mise run build:web:dist` (which refuses to run without a Client ID). The Caddyfile comes

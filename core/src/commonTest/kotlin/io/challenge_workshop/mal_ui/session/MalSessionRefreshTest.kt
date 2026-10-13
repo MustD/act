@@ -186,7 +186,7 @@ class MalSessionRefreshTest {
 
     @Test
     fun forcing_the_access_token_to_expire_drives_exactly_one_real_refresh() = runTest {
-        // The debug panel's force-401 button. Writing a bad token into the store is not enough:
+        // The Diagnostics Screen's force-401 button. Writing a bad token into the store is not enough:
         // Ktor caches the access token in `AuthTokenHolder`, so without clearing that cache
         // nothing observable happens.
         val mal = FakeMal()

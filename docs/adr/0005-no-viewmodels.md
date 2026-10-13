@@ -3,7 +3,7 @@
 Status: accepted
 
 The Sign-in (arming a Redirect Capture, the wait on myanimelist.net, Paste-the-code, the startup redirect) is owned by
-`SignIn`, and the signed-in screen's one-shot operations (sign-out, the debug panel) by `SessionControls`. Both are
+`SignIn`, and the signed-in screen's one-shot operations (sign-out, the Diagnostics Screen) by `SessionControls`. Both are
 process-scoped `single`s in `:core` with their own `Main.immediate` scope, like `AnimeListRepository` and
 `LayoutPreference`. **There is no `MalSessionViewModel`, and a ViewModel should not be reintroduced** to hold any of
 this. A reader coming from Android will expect one. This file is here so they don't add it back.

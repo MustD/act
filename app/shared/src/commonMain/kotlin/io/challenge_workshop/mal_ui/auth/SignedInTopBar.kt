@@ -3,7 +3,6 @@ package io.challenge_workshop.mal_ui.auth
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,9 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import io.challenge_workshop.mal_ui.theme.BusyIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -32,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -43,7 +40,6 @@ import io.challenge_workshop.mal_ui.animelist.layoutLabel
 import io.challenge_workshop.mal_ui.animelist.next
 import io.challenge_workshop.mal_ui.animelist.promptText
 import io.challenge_workshop.mal_ui.theme.ActMedium
-import io.challenge_workshop.mal_ui.theme.SectionLabel
 import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.theme.Act
 import io.challenge_workshop.mal_ui.theme.ActMedium
@@ -61,10 +57,8 @@ import org.jetbrains.compose.resources.painterResource
 /**
  * The prompt row over the signed-in screen: `<user>@mal:~$ ls <watch status>/` on the left, and on
  * the right the three things that are not a query over the list — the Layout, the Theme, and a
- * `more_vert` menu holding the three things the Anime List taking over the screen could otherwise
- * have cost. Reload is the way to pick up a change made on myanimelist.net, sign out is the only way
- * back to the sign-in screen, and diagnostics is the only way a human ever sees the refresh path
- * execute. Nothing was deleted to make room.
+ * `more_vert` menu holding the Main Menu. Sign out is the only way back to the sign-in screen, and
+ * diagnostics is the only way a human ever sees the refresh path execute — and where Reload is.
  *
  * It replaces the top app bar, which neither scrolled nor competed with the list and so was the one
  * place the name could sit; the row is outside the lazy grid for the same reason.
@@ -81,11 +75,11 @@ import org.jetbrains.compose.resources.painterResource
 fun SignedInPromptRow(
     state: ScreenState.SignedIn,
     actions: SignedInActions,
-    onShowDiagnostics: () -> Unit,
     modifier: Modifier = Modifier,
     wide: Boolean = false,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    val uriHandler = LocalUriHandler.current
     val c = Act.colors
 
     Row(
@@ -128,7 +122,7 @@ fun SignedInPromptRow(
             onClick = { actions.onToggleTheme(c.isDark) },
             modifier = Modifier.testTag(SESSION_THEME_TAG),
         )
-        // At wide widths the sidebar carries these three; the menu would only repeat it.
+        // At wide widths the sidebar carries the Main Menu; this would only repeat it.
         if (!wide) {
             // The menu is anchored to this `Box` rather than to the row, so it opens under the button
             // that summoned it instead of at the corner of the window.
@@ -147,19 +141,24 @@ fun SignedInPromptRow(
                     // Each entry closes the menu before it acts. Leaving it open over a screen that has
                     // just started replacing itself would put a second tap one pixel away from the first.
                     DropdownMenuItem(
-                        text = { Text("reload") },
-                        // The same reset the filter and the Sort Order go through, with neither of them
-                        // changed — so it refetches the list on screen from `offset=0`.
-                        onClick = {
-                            menuOpen = false
-                            actions.onReload()
-                        },
-                    )
-                    DropdownMenuItem(
                         text = { Text("diagnostics") },
                         onClick = {
                             menuOpen = false
-                            onShowDiagnostics()
+                            actions.onOpenDiagnostics()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("about") },
+                        onClick = {
+                            menuOpen = false
+                            actions.onOpenAbout()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("privacy") },
+                        onClick = {
+                            menuOpen = false
+                            uriHandler.openUri(PRIVACY_URL)
                         },
                     )
                     DropdownMenuItem(
@@ -217,53 +216,3 @@ internal fun BlockCursor(modifier: Modifier = Modifier) {
 }
 
 private const val CURSOR_BLINK_MS = 500L
-
-/**
- * [SessionDebugPanel] in a dialog, which is where the overflow menu's last entry opens it.
- *
- * A dialog and **not a third destination** — see [SESSION_DIAGNOSTICS_TAG]. The signed-in screen is
- * still underneath, with its scroll position and its loaded pages intact.
- *
- * The menu entry is the panel's disclosure now, which is why the panel itself no longer carries one —
- * a dialog that opened onto a collapsed panel would be two taps to say one thing.
- *
- * Scrollable, because the panel is a dozen diagnostic lines and a phone in landscape is shorter than
- * they are.
- *
- * The user's MAL id is here rather than in the bar because the bar has one line and the name has to
- * have it. The id is the half of the old profile row nobody reads until something is wrong — two
- * accounts on one device, or a name that was renamed — which is the definition of a diagnostic.
- */
-@Composable
-fun SessionDiagnosticsDialog(
-    state: ScreenState.SignedIn,
-    actions: DiagnosticsActions,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        modifier = modifier.testTag(SESSION_DIAGNOSTICS_TAG),
-        containerColor = Act.colors.sf,
-        shape = ActMedium,
-        title = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                SectionLabel("diagnostics")
-                Text("Session diagnostics", style = Act.type.sheetTitle, color = Act.colors.ink)
-            }
-        },
-        text = {
-            Column(
-                Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                LabelledValue(
-                    "Signed in as",
-                    state.user?.let { "${it.name} (MAL id ${it.id})" } ?: "—",
-                )
-                SessionDebugPanel(state, actions)
-            }
-        },
-        confirmButton = { TerminalButton("Close", onClick = onDismiss) },
-    )
-}

@@ -20,14 +20,16 @@ import io.challenge_workshop.mal_ui.theme.ActTheme
 import io.challenge_workshop.mal_ui.animelist.AnimeListRepository
 import io.challenge_workshop.mal_ui.animepage.AnimePageRepository
 import io.challenge_workshop.mal_ui.animelist.LayoutPreference
+import io.challenge_workshop.mal_ui.screen.ScreenChoice
 import io.challenge_workshop.mal_ui.theme.ThemePreference
 import io.challenge_workshop.mal_ui.auth.LoopbackRedirectListener
 import io.challenge_workshop.mal_ui.auth.LoopbackRedirectListenerTest
-import io.challenge_workshop.mal_ui.auth.MAL_HOME_URL
-import io.challenge_workshop.mal_ui.auth.REPORT_ISSUE_URL
+import io.challenge_workshop.mal_ui.auth.MAL_REGISTER_URL
+import io.challenge_workshop.mal_ui.auth.PRIVACY_URL
+import io.challenge_workshop.mal_ui.auth.WELCOME_ABOUT_TAG
+import io.challenge_workshop.mal_ui.auth.WELCOME_PRIVACY_TAG
+import io.challenge_workshop.mal_ui.auth.WELCOME_REGISTER_TAG
 import io.challenge_workshop.mal_ui.auth.SIGNED_OUT_REASON_TAG
-import io.challenge_workshop.mal_ui.auth.SUPPORT_DEVELOPMENT_URL
-import io.challenge_workshop.mal_ui.auth.SUPPORT_MAL_URL
 import io.challenge_workshop.mal_ui.auth.SignIn
 import io.challenge_workshop.mal_ui.auth.SignInPhase
 import io.challenge_workshop.mal_ui.auth.SignInState
@@ -110,6 +112,7 @@ class WelcomeScreenTest {
         val animeList = AnimeListRepository(repository, listScope)
         val animePages = AnimePageRepository(repository, animeList, listScope)
         val layout = LayoutPreference(store, listScope)
+        val screenChoice = ScreenChoice(repository.state, listScope)
         val theme = ThemePreference(store, listScope)
         val opened = Collections.synchronizedList(mutableListOf<String>())
         try {
@@ -119,7 +122,7 @@ class WelcomeScreenTest {
                     // test.
                     CompositionLocalProvider(LocalUriHandler provides RecordingUriHandler(opened)) {
                         // `App()` provides the theme in production; `AppScreen` is below it.
-                        ActTheme { AppScreen(repository, signIn, controls, animeList, animePages, layout, theme) }
+                        ActTheme { AppScreen(repository, signIn, controls, animeList, animePages, layout, screenChoice, theme) }
                     }
                 }
 
@@ -210,7 +213,20 @@ class WelcomeScreenTest {
     }
 
     @Test
-    fun the_links_open_their_constants_through_the_uri_handler() {
+    fun the_welcome_screen_is_not_a_link_list() {
+        runComposeUiTest {
+            setContent { ThemedSessionRoute(signedOut(), RecordedActions().actions) }
+
+            for (gone in listOf("Support MyAnimeList", "Support development", "Report an issue", "Anime data provided by MyAnimeList.net")) {
+                onNodeWithText(gone).assertDoesNotExist()
+            }
+            onNodeWithText("A MyAnimeList account is required", substring = true).assertIsDisplayed()
+            onNodeWithText("Unofficial", substring = true).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun the_account_requirement_links_to_registration_and_privacy_opens_the_policy() {
         val opened = mutableListOf<String>()
         runComposeUiTest {
             setContent {
@@ -219,18 +235,23 @@ class WelcomeScreenTest {
                 }
             }
 
-            onNodeWithText("Support MyAnimeList").performClick()
-            onNodeWithText("Support development").performClick()
-            onNodeWithText("Report an issue").performClick()
-            onNodeWithText("Anime data provided by MyAnimeList.net").performClick()
-            onNodeWithText("Unofficial", substring = true).assertIsDisplayed()
+            onNodeWithTag(WELCOME_REGISTER_TAG).performClick()
+            onNodeWithTag(WELCOME_PRIVACY_TAG).performClick()
 
-            assertEquals(
-                listOf(SUPPORT_MAL_URL, SUPPORT_DEVELOPMENT_URL, REPORT_ISSUE_URL, MAL_HOME_URL),
-                opened,
-            )
-            assertEquals("https://patreon.com/MustD", SUPPORT_DEVELOPMENT_URL)
-            assertEquals("https://github.com/MustD/act/issues", REPORT_ISSUE_URL)
+            assertEquals(listOf(MAL_REGISTER_URL, PRIVACY_URL), opened)
+            assertEquals("https://myanimelist.net/register.php", MAL_REGISTER_URL)
+        }
+    }
+
+    @Test
+    fun the_about_link_asks_for_the_about_screen() {
+        val recorded = RecordedActions()
+        runComposeUiTest {
+            setContent { ThemedSessionRoute(signedOut(), recorded.actions) }
+
+            onNodeWithTag(WELCOME_ABOUT_TAG).performClick()
+
+            assertTrue("openAbout" in recorded.calls)
         }
     }
 

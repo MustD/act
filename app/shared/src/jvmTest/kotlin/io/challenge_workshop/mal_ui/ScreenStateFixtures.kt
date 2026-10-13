@@ -42,6 +42,8 @@ import io.challenge_workshop.mal_ui.mal.MalUser
 import io.challenge_workshop.mal_ui.screen.MalRouting
 import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.screen.ShownError
+import io.challenge_workshop.mal_ui.screen.SignedInScreen
+import io.challenge_workshop.mal_ui.screen.SignedOutScreen
 import io.challenge_workshop.mal_ui.screen.explain
 import io.challenge_workshop.mal_ui.session.SessionDiagnostics
 import io.challenge_workshop.mal_ui.session.SignedOutReason
@@ -77,12 +79,14 @@ internal fun signedOut(
     signIn: SignInState = SignInState(),
     errorRelayHint: Boolean = false,
     signInRelayHint: Boolean = false,
+    screen: SignedOutScreen = SignedOutScreen.Welcome,
 ) = ScreenState.SignedOut(
     explanation = explain(reason),
     error = error?.let { ShownError(it, errorRelayHint) },
     signIn = signIn,
     routing = TEST_ROUTING,
     signInError = signIn.error?.let { ShownError(it, signInRelayHint) },
+    screen = screen,
 )
 
 internal fun authorizing(
@@ -106,6 +110,7 @@ internal fun signedIn(
     error: String? = null,
     diagnostics: SessionDiagnostics? = null,
     relayHint: Boolean = false,
+    screen: SignedInScreen = SignedInScreen.AnimeList,
 ) = ScreenState.SignedIn(
     user = user,
     refreshing = refreshing,
@@ -117,6 +122,7 @@ internal fun signedIn(
     error = error?.let { ShownError(it, relayHint) },
     diagnostics = diagnostics,
     routing = TEST_ROUTING,
+    screen = screen,
 )
 
 /**
@@ -185,7 +191,7 @@ internal const val TEST_AUTHORIZATION_URL: String =
  *
  * What a control *causes* is the Sign-in's, the session controls' or the Anime List's, and all are tested where they live. What
  * is left for a rendering test is that the control the user can see is wired to the right one of
- * them — a Layout toggle bound to `onReload` still renders perfectly.
+ * them — a Layout toggle bound to `onSignOut` still renders perfectly.
  */
 internal class RecordedActions {
     val calls: MutableList<String> = mutableListOf()
@@ -202,6 +208,8 @@ internal class RecordedActions {
     val actions: ScreenActions = ScreenActions(
         signIn = WelcomeActions(
             onSignIn = { calls += "signIn" },
+            onOpenAbout = { calls += "openAbout" },
+            onBack = { calls += "backFromAbout" },
         ),
         authorizing = AuthorizingActions(
             onPastedRedirectChange = { pastes += it; calls += "pastedRedirectChange" },
@@ -211,12 +219,14 @@ internal class RecordedActions {
         signedIn = SignedInActions(
             onLoadMore = { calls += "loadMore" },
             onRetry = { calls += "retry" },
-            onReload = { calls += "reload" },
             onSelectWatchStatus = { watchStatuses += it; calls += "selectWatchStatus" },
             onSelectSortOrder = { sortOrders += it; calls += "selectSortOrder" },
             onSelectLayout = { layouts += it; calls += "selectLayout" },
             onToggleTheme = { themes += it; calls += "toggleTheme" },
             onSignOut = { calls += "signOut" },
+            onOpenAbout = { calls += "openAbout" },
+            onOpenDiagnostics = { calls += "openDiagnostics" },
+            onBackToList = { calls += "backToList" },
             onOpenAnime = { opened += it; calls += "openAnime" },
             animePage = AnimePageActions(
                 onBack = { calls += "animePageBack" },
@@ -230,6 +240,7 @@ internal class RecordedActions {
                 onReloadDiagnostics = { calls += "reloadDiagnostics" },
                 onRefreshUser = { calls += "refreshUser" },
                 onForceExpireAccessToken = { calls += "forceExpireAccessToken" },
+                onReloadList = { calls += "reload" },
             ),
         ),
     )
@@ -259,9 +270,9 @@ internal fun SemanticsNodeInteraction.textContent(): String =
         .orEmpty()
 
 /**
- * Opens the diagnostics dialog the way a person does: the overflow menu, then its last entry.
+ * Opens the Diagnostics Screen's menu entry the way a person does: the overflow menu, then its entry.
  *
- * The menu closes on the way, so its "diagnostics" entry and the dialog are never on screen at once.
+ * The menu closes on the way, so its "diagnostics" entry and the Screen are never on screen at once.
  */
 internal fun ComposeUiTest.openDiagnostics() {
     onNodeWithTag(SESSION_MENU_BUTTON_TAG).performClick()

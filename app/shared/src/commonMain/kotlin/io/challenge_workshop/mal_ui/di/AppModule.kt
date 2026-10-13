@@ -2,6 +2,7 @@ package io.challenge_workshop.mal_ui.di
 
 import io.challenge_workshop.mal_ui.animelist.AnimeListRepository
 import io.challenge_workshop.mal_ui.animelist.LayoutPreference
+import io.challenge_workshop.mal_ui.screen.ScreenChoice
 import io.challenge_workshop.mal_ui.theme.ThemePreference
 import io.challenge_workshop.mal_ui.animepage.AnimePageRepository
 import io.challenge_workshop.mal_ui.auth.SignIn
@@ -84,6 +85,15 @@ val appModule: Module = module {
     single {
         LayoutPreference(
             store = get(),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+        )
+    }
+
+    // A `single`, because which Screen is open is process state like the Layout: the source and the
+    // actions must see the same instance. It watches the Session, so it is built from the repository.
+    single {
+        ScreenChoice(
+            session = get<MalSessionRepository>().state,
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
         )
     }

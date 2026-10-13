@@ -113,11 +113,11 @@ val ANIME_LIST_LAYOUT_TAG: String = "${SessionScreenTag.SignedIn.tag}.layout"
 
 /**
  * The top app bar over the signed-in screen — the chrome that carries the user's name, the Layout
- * toggle and the overflow menu.
+ * toggle and the Main Menu.
  *
  * Derived from [SessionScreenTag.SignedIn] like the Anime List's own tags, because it is part of the
  * same screen: the signed-in branch **is** the Anime List, and the bar is what stops that costing
- * the profile row and the debug panel.
+ * the profile row and the Diagnostics Screen.
  */
 val SESSION_TOP_BAR_TAG: String = "${SessionScreenTag.SignedIn.tag}.topBar"
 
@@ -138,9 +138,9 @@ val ANIME_LIST_TITLE_TAG: String = "${SessionScreenTag.SignedIn.tag}.title"
 val SESSION_USER_NAME_TAG: String = "$SESSION_TOP_BAR_TAG.userName"
 
 /**
- * The button that opens the overflow menu.
+ * The button that opens the Main Menu.
  *
- * Its own tag because the menu is only reachable through it: the three entries do not exist in the
+ * Its own tag because the menu is only reachable through it: its entries do not exist in the
  * tree until it is clicked, so a test that could not find the button could not assert on any of
  * them. By tag and not by its label, because the label is the one part of it with no meaning — it
  * says "More" only because this project pulls in no Material icon dependency to draw three dots
@@ -149,22 +149,23 @@ val SESSION_USER_NAME_TAG: String = "$SESSION_TOP_BAR_TAG.userName"
 val SESSION_MENU_BUTTON_TAG: String = "$SESSION_TOP_BAR_TAG.moreButton"
 
 /**
- * The overflow menu itself, once opened: Reload, Sign out, Session diagnostics.
+ * The Main Menu itself, once opened: diagnostics, about, privacy, sign out.
  *
- * Its own tag because what is worth asserting is *what
- * is in it*, and the three entries in it are the three things the Anime List taking over this screen
- * could otherwise have cost.
+ * Its own tag because what is worth asserting is *what is in it*.
  */
 val SESSION_MENU_TAG: String = "$SESSION_TOP_BAR_TAG.menu"
 
 /**
- * The dialog the Session diagnostics menu entry opens, holding [SessionDebugPanel].
- *
- * **Not a third destination.** `App.kt`'s `when` over `ScreenState` stays a four-branch switch and
- * no navigation library is added — a dialog is drawn over the signed-in screen, which is still the
- * screen underneath it.
+ * The Diagnostics Screen, in either of its frames. A Screen like About, chosen in `ScreenState.SignedIn.screen`;
+ * the Anime List is still underneath it with its scroll position and loaded pages intact.
  */
 val SESSION_DIAGNOSTICS_TAG: String = "${SessionScreenTag.SignedIn.tag}.diagnostics"
+
+/** Its back control, absent where the sidebar is the way out. */
+val DIAGNOSTICS_BACK_TAG: String = "$SESSION_DIAGNOSTICS_TAG.back"
+
+/** The `ACT <version>` line. */
+val DIAGNOSTICS_VERSION_TAG: String = "$SESSION_DIAGNOSTICS_TAG.version"
 
 /** Each of Watch Status, progress and score on a wide List row. A stacked row has none. */
 val ANIME_LIST_ROW_COLUMN_TAG: String = "$ANIME_LIST_TAG.rowColumn"
@@ -256,3 +257,21 @@ val LOG_BAR_TAG: String = "${SessionScreenTag.SignedIn.tag}.logBar"
 val LOG_BAR_TEXT_TAG: String = "$LOG_BAR_TAG.text"
 val LOG_BAR_RESULT_TAG: String = "$LOG_BAR_TAG.result"
 val LOG_BAR_HINTS_TAG: String = "$LOG_BAR_TAG.hints"
+
+/** The About Screen, in any of its frames. */
+val ABOUT_SCREEN_TAG: String = "about"
+
+/** Its back control, absent where the sidebar is the way out. */
+val ABOUT_BACK_TAG: String = "$ABOUT_SCREEN_TAG.back"
+
+/** The `ACT <version> · <Target>` line. */
+val ABOUT_VERSION_TAG: String = "$ABOUT_SCREEN_TAG.version"
+
+/** The `about` link on the Welcome Screen. */
+val WELCOME_ABOUT_TAG: String = "${SessionScreenTag.SignIn.tag}.about"
+
+/** The `privacy` link on the Welcome Screen. */
+val WELCOME_PRIVACY_TAG: String = "${SessionScreenTag.SignIn.tag}.privacy"
+
+/** The link to MAL's registration page on the Welcome Screen. */
+val WELCOME_REGISTER_TAG: String = "${SessionScreenTag.SignIn.tag}.register"

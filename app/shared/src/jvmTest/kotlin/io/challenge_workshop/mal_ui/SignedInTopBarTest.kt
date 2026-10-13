@@ -18,6 +18,11 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
+import androidx.compose.foundation.layout.width
+import io.challenge_workshop.mal_ui.auth.DIAGNOSTICS_BACK_TAG
+import io.challenge_workshop.mal_ui.auth.DIAGNOSTICS_VERSION_TAG
+import io.challenge_workshop.mal_ui.auth.SESSION_SIDEBAR_TAG
+import io.challenge_workshop.mal_ui.screen.SignedInScreen
 import io.challenge_workshop.mal_ui.auth.ANIME_LIST_TAG
 import io.challenge_workshop.mal_ui.auth.SESSION_DIAGNOSTICS_TAG
 import io.challenge_workshop.mal_ui.auth.SESSION_MENU_BUTTON_TAG
@@ -31,10 +36,10 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * The top app bar over the signed-in screen, and the diagnostics dialog its overflow menu opens.
+ * The prompt row over the signed-in screen, and the Diagnostics Screen its overflow menu opens.
  *
  * It exists because the Anime List **is** the signed-in screen now: everything that was on that
- * screen before — the name, Reload, Sign out, the debug panel — had nowhere left to sit, since
+ * screen before — the name, Reload, Sign out, the Diagnostics Screen — had nowhere left to sit, since
  * anywhere below the entries is unreachable on a real account. So what these tests are really about
  * is that the Anime List taking the screen over cost none of them.
  */
@@ -46,13 +51,13 @@ class SignedInTopBarTest {
      *
      * Asserted on the open menu rather than on the screen, because that is now the only place any of
      * them can be — a "Sign out" that were still lying loose on the screen would pass an assertion
-     * over the whole tree and mean the rehousing never happened. Two of the three are also clicked,
-     * since entries wired to the same action would pass every assertion about what is *in* the menu;
-     * the third is [session_diagnostics_opens_the_debug_panel_in_a_dialog]'s.
+     * over the whole tree and mean the rehousing never happened. Sign out is also clicked, since
+     * entries wired to the same action would pass every assertion about what is *in* the menu;
+     * diagnostics is [diagnostics_opens_the_diagnostics_screen_with_the_panel_and_the_version]'s.
      */
     @Test
-    fun the_overflow_menu_carries_reload_sign_out_and_session_diagnostics() {
-        val entries = listOf("reload", "diagnostics", "sign out")
+    fun the_overflow_menu_carries_the_main_menu() {
+        val entries = listOf("diagnostics", "about", "privacy", "sign out")
         val actions = RecordedActions()
         runComposeUiTest {
             setContent { PhoneSessionRoute(signedIn(), actions.actions) }
@@ -76,12 +81,12 @@ class SignedInTopBarTest {
                     "screen where the user can see it rather than behind a menu",
             )
 
-            // Each entry closes the menu before it acts, so each has to be reopened.
-            onNodeWithText("reload").performClick()
-            onNodeWithTag(SESSION_MENU_BUTTON_TAG).performClick()
+            // Reload is not here: it is the Diagnostics Screen's "Reload list".
+            onNodeWithText("reload").assertDoesNotExist()
+
             onNodeWithText("sign out").performClick()
 
-            assertEquals(listOf("reload", "signOut"), actions.calls)
+            assertEquals(listOf("signOut"), actions.calls)
         }
     }
 
@@ -176,63 +181,93 @@ class SignedInTopBarTest {
         }
     }
 
-    // --- The signed-in screen: the diagnostics dialog ---------------------------------------------
+    // --- The signed-in screen: the Diagnostics Screen ---------------------------------------------
 
     /**
      * `SessionDebugPanel` is a real tool rather than scaffolding — it is the only way a human ever
-     * sees the refresh path execute — so rehousing it must not cost any of its controls. The dialog
-     * is where it went; the menu entry is its disclosure now, in place of the panel's own.
+     * sees the refresh path execute — so rehousing it must not cost any of its controls. The Screen
+     * is where it went; the Main Menu entry is its disclosure.
      */
     @Test
-    fun session_diagnostics_opens_the_debug_panel_in_a_dialog() {
+    fun diagnostics_opens_the_diagnostics_screen_with_the_panel_and_the_version() {
+        val actions = RecordedActions()
         runComposeUiTest {
-            setContent { PhoneSessionRoute(signedIn(), RecordedActions().actions) }
+            setContent { PhoneSessionRoute(signedIn(), actions.actions) }
 
             // "Force 401" writes an invalid token into the store, so it must not be a stray tap away.
             onNodeWithText("Force 401").assertDoesNotExist()
 
             openDiagnostics()
+            assertEquals(listOf("openDiagnostics"), actions.calls)
+        }
+        runComposeUiTest {
+            setContent { PhoneSessionRoute(signedIn(screen = SignedInScreen.Diagnostics), actions.actions) }
 
             onNodeWithTag(SESSION_DIAGNOSTICS_TAG).assertIsDisplayed()
-            for (control in listOf("Force 401", "Reload diagnostics", "Reload profile", "Close")) {
+            for (control in listOf("Force 401", "Reload diagnostics", "Reload profile", "Reload list")) {
                 onNodeWithText(control).assertIsDisplayed()
             }
-            // The other half of the profile row that was on this screen. The name is in the bar;
-            // the MAL id is the half nobody reads until something is wrong, which is a diagnostic.
+            // The name is in the prompt row; the MAL id is the half nobody reads until something is wrong.
             onNodeWithText("MAL id 1", substring = true).assertIsDisplayed()
-            // The screen is still underneath it: a dialog is not a third destination.
-            onNodeWithTag(ANIME_LIST_TAG).assertIsDisplayed()
+            onNodeWithTag(DIAGNOSTICS_VERSION_TAG).assertTextContains(ACT_VERSION, substring = true)
+            // The list is not drawn, and the back control leaves.
+            onNodeWithTag(ANIME_LIST_TAG).assertDoesNotExist()
+            onNodeWithTag(DIAGNOSTICS_BACK_TAG).performClick()
+            assertEquals("backToList", actions.calls.last())
+        }
+    }
 
-            onNodeWithText("Close").performClick()
+    /** The panel is loaded when the Screen opens, as a Session that has diagnostics should show them. */
+    @Test
+    fun the_diagnostics_are_loaded_when_the_screen_opens() {
+        val actions = RecordedActions()
+        runComposeUiTest {
+            setContent { PhoneSessionRoute(signedIn(screen = SignedInScreen.Diagnostics), actions.actions) }
             waitForIdle()
+            assertEquals(listOf("reloadDiagnostics"), actions.calls)
+        }
+    }
 
-            onNodeWithText("Force 401").assertDoesNotExist()
+    /** Wide: the sidebar stays, `diagnostics` is marked, and the list is not drawn. */
+    @Test
+    fun wide_diagnostics_keeps_the_sidebar_and_marks_the_item() {
+        runComposeUiTest {
+            setContent { androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.width(1000.dp)) {
+                    ThemedSessionRoute(signedIn(screen = SignedInScreen.Diagnostics), RecordedActions().actions)
+                } }
+            onNodeWithTag(SESSION_SIDEBAR_TAG).assertIsDisplayed()
+            onNodeWithText("\u25b8 diagnostics").assertIsDisplayed()
+            onNodeWithTag(SESSION_DIAGNOSTICS_TAG).assertIsDisplayed()
+            onNodeWithTag(DIAGNOSTICS_BACK_TAG).assertDoesNotExist()
+            onNodeWithTag(ANIME_LIST_TAG).assertDoesNotExist()
         }
     }
 
     /**
-     * The panel's three buttons, each reaching its own action, and the warning that only appears once
+     * The panel's four buttons, each reaching its own action, and the warning that only appears once
      * the access token has been deliberately invalidated.
      *
      * What each button then does is `:core`'s: whether a forced 401 drives exactly one real refresh
      * is `MalSessionRefreshTest.forcing_the_access_token_to_expire_drives_exactly_one_real_refresh`,
      * and that the refresh token survives it is the same file's. What a rendering can say is that the
-     * button a person presses is the one wired to it — three buttons on one action would be invisible
+     * button a person presses is the one wired to it — four buttons on one action would be invisible
      * everywhere else.
      */
     @Test
-    fun each_debug_panel_button_reaches_its_own_action() {
+    fun each_diagnostics_screen_button_reaches_its_own_action() {
         val actions = RecordedActions()
         runComposeUiTest {
-            setContent { PhoneSessionRoute(signedIn(diagnostics = TEST_DIAGNOSTICS), actions.actions) }
-            openDiagnostics()
+            setContent { PhoneSessionRoute(signedIn(diagnostics = TEST_DIAGNOSTICS, screen = SignedInScreen.Diagnostics), actions.actions) }
+            waitForIdle()
+            actions.calls.clear()
 
             onNodeWithText("Reload diagnostics").performClick()
             onNodeWithText("Reload profile").performClick()
             onNodeWithText("Force 401").performClick()
+            onNodeWithText("Reload list").performClick()
 
             assertEquals(
-                listOf("reloadDiagnostics", "refreshUser", "forceExpireAccessToken"),
+                listOf("reloadDiagnostics", "refreshUser", "forceExpireAccessToken", "reload"),
                 actions.calls,
             )
             onNodeWithText("deliberately invalidated", substring = true).assertIsDisplayed()

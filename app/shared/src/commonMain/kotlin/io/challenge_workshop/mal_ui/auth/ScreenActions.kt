@@ -10,6 +10,7 @@ import io.challenge_workshop.mal_ui.animelist.WatchStatus
 import io.challenge_workshop.mal_ui.animepage.ListEdit
 import io.challenge_workshop.mal_ui.animepage.AnimePageRepository
 import io.challenge_workshop.mal_ui.animepage.RelatedAnime
+import io.challenge_workshop.mal_ui.screen.ScreenChoice
 import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.session.SessionControls
 import io.challenge_workshop.mal_ui.theme.ThemePreference
@@ -48,6 +49,9 @@ data class ScreenActions(
 @Immutable
 data class WelcomeActions(
     val onSignIn: () -> Unit,
+    /** The `about` link, and About's back link, which returns to the Welcome Screen. */
+    val onOpenAbout: () -> Unit,
+    val onBack: () -> Unit,
 )
 
 /** The authorizing screen: Paste-the-code, and backing out. */
@@ -62,8 +66,8 @@ data class AuthorizingActions(
  * The signed-in screen, which **is** the Anime List.
  *
  * This record is the reason no module exposes an actions record of its own: Sign out and the
- * diagnostics dialog come from the Session, Reload and the two query controls from the Anime List,
- * and the Layout from its preference.
+ * Diagnostics Screen come from the Session, the two query controls from the Anime List, and the
+ * Layout from its preference.
  *
  * There is no "load the first page": the Anime List asks for it itself as the Session starts.
  */
@@ -71,13 +75,16 @@ data class AuthorizingActions(
 data class SignedInActions(
     val onLoadMore: () -> Unit,
     val onRetry: () -> Unit,
-    val onReload: () -> Unit,
     val onSelectWatchStatus: (WatchStatus?) -> Unit,
     val onSelectSortOrder: (AnimeListSortOrder) -> Unit,
     val onSelectLayout: (AnimeListLayout) -> Unit,
     /** The Theme button; the argument is whether dark is on screen now, which `System` hides. */
     val onToggleTheme: (showingDark: Boolean) -> Unit,
     val onSignOut: () -> Unit,
+    /** Main Menu: replaces the Screen showing. [onBackToList] returns to the Anime List. */
+    val onOpenAbout: () -> Unit,
+    val onOpenDiagnostics: () -> Unit,
+    val onBackToList: () -> Unit,
     /** Tapping a List Entry: opens its Anime Page as a new history. */
     val onOpenAnime: (AnimeListEntry) -> Unit,
     val animePage: AnimePageActions,
@@ -102,10 +109,10 @@ data class AnimePageActions(
 )
 
 /**
- * The three buttons in the session debug panel.
+ * The four buttons on the Diagnostics Screen.
  *
- * Its own record rather than three more fields on [SignedInActions], because the panel is behind a
- * dialog that only opens deliberately — and because "Force 401" and "Reload profile" being one row
+ * Its own record rather than four more fields on [SignedInActions], because the panel is on a
+ * Screen that only opens deliberately — and because "Force 401" and "Reload profile" being one row
  * apart is the whole procedure for watching a refresh happen against real MAL.
  */
 @Immutable
@@ -113,6 +120,8 @@ data class DiagnosticsActions(
     val onReloadDiagnostics: () -> Unit,
     val onRefreshUser: () -> Unit,
     val onForceExpireAccessToken: () -> Unit,
+    /** Reload: the Anime List from its first page. The Screen stays; the list is underneath it. */
+    val onReloadList: () -> Unit,
 )
 
 /**
@@ -131,6 +140,7 @@ internal fun screenActions(
     animeList: AnimeListRepository,
     animePages: AnimePageRepository,
     layout: LayoutPreference,
+    screenChoice: ScreenChoice,
     theme: ThemePreference,
     channel: AuthRedirectChannel,
     openUri: (String) -> Unit,
@@ -139,6 +149,8 @@ internal fun screenActions(
         // Straight through, with no `launch` between the click and the channel: a web popup's user
         // activation is a timestamp window and WebKit's is one second wide.
         onSignIn = { signIn.start(channel, openUri) },
+        onOpenAbout = screenChoice::openAbout,
+        onBack = screenChoice::back,
     ),
     authorizing = AuthorizingActions(
         onPastedRedirectChange = signIn::setPastedRedirect,
@@ -148,7 +160,6 @@ internal fun screenActions(
     signedIn = SignedInActions(
         onLoadMore = animeList::loadMore,
         onRetry = animeList::retry,
-        onReload = animeList::reload,
         onSelectWatchStatus = animeList::setWatchStatus,
         onSelectSortOrder = animeList::setSortOrder,
         // Straight to the preference, which switches inside the click and writes behind it: a Layout
@@ -156,6 +167,9 @@ internal fun screenActions(
         onSelectLayout = layout::choose,
         onToggleTheme = theme::toggle,
         onSignOut = controls::signOut,
+        onOpenAbout = screenChoice::openAbout,
+        onOpenDiagnostics = screenChoice::openDiagnostics,
+        onBackToList = screenChoice::back,
         onOpenAnime = animePages::open,
         animePage = AnimePageActions(
             onBack = animePages::back,
@@ -169,6 +183,7 @@ internal fun screenActions(
             onReloadDiagnostics = { controls.reloadDiagnostics() },
             onRefreshUser = { controls.refreshUser() },
             onForceExpireAccessToken = { controls.forceExpireAccessToken() },
+            onReloadList = animeList::reload,
         ),
     ),
 )

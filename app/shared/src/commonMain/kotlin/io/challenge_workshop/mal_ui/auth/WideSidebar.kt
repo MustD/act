@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.buildAnnotatedString
@@ -34,6 +35,7 @@ import io.challenge_workshop.mal_ui.animelist.WatchStatus
 import io.challenge_workshop.mal_ui.animelist.promptText
 import io.challenge_workshop.mal_ui.animelist.tabKey
 import io.challenge_workshop.mal_ui.screen.ScreenState
+import io.challenge_workshop.mal_ui.screen.SignedInScreen
 import io.challenge_workshop.mal_ui.theme.Act
 import io.challenge_workshop.mal_ui.theme.ActMedium
 import io.challenge_workshop.mal_ui.theme.enabledAlpha
@@ -51,11 +53,11 @@ import io.challenge_workshop.mal_ui.theme.enabledAlpha
 internal fun WideSidebar(
     state: ScreenState.SignedIn,
     actions: SignedInActions,
-    onShowDiagnostics: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val c = Act.colors
     val ln = c.ln
+    val uriHandler = LocalUriHandler.current
     Column(
         modifier
             .testTag(SESSION_SIDEBAR_TAG)
@@ -97,15 +99,17 @@ internal fun WideSidebar(
             for (filter in ANIME_LIST_FILTERS) {
                 SidebarWatchStatus(
                     filter,
-                    active = filter == state.list.watchStatus,
+                    // Only while the list shows: with About or Diagnostics open, that item is the current one.
+                    active = filter == state.list.watchStatus && state.screen == SignedInScreen.AnimeList,
                     enabled = state.list.queryControlsEnabled,
                 ) { actions.onSelectWatchStatus(filter) }
             }
         }
         Spacer(Modifier.weight(1f))
-        SidebarLabel("// session")
-        SidebarAction("reload", enabled = true, onClick = actions.onReload)
-        SidebarAction("diagnostics", enabled = true, onClick = onShowDiagnostics)
+        SidebarLabel("// menu")
+        SidebarAction("diagnostics", enabled = true, active = state.screen == SignedInScreen.Diagnostics, onClick = actions.onOpenDiagnostics)
+        SidebarAction("about", enabled = true, active = state.screen == SignedInScreen.About, onClick = actions.onOpenAbout)
+        SidebarAction("privacy", enabled = true, onClick = { uriHandler.openUri(PRIVACY_URL) })
         SidebarAction("sign out", enabled = !state.busy, onClick = actions.onSignOut)
     }
 }
@@ -141,7 +145,7 @@ private fun SidebarWatchStatus(filter: WatchStatus?, active: Boolean, enabled: B
 }
 
 @Composable
-private fun SidebarAction(text: String, enabled: Boolean, onClick: () -> Unit) {
+private fun SidebarAction(text: String, enabled: Boolean, onClick: () -> Unit, active: Boolean = false) {
     Box(
         Modifier.fillMaxWidth().height(34.dp)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
@@ -149,7 +153,11 @@ private fun SidebarAction(text: String, enabled: Boolean, onClick: () -> Unit) {
             .padding(horizontal = 8.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
-        Text(text, style = Act.type.meta.copy(fontSize = 12.sp, lineHeight = 16.sp), color = Act.colors.dim)
+        Text(
+            if (active) "\u25b8 $text" else text,
+            style = Act.type.meta.copy(fontSize = 12.sp, lineHeight = 16.sp),
+            color = if (active) Act.colors.acc else Act.colors.dim,
+        )
     }
 }
 

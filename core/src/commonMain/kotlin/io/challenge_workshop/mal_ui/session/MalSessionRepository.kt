@@ -301,7 +301,7 @@ class MalSessionRepository(
 
     /**
      * Invalidates the access token while keeping the refresh token, so the next authenticated call
-     * gets a genuine 401 from MAL and the `Auth` plugin refreshes for real. Drives the debug panel's
+     * gets a genuine 401 from MAL and the `Auth` plugin refreshes for real. Drives the Diagnostics Screen's
      * force-401 button, which is the only way a human ever sees the refresh path execute.
      *
      * Clearing Ktor's cached copy is **not optional**: `AuthTokenHolder` would keep serving the old
@@ -315,7 +315,7 @@ class MalSessionRepository(
     }
 
     /**
-     * What the debug panel is allowed to know about the stored Session. **Never the token values** —
+     * What the Diagnostics Screen is allowed to know about the stored Session. **Never the token values** —
      * only their shape and age, which is enough to tell "the refresh worked" from "nothing happened".
      */
     suspend fun diagnostics(): SessionDiagnostics? = store.readSession()?.let {

@@ -12,11 +12,11 @@ import io.challenge_workshop.mal_ui.session.SessionState
 import io.challenge_workshop.mal_ui.session.SignedOutReason
 
 /**
- * What one of the app's four destinations needs in order to draw itself: a Session and an Anime List,
- * resolved into a value.
+ * What the app needs in order to draw itself: a Session and an Anime List, resolved into a value.
+ * Four variants, and [SignedOut] and [SignedIn] also say which of their own Screens shows.
  *
  * **Not a synonym for [SessionState].** That is the *Session's* own state — whether there are tokens
- * and what happened to them — and it is one of this value's seven inputs. This is the whole screen,
+ * and what happened to them — and it is one of this value's nine inputs. This is the whole screen,
  * including a list the Session has never heard of and a Layout that reaches MAL never. The two are as
  * easy to confuse as Watch Status and Airing Status, and for the same reason: one variant per
  * `SessionState` subtype makes them look like the same thing renamed.
@@ -46,7 +46,7 @@ sealed interface ScreenState {
      * That is display copy in `:core`, which the Sort Order labels deliberately are not; the
      * difference is that this text is the state, and the tests that hold the reasons apart are the
      * reason the state exists. `null` for [SignedOutReason.NeverSignedIn]: a first visit has nothing
-     * to explain, and the welcome page shows no line for it.
+     * to explain, and the Welcome Screen shows no line for it.
      */
     data class SignedOut(
         val explanation: String?,
@@ -59,6 +59,8 @@ sealed interface ScreenState {
          * its own relay hint: advice about one attached to the other would be wrong.
          */
         val signInError: ShownError?,
+        /** Welcome, or About if the user opened it. Back to Welcome on any change of Session State. */
+        val screen: SignedOutScreen = SignedOutScreen.Welcome,
     ) : ScreenState
 
     /**
@@ -102,9 +104,14 @@ sealed interface ScreenState {
         val patchLog: PatchLog,
         val busy: Boolean,
         val error: ShownError?,
-        /** Null until the diagnostics dialog asks for it, which is the only thing that reads it. */
+        /** Null until the Diagnostics Screen asks for it, which is the only thing that reads it. */
         val diagnostics: SessionDiagnostics?,
         val routing: MalRouting,
+        /**
+         * Which Screen shows: the Anime List, or About or Diagnostics if the user opened one. The list,
+         * its pager and [animePages] are unaffected by it.
+         */
+        val screen: SignedInScreen = SignedInScreen.AnimeList,
     ) : ScreenState
 }
 
@@ -121,7 +128,7 @@ data class ShownError(val message: String, val relayHint: Boolean)
  * a 401 about the Client ID.
  *
  * On two variants rather than one: the sign-in screen says so up front because a browser with no
- * relay running fails at the first request, and the debug panel says so afterwards.
+ * relay running fails at the first request, and the Diagnostics Screen says so afterwards.
  */
 data class MalRouting(
     val endpoints: MalEndpoints,

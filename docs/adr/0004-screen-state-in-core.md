@@ -38,7 +38,7 @@ Targets; the drawing is the part that can only be tested where a Compose harness
 
 ## The known cost
 
-**`ScreenStateSource` takes eight flows** (six when this was written; the Anime Page history is the seventh, see [ADR-0006](0006-anime-page-history-in-screen-state.md); the patch log is the eighth, kept apart from that history because a Save outlives its page). The caller sees one; the constructor is wide, and that is the objection a
+**`ScreenStateSource` takes nine flows** (six when this was written; the Anime Page history is the seventh, see [ADR-0006](0006-anime-page-history-in-screen-state.md); the patch log is the eighth, kept apart from that history because a Save outlives its page; `ScreenChoice.picked`, which Screen is open, is the ninth). The caller sees one; the constructor is wide, and that is the objection a
 review will raise. It is defensible because each input has exactly one owner and the combine is total over
 `SessionState` by the compiler's own exhaustiveness check — but the answer is not "it is fine", it is that every
 alternative puts the mapping back in a composable. Two of the inputs are deliberately not the objects that own them:
@@ -64,7 +64,7 @@ frame it last drew.
 by the `SignedOut` and `SignedIn` variants. It was not asked for: it is what the screens lost when they stopped taking
 `MalSessionViewModel`, which exposed `endpoints`, `redirectUri` and `usesRelay` directly. Both readers need it and
 neither can compute it — the sign-in screen says so up front because a browser with no relay running fails at its first
-request with a bare "Failed to fetch", and the debug panel says so afterwards. It is *not* one more constructor
+request with a bare "Failed to fetch", and the Diagnostics Screen says so afterwards. It is *not* one more constructor
 parameter: `platformMalEndpoints()` is an `expect fun` and so already this Target's answer, and injecting it would be
 the same one-implementation seam that kept a `(PendingAuthorization) -> String` adapter out.
 

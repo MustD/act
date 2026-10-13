@@ -63,12 +63,12 @@ class WideLayoutTest {
                     .assertIsDisplayed()
             }
             onNodeWithText("// watch status").assertIsDisplayed()
-            onNodeWithText("// session").assertIsDisplayed()
+            onNodeWithText("// menu").assertIsDisplayed()
 
             onNodeWithText("completed", substring = true).performClick()
-            onNodeWithText("reload").performClick()
+            onNodeWithText("reload").assertDoesNotExist()
             onNodeWithText("sign out").performClick()
-            assertEquals(listOf("selectWatchStatus", "reload", "signOut"), actions.calls)
+            assertEquals(listOf("selectWatchStatus", "signOut"), actions.calls)
             assertEquals(listOf<WatchStatus?>(WatchStatus.Completed), actions.watchStatuses)
         }
     }
