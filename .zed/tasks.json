@@ -1,0 +1,104 @@
+// Zed tasks: one per mise task. mise.toml stays the only place a command line is written down,
+// so each entry only names its task. `task: spawn` lists them.
+//
+// Not here on purpose: `deploy`, `deploy:push` and `infra:apply` — they change production, and a
+// picker entry is one keystroke from a mistake. Run those from a terminal.
+[
+  // Run. Each long-lived process gets its own terminal; web needs run:server as well as run:web.
+  {
+    "label": "run:desktop",
+    "command": "mise run run:desktop",
+    "use_new_terminal": true
+  },
+  {
+    "label": "run:desktop:hot",
+    "command": "mise run run:desktop:hot",
+    "use_new_terminal": true
+  },
+  {
+    "label": "run:server",
+    "command": "mise run run:server",
+    "use_new_terminal": true
+  },
+  {
+    "label": "run:web",
+    "command": "mise run run:web",
+    "use_new_terminal": true
+  },
+  // Test.
+  {
+    "label": "test",
+    "command": "mise run test"
+  },
+  {
+    "label": "test:core",
+    "command": "mise run test:core"
+  },
+  {
+    "label": "test:shared:jvm",
+    "command": "mise run test:shared:jvm"
+  },
+  {
+    "label": "test:shared:android",
+    "command": "mise run test:shared:android"
+  },
+  {
+    "label": "test:shared:web",
+    "command": "mise run test:shared:web"
+  },
+  {
+    "label": "test:server",
+    "command": "mise run test:server"
+  },
+  {
+    "label": "test:android",
+    "command": "mise run test:android"
+  },
+  // The test class in the open file, by file name. Pick the suite the file belongs to.
+  {
+    "label": "test:one core ($ZED_STEM)",
+    "command": "mise run test:one core \"*.$ZED_STEM\""
+  },
+  {
+    "label": "test:one shared ($ZED_STEM)",
+    "command": "mise run test:one shared \"*.$ZED_STEM\""
+  },
+  {
+    "label": "test:one server ($ZED_STEM)",
+    "command": "mise run test:one server \"*.$ZED_STEM\""
+  },
+  // Build.
+  {
+    "label": "build",
+    "command": "mise run build"
+  },
+  {
+    "label": "build:android",
+    "command": "mise run build:android"
+  },
+  {
+    "label": "build:web:dist",
+    "command": "mise run build:web:dist"
+  },
+  {
+    "label": "build:server:dist",
+    "command": "mise run build:server:dist"
+  },
+  {
+    "label": "generate:mal-config",
+    "command": "mise run generate:mal-config"
+  },
+  // Deploy and infra: the ones that only build locally or only read.
+  {
+    "label": "deploy:build",
+    "command": "mise run deploy:build"
+  },
+  {
+    "label": "deploy:status",
+    "command": "mise run deploy:status"
+  },
+  {
+    "label": "infra:plan",
+    "command": "mise run infra:plan"
+  }
+]
