@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -86,6 +87,7 @@ fun SignedInPromptRow(
     wide: Boolean = false,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    val uriHandler = LocalUriHandler.current
     val c = Act.colors
 
     Row(
@@ -160,6 +162,20 @@ fun SignedInPromptRow(
                         onClick = {
                             menuOpen = false
                             onShowDiagnostics()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("about") },
+                        onClick = {
+                            menuOpen = false
+                            actions.onOpenAbout()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("privacy") },
+                        onClick = {
+                            menuOpen = false
+                            uriHandler.openUri(PRIVACY_URL)
                         },
                     )
                     DropdownMenuItem(

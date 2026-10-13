@@ -51,8 +51,8 @@ class SignedInTopBarTest {
      * the third is [session_diagnostics_opens_the_debug_panel_in_a_dialog]'s.
      */
     @Test
-    fun the_overflow_menu_carries_reload_sign_out_and_session_diagnostics() {
-        val entries = listOf("reload", "diagnostics", "sign out")
+    fun the_overflow_menu_carries_the_main_menu() {
+        val entries = listOf("reload", "diagnostics", "about", "privacy", "sign out")
         val actions = RecordedActions()
         runComposeUiTest {
             setContent { PhoneSessionRoute(signedIn(), actions.actions) }

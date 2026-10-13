@@ -19,6 +19,7 @@ import io.challenge_workshop.mal_ui.auth.SignIn
 import io.challenge_workshop.mal_ui.auth.RestoringScreen
 import io.challenge_workshop.mal_ui.auth.ScreenActions
 import io.challenge_workshop.mal_ui.auth.SessionScreenTag
+import io.challenge_workshop.mal_ui.auth.SignedOutAboutScreen
 import io.challenge_workshop.mal_ui.auth.WelcomeScreen
 import io.challenge_workshop.mal_ui.auth.SignedInScreen
 import io.challenge_workshop.mal_ui.auth.rememberAuthRedirectChannel
@@ -26,6 +27,7 @@ import io.challenge_workshop.mal_ui.auth.screenActions
 import io.challenge_workshop.mal_ui.screen.ScreenChoice
 import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.screen.ScreenStateSource
+import io.challenge_workshop.mal_ui.screen.SignedOutScreen
 import io.challenge_workshop.mal_ui.session.MalSessionRepository
 import io.challenge_workshop.mal_ui.session.SessionControls
 import io.challenge_workshop.mal_ui.theme.ActTheme
@@ -150,8 +152,12 @@ internal fun SessionRoute(state: ScreenState, actions: ScreenActions) {
         ScreenState.Restoring ->
             RestoringScreen(Modifier.testTag(SessionScreenTag.Restoring.tag))
 
-        is ScreenState.SignedOut ->
-            WelcomeScreen(state, actions.signIn, Modifier.testTag(SessionScreenTag.SignIn.tag))
+        is ScreenState.SignedOut -> when (state.screen) {
+            SignedOutScreen.Welcome ->
+                WelcomeScreen(state, actions.signIn, Modifier.testTag(SessionScreenTag.SignIn.tag))
+
+            SignedOutScreen.About -> SignedOutAboutScreen(actions.signIn)
+        }
 
         is ScreenState.Authorizing ->
             AuthorizingScreen(state, actions.authorizing, Modifier.testTag(SessionScreenTag.Authorizing.tag))

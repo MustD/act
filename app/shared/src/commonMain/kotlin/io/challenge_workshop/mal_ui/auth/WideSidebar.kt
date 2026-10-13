@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.buildAnnotatedString
@@ -34,6 +35,7 @@ import io.challenge_workshop.mal_ui.animelist.WatchStatus
 import io.challenge_workshop.mal_ui.animelist.promptText
 import io.challenge_workshop.mal_ui.animelist.tabKey
 import io.challenge_workshop.mal_ui.screen.ScreenState
+import io.challenge_workshop.mal_ui.screen.SignedInScreen
 import io.challenge_workshop.mal_ui.theme.Act
 import io.challenge_workshop.mal_ui.theme.ActMedium
 import io.challenge_workshop.mal_ui.theme.enabledAlpha
@@ -56,6 +58,7 @@ internal fun WideSidebar(
 ) {
     val c = Act.colors
     val ln = c.ln
+    val uriHandler = LocalUriHandler.current
     Column(
         modifier
             .testTag(SESSION_SIDEBAR_TAG)
@@ -103,9 +106,11 @@ internal fun WideSidebar(
             }
         }
         Spacer(Modifier.weight(1f))
-        SidebarLabel("// session")
+        SidebarLabel("// menu")
         SidebarAction("reload", enabled = true, onClick = actions.onReload)
         SidebarAction("diagnostics", enabled = true, onClick = onShowDiagnostics)
+        SidebarAction("about", enabled = true, active = state.screen == SignedInScreen.About, onClick = actions.onOpenAbout)
+        SidebarAction("privacy", enabled = true, onClick = { uriHandler.openUri(PRIVACY_URL) })
         SidebarAction("sign out", enabled = !state.busy, onClick = actions.onSignOut)
     }
 }
@@ -141,7 +146,7 @@ private fun SidebarWatchStatus(filter: WatchStatus?, active: Boolean, enabled: B
 }
 
 @Composable
-private fun SidebarAction(text: String, enabled: Boolean, onClick: () -> Unit) {
+private fun SidebarAction(text: String, enabled: Boolean, onClick: () -> Unit, active: Boolean = false) {
     Box(
         Modifier.fillMaxWidth().height(34.dp)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
@@ -149,7 +154,11 @@ private fun SidebarAction(text: String, enabled: Boolean, onClick: () -> Unit) {
             .padding(horizontal = 8.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
-        Text(text, style = Act.type.meta.copy(fontSize = 12.sp, lineHeight = 16.sp), color = Act.colors.dim)
+        Text(
+            if (active) "\u25b8 $text" else text,
+            style = Act.type.meta.copy(fontSize = 12.sp, lineHeight = 16.sp),
+            color = if (active) Act.colors.acc else Act.colors.dim,
+        )
     }
 }
 

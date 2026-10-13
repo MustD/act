@@ -14,12 +14,6 @@ import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.theme.Act
 import io.challenge_workshop.mal_ui.theme.rememberSpinnerGlyph
 
-/** MAL's own Supporter page. */
-const val SUPPORT_MAL_URL: String = "https://myanimelist.net/membership"
-const val SUPPORT_DEVELOPMENT_URL: String = "https://patreon.com/MustD"
-const val REPORT_ISSUE_URL: String = "https://github.com/MustD/act/issues"
-const val MAL_HOME_URL: String = "https://myanimelist.net"
-
 /**
  * The signed-out screen. There is no password field and never will be: MAL supports only the
  * authorization code grant, so the password is typed on myanimelist.net and this app only ever sees
@@ -83,6 +77,7 @@ fun WelcomeScreen(
 
         PaneSection("links") {
             Column {
+                TerminalLink("About", onClick = actions.onOpenAbout, modifier = Modifier.testTag(WELCOME_ABOUT_TAG))
                 TerminalLink("Support MyAnimeList", onClick = { uriHandler.openUri(SUPPORT_MAL_URL) })
                 TerminalLink("Support development", onClick = { uriHandler.openUri(SUPPORT_DEVELOPMENT_URL) })
                 TerminalLink("Report an issue", onClick = { uriHandler.openUri(REPORT_ISSUE_URL) })

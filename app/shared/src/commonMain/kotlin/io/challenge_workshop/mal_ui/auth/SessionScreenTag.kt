@@ -256,3 +256,15 @@ val LOG_BAR_TAG: String = "${SessionScreenTag.SignedIn.tag}.logBar"
 val LOG_BAR_TEXT_TAG: String = "$LOG_BAR_TAG.text"
 val LOG_BAR_RESULT_TAG: String = "$LOG_BAR_TAG.result"
 val LOG_BAR_HINTS_TAG: String = "$LOG_BAR_TAG.hints"
+
+/** The About Screen, in any of its frames. */
+val ABOUT_SCREEN_TAG: String = "about"
+
+/** Its back control, absent where the sidebar is the way out. */
+val ABOUT_BACK_TAG: String = "$ABOUT_SCREEN_TAG.back"
+
+/** The `ACT <version> · <Target>` line. */
+val ABOUT_VERSION_TAG: String = "$ABOUT_SCREEN_TAG.version"
+
+/** The `about` link on the Welcome Screen. */
+val WELCOME_ABOUT_TAG: String = "${SessionScreenTag.SignIn.tag}.about"

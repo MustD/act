@@ -54,6 +54,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusTarget
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isCtrlPressed
@@ -76,7 +77,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -101,6 +104,7 @@ import io.challenge_workshop.mal_ui.animepage.AnimePage
 import io.challenge_workshop.mal_ui.animepage.AnimePageScreen
 import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.screen.ShownError
+import io.challenge_workshop.mal_ui.screen.SignedInScreen
 
 /**
  * Shown while the store is being read.
@@ -254,7 +258,7 @@ private fun TerminalProgress(modifier: Modifier = Modifier) {
  * competes with the entries. The filter row and the Sort Order stay between the bar and the list,
  * because those two are the query.
  */
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalComposeUiApi::class)
 @Composable
 fun SignedInScreen(
     state: ScreenState.SignedIn,
@@ -267,13 +271,20 @@ fun SignedInScreen(
     var diagnosticsOpen by remember { mutableStateOf(false) }
     val list = state.list
     val layout = state.layout
+    val onList = state.screen == SignedInScreen.AnimeList
+    val other = state.screen == SignedInScreen.About
+    // With another Screen showing, a Watch Status or Reload is for the list: go back to it, then act.
+    val actions = remember(actions, state.screen) { actions.returningToList(state.screen) }
+    // Android back; Esc is below, with the other keys.
+    BackHandler(enabled = !onList, onBack = actions.onBackToList)
 
     // Whether to arm it is `:core`'s decision, not this screen's — see `AnimeListState.pagingArmed`.
     LoadMoreWhenNearEnd(
         gridState = gridState,
         loadedCount = list.entryCount,
         revision = list.revision,
-        enabled = list.pagingArmed,
+        // Off while the list is not on screen: its grid is not composed, so there is nothing near the end.
+        enabled = list.pagingArmed && onList,
         onLoadMore = actions.onLoadMore,
     )
 
@@ -302,7 +313,9 @@ fun SignedInScreen(
     val keys = remember { FocusRequester() }
     // Again when the page closes: the node that held focus leaves composition with it.
     // Not on opening: the page takes focus itself, for Esc, and must keep it.
-    LaunchedEffect(state.animePages.isOpen) { if (!state.animePages.isOpen) runCatching { keys.requestFocus() } }
+    LaunchedEffect(state.animePages.isOpen, state.screen) {
+        if (!state.animePages.isOpen || !onList) runCatching { keys.requestFocus() }
+    }
     val scope = rememberCoroutineScope()
     // No text field lives under this screen (Paste-the-code is on the Authorizing screen and the date
     // picker is its own dialog window), so there is nothing for these keys to steal from.
@@ -311,6 +324,12 @@ fun SignedInScreen(
         modifier.fillMaxSize().safeContentPadding().focusRequester(keys).focusTarget()
             .onPreviewKeyEvent { event ->
                 if (!keyboard || event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                // The list keys are off while another Screen shows; Esc leaves it.
+                if (!onList) {
+                    if (event.key != Key.Escape) return@onPreviewKeyEvent false
+                    actions.onBackToList()
+                    return@onPreviewKeyEvent true
+                }
                 // Browser and OS shortcuts (ctrl+- zoom, alt+arrows) are not ours. Shift stays: `+` is shift-`=`.
                 if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) return@onPreviewKeyEvent false
                 val command = keyCommand(event.key) ?: return@onPreviewKeyEvent false
@@ -331,48 +350,58 @@ fun SignedInScreen(
         Column(Modifier.fillMaxSize()) {
             // The page's slide-in stays inside this box, so the bar below it never slides away with it.
             Box(Modifier.weight(1f).fillMaxWidth()) {
-                // The list is always laid out; on a phone the page slides in over it and the list steps back.
-                Row(
-                    Modifier.fillMaxSize().graphicsLayer {
-                        if (!sideBySide) {
-                            translationX = -PHONE_LIST_SHIFT * size.width * phoneProgress
-                            alpha = 1f - (1f - PHONE_LIST_DIM) * phoneProgress
+                if (other && !sideBySide) {
+                    // Full screen, with a back control. The list, the page and their state are above this and untouched.
+                    AboutScreen(onBack = actions.onBackToList)
+                } else {
+                    // The list is always laid out; on a phone the page slides in over it and the list steps back.
+                    Row(
+                        Modifier.fillMaxSize().graphicsLayer {
+                            if (!sideBySide) {
+                                translationX = -PHONE_LIST_SHIFT * size.width * phoneProgress
+                                alpha = 1f - (1f - PHONE_LIST_DIM) * phoneProgress
+                            }
+                        },
+                    ) {
+                        if (sideBySide) {
+                            WideSidebar(state, actions, onShowDiagnostics = { diagnosticsOpen = true })
                         }
-                    },
-                ) {
-                    if (sideBySide) {
-                        WideSidebar(state, actions, onShowDiagnostics = { diagnosticsOpen = true })
+                        if (other) {
+                            // The sidebar stays; the prompt row, the list and the page panel are not drawn.
+                            AboutScreen(onBack = null, modifier = Modifier.weight(1f))
+                        } else {
+                            Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+                                SignedInPromptRow(
+                                    state = state,
+                                    actions = actions,
+                                    onShowDiagnostics = { diagnosticsOpen = true },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    wide = sideBySide,
+                                )
+                                AnimeListPane(state, actions, gridState, Modifier.weight(1f).fillMaxWidth(), tabs = !sideBySide)
+                            }
+                        }
+                        if (sideBySide && !other) {
+                            AnimePageSidePanel(page, canGoBack, pageActions)
+                        }
                     }
-                    Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
-                        SignedInPromptRow(
-                            state = state,
-                            actions = actions,
-                            onShowDiagnostics = { diagnosticsOpen = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            wide = sideBySide,
+                    val shown = heldPhonePage.value
+                    if (!sideBySide && shown != null && (page != null || phoneProgress > 0f)) {
+                        AnimePageScreen(
+                            page = shown,
+                            canGoBack = canGoBack,
+                            actions = pageActions,
+                            open = page != null,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer { translationX = (1f - phoneProgress) * size.width }
+                                .shadow(24.dp)
+                                .background(Act.colors.bg)
+                                // The list is still underneath: a node that listens for pointers, even to nothing,
+                                // is what stops the page's empty areas letting a tap fall through to it.
+                                .pointerInput(Unit) {},
                         )
-                        AnimeListPane(state, actions, gridState, Modifier.weight(1f).fillMaxWidth(), tabs = !sideBySide)
                     }
-                    if (sideBySide) {
-                        AnimePageSidePanel(page, canGoBack, pageActions)
-                    }
-                }
-                val shown = heldPhonePage.value
-                if (!sideBySide && shown != null && (page != null || phoneProgress > 0f)) {
-                    AnimePageScreen(
-                        page = shown,
-                        canGoBack = canGoBack,
-                        actions = pageActions,
-                        open = page != null,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer { translationX = (1f - phoneProgress) * size.width }
-                            .shadow(24.dp)
-                            .background(Act.colors.bg)
-                            // The list is still underneath: a node that listens for pointers, even to nothing,
-                            // is what stops the page's empty areas letting a tap fall through to it.
-                            .pointerInput(Unit) {},
-                    )
                 }
             }
             LogBar(state.patchLog, keyHints = sideBySide && keyboard)
@@ -387,6 +416,20 @@ fun SignedInScreen(
         )
     }
 }
+
+/**
+ * [actions] for a Screen other than the Anime List: a Watch Status or Reload picked there is about the list,
+ * so it returns to it first. The same record on the Anime List itself.
+ */
+private fun SignedInActions.returningToList(screen: SignedInScreen): SignedInActions =
+    if (screen == SignedInScreen.AnimeList) {
+        this
+    } else {
+        copy(
+            onReload = { onBackToList(); onReload() },
+            onSelectWatchStatus = { onBackToList(); onSelectWatchStatus(it) },
+        )
+    }
 
 /**
  * One bound key. Moves go through [SignedInActions.onOpenAnime], edits through the page's own

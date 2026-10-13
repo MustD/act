@@ -209,6 +209,8 @@ does not depend on it yet. Every step is a lazy
 still invalidated when the value changes — reading a file with `Properties().load(...)` at configuration
 time is exactly the trap the Conventions section warns about.
 
+`act.version` follows the same pattern in `core/build.gradle.kts` (`generateActVersion` → `ACT_VERSION`): a build with no property says `unknown`, and the About Screen is the only reader.
+
 `appModule` is the only place that reads `MAL_CLIENT_ID`. `:core` keeps `MalAuthConfig.clientId` a required parameter on
 purpose, so `:core`'s own tests cannot pick up whatever the developer's machine was configured with.
 
@@ -423,7 +425,7 @@ Four things in `app/androidApp/src/main/AndroidManifest.xml` are each a silent f
 
 ## Conventions
 
-- **The product version is `act.version` in `gradle.properties`** — `:server`'s `version` and Android's `versionName` read it via `providers.gradleProperty`. Shell tasks read it without Gradle: `grep '^act.version=' gradle.properties | cut -d= -f2`. `versionCode` is separate.
+- **The product version is `act.version` in `gradle.properties`** — `:server`'s `version` and Android's `versionName` read it via `providers.gradleProperty`. Shell tasks read it without Gradle: `grep '^act.version=' gradle.properties | cut -d= -f2`. `versionCode` is separate. It is also generated into `:core` `commonMain` as `const val ACT_VERSION` by `generateActVersion`, the way `MAL_CLIENT_ID` is (a lazy `Provider`, `inputs.property`, no BuildKonfig), and is read in one place: the About Screen.
 - **All dependency and plugin versions live in `gradle/libs.versions.toml`.** Build scripts reference `libs.*` aliases only — never inline a version string in a `build.gradle.kts`.
 - Java is 21, Azul Zulu, **pinned in `mise.toml` and not downloaded by Gradle**: `gradle/gradle-daemon-jvm.properties` names the vendor and version, there is no foojay resolver and no `toolchainUrl.*`, so a machine without that JDK fails with "No defined toolchain download url" rather than fetching one — the fix is `mise install`, not `updateDaemonJvm` (which would write the URLs back). An IDE's Gradle sync does not go through mise: set its Gradle JDK to the mise install once (`mise where java`). Android and Android-KMP modules compile to **JVM target 11**.
 - Gradle configuration cache and build cache are enabled in `gradle.properties`. Build logic that reads state at execution time will fail configuration-cache validation.

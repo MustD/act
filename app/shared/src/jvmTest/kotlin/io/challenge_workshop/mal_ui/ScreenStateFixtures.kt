@@ -42,6 +42,8 @@ import io.challenge_workshop.mal_ui.mal.MalUser
 import io.challenge_workshop.mal_ui.screen.MalRouting
 import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.screen.ShownError
+import io.challenge_workshop.mal_ui.screen.SignedInScreen
+import io.challenge_workshop.mal_ui.screen.SignedOutScreen
 import io.challenge_workshop.mal_ui.screen.explain
 import io.challenge_workshop.mal_ui.session.SessionDiagnostics
 import io.challenge_workshop.mal_ui.session.SignedOutReason
@@ -77,12 +79,14 @@ internal fun signedOut(
     signIn: SignInState = SignInState(),
     errorRelayHint: Boolean = false,
     signInRelayHint: Boolean = false,
+    screen: SignedOutScreen = SignedOutScreen.Welcome,
 ) = ScreenState.SignedOut(
     explanation = explain(reason),
     error = error?.let { ShownError(it, errorRelayHint) },
     signIn = signIn,
     routing = TEST_ROUTING,
     signInError = signIn.error?.let { ShownError(it, signInRelayHint) },
+    screen = screen,
 )
 
 internal fun authorizing(
@@ -106,6 +110,7 @@ internal fun signedIn(
     error: String? = null,
     diagnostics: SessionDiagnostics? = null,
     relayHint: Boolean = false,
+    screen: SignedInScreen = SignedInScreen.AnimeList,
 ) = ScreenState.SignedIn(
     user = user,
     refreshing = refreshing,
@@ -117,6 +122,7 @@ internal fun signedIn(
     error = error?.let { ShownError(it, relayHint) },
     diagnostics = diagnostics,
     routing = TEST_ROUTING,
+    screen = screen,
 )
 
 /**
