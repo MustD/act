@@ -5,6 +5,7 @@ package io.challenge_workshop.mal_ui.di
 import io.challenge_workshop.mal_ui.animelist.AnimeListRepository
 import io.challenge_workshop.mal_ui.animepage.AnimePageRepository
 import io.challenge_workshop.mal_ui.animelist.LayoutPreference
+import io.challenge_workshop.mal_ui.screen.ScreenChoice
 import io.challenge_workshop.mal_ui.theme.ThemePreference
 import io.challenge_workshop.mal_ui.auth.SignIn
 import io.challenge_workshop.mal_ui.auth.StartupRedirect
@@ -82,6 +83,7 @@ class AppGraphTest {
         assertNotNull(koin.get<MalSessionRepository>())
         assertNotNull(koin.get<LayoutPreference>())
         assertNotNull(koin.get<ThemePreference>())
+        assertNotNull(koin.get<ScreenChoice>())
         assertNotNull(koin.get<AnimeListRepository>())
         assertNotNull(koin.get<AnimePageRepository>())
         assertNotNull(koin.get<SignIn>())
@@ -138,6 +140,7 @@ class AppGraphTest {
         val koin = koin()
 
         assertSame(koin.get<LayoutPreference>(), koin.get<LayoutPreference>())
+        assertSame(koin.get<ScreenChoice>(), koin.get<ScreenChoice>())
 
         koin.get<MalSessionRepository>().close()
     }

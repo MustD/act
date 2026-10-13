@@ -10,6 +10,7 @@ import io.challenge_workshop.mal_ui.animelist.WatchStatus
 import io.challenge_workshop.mal_ui.animepage.ListEdit
 import io.challenge_workshop.mal_ui.animepage.AnimePageRepository
 import io.challenge_workshop.mal_ui.animepage.RelatedAnime
+import io.challenge_workshop.mal_ui.screen.ScreenChoice
 import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.session.SessionControls
 import io.challenge_workshop.mal_ui.theme.ThemePreference
@@ -48,6 +49,9 @@ data class ScreenActions(
 @Immutable
 data class WelcomeActions(
     val onSignIn: () -> Unit,
+    /** The `about` link, and About's back link, which returns to the Welcome Screen. */
+    val onOpenAbout: () -> Unit,
+    val onBack: () -> Unit,
 )
 
 /** The authorizing screen: Paste-the-code, and backing out. */
@@ -78,6 +82,10 @@ data class SignedInActions(
     /** The Theme button; the argument is whether dark is on screen now, which `System` hides. */
     val onToggleTheme: (showingDark: Boolean) -> Unit,
     val onSignOut: () -> Unit,
+    /** Main Menu: replaces the Screen showing. [onBackToList] returns to the Anime List. */
+    val onOpenAbout: () -> Unit,
+    val onOpenDiagnostics: () -> Unit,
+    val onBackToList: () -> Unit,
     /** Tapping a List Entry: opens its Anime Page as a new history. */
     val onOpenAnime: (AnimeListEntry) -> Unit,
     val animePage: AnimePageActions,
@@ -131,6 +139,7 @@ internal fun screenActions(
     animeList: AnimeListRepository,
     animePages: AnimePageRepository,
     layout: LayoutPreference,
+    screenChoice: ScreenChoice,
     theme: ThemePreference,
     channel: AuthRedirectChannel,
     openUri: (String) -> Unit,
@@ -139,6 +148,8 @@ internal fun screenActions(
         // Straight through, with no `launch` between the click and the channel: a web popup's user
         // activation is a timestamp window and WebKit's is one second wide.
         onSignIn = { signIn.start(channel, openUri) },
+        onOpenAbout = screenChoice::openAbout,
+        onBack = screenChoice::back,
     ),
     authorizing = AuthorizingActions(
         onPastedRedirectChange = signIn::setPastedRedirect,
@@ -156,6 +167,9 @@ internal fun screenActions(
         onSelectLayout = layout::choose,
         onToggleTheme = theme::toggle,
         onSignOut = controls::signOut,
+        onOpenAbout = screenChoice::openAbout,
+        onOpenDiagnostics = screenChoice::openDiagnostics,
+        onBackToList = screenChoice::back,
         onOpenAnime = animePages::open,
         animePage = AnimePageActions(
             onBack = animePages::back,

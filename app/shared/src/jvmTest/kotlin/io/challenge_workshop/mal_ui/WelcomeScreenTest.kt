@@ -20,6 +20,7 @@ import io.challenge_workshop.mal_ui.theme.ActTheme
 import io.challenge_workshop.mal_ui.animelist.AnimeListRepository
 import io.challenge_workshop.mal_ui.animepage.AnimePageRepository
 import io.challenge_workshop.mal_ui.animelist.LayoutPreference
+import io.challenge_workshop.mal_ui.screen.ScreenChoice
 import io.challenge_workshop.mal_ui.theme.ThemePreference
 import io.challenge_workshop.mal_ui.auth.LoopbackRedirectListener
 import io.challenge_workshop.mal_ui.auth.LoopbackRedirectListenerTest
@@ -110,6 +111,7 @@ class WelcomeScreenTest {
         val animeList = AnimeListRepository(repository, listScope)
         val animePages = AnimePageRepository(repository, animeList, listScope)
         val layout = LayoutPreference(store, listScope)
+        val screenChoice = ScreenChoice(repository.state, listScope)
         val theme = ThemePreference(store, listScope)
         val opened = Collections.synchronizedList(mutableListOf<String>())
         try {
@@ -119,7 +121,7 @@ class WelcomeScreenTest {
                     // test.
                     CompositionLocalProvider(LocalUriHandler provides RecordingUriHandler(opened)) {
                         // `App()` provides the theme in production; `AppScreen` is below it.
-                        ActTheme { AppScreen(repository, signIn, controls, animeList, animePages, layout, theme) }
+                        ActTheme { AppScreen(repository, signIn, controls, animeList, animePages, layout, screenChoice, theme) }
                     }
                 }
 

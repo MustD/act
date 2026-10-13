@@ -202,6 +202,8 @@ internal class RecordedActions {
     val actions: ScreenActions = ScreenActions(
         signIn = WelcomeActions(
             onSignIn = { calls += "signIn" },
+            onOpenAbout = { calls += "openAbout" },
+            onBack = { calls += "backFromAbout" },
         ),
         authorizing = AuthorizingActions(
             onPastedRedirectChange = { pastes += it; calls += "pastedRedirectChange" },
@@ -217,6 +219,9 @@ internal class RecordedActions {
             onSelectLayout = { layouts += it; calls += "selectLayout" },
             onToggleTheme = { themes += it; calls += "toggleTheme" },
             onSignOut = { calls += "signOut" },
+            onOpenAbout = { calls += "openAbout" },
+            onOpenDiagnostics = { calls += "openDiagnostics" },
+            onBackToList = { calls += "backToList" },
             onOpenAnime = { opened += it; calls += "openAnime" },
             animePage = AnimePageActions(
                 onBack = { calls += "animePageBack" },

@@ -23,6 +23,7 @@ import io.challenge_workshop.mal_ui.auth.WelcomeScreen
 import io.challenge_workshop.mal_ui.auth.SignedInScreen
 import io.challenge_workshop.mal_ui.auth.rememberAuthRedirectChannel
 import io.challenge_workshop.mal_ui.auth.screenActions
+import io.challenge_workshop.mal_ui.screen.ScreenChoice
 import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.screen.ScreenStateSource
 import io.challenge_workshop.mal_ui.session.MalSessionRepository
@@ -50,6 +51,7 @@ fun App(
     animeList: AnimeListRepository = koinInject(),
     animePages: AnimePageRepository = koinInject(),
     layout: LayoutPreference = koinInject(),
+    screenChoice: ScreenChoice = koinInject(),
     theme: ThemePreference = koinInject(),
 ) {
     // Coil's singleton, replaced here at the root because its default cannot fetch over the network
@@ -65,7 +67,7 @@ fun App(
 
     ActTheme(dark = dark) {
         Surface(modifier = Modifier) {
-            AppScreen(repository, signIn, controls, animeList, animePages, layout, theme)
+            AppScreen(repository, signIn, controls, animeList, animePages, layout, screenChoice, theme)
         }
     }
 }
@@ -99,13 +101,14 @@ internal fun AppScreen(
     animeList: AnimeListRepository,
     animePages: AnimePageRepository,
     layout: LayoutPreference,
+    screenChoice: ScreenChoice,
     theme: ThemePreference,
 ) {
     val channel = rememberAuthRedirectChannel()
     val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
 
-    val source = remember(repository, signIn, controls, animeList, animePages, layout, scope) {
+    val source = remember(repository, signIn, controls, animeList, animePages, layout, screenChoice, scope) {
         ScreenStateSource(
             session = repository.state,
             config = repository.config,
@@ -115,12 +118,13 @@ internal fun AppScreen(
             patchLog = animePages.log,
             signIn = signIn.state,
             controls = controls.state,
+            picked = screenChoice.picked,
             scope = scope,
         )
     }
 
-    val actions = remember(signIn, controls, animeList, animePages, layout, theme, channel, uriHandler) {
-        screenActions(signIn, controls, animeList, animePages, layout, theme, channel, uriHandler::openUri)
+    val actions = remember(signIn, controls, animeList, animePages, layout, screenChoice, theme, channel, uriHandler) {
+        screenActions(signIn, controls, animeList, animePages, layout, screenChoice, theme, channel, uriHandler::openUri)
     }
 
     SessionRoute(source.state.collectAsStateWithLifecycle().value, actions)

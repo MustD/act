@@ -36,13 +36,13 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * The mapping from seven flows to one [ScreenState], on every Target.
+ * The mapping from nine flows to one [ScreenState], on every Target.
  *
- * Driven by seven [MutableStateFlow]s and no fakes at all: there is no repository here, no store, no
+ * Driven by nine [MutableStateFlow]s and no fakes at all: there is no repository here, no store, no
  * HTTP engine and no port to bind, which is the entire point of the seam. Everything a screen can be
  * is a literal, and every assertion below used to need a rendered Compose tree on jvm.
  *
- * [Dispatchers.Unconfined] rather than a test dispatcher, so an assignment to one of the seven inputs
+ * [Dispatchers.Unconfined] rather than a test dispatcher, so an assignment to one of the nine inputs
  * has reached [ScreenStateSource.state] by the time the next line runs. The combine is pure, so
  * running it inline on the caller's thread is exactly what it does in the app on
  * `Dispatchers.Main.immediate`.
@@ -67,6 +67,7 @@ class ScreenStateSourceTest {
         patchLog = patchLog,
         signIn = signIn,
         controls = controls,
+        picked = MutableStateFlow(null),
         scope = CoroutineScope(Dispatchers.Unconfined),
     )
 
