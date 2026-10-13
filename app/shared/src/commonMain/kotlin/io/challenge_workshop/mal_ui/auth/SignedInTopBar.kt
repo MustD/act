@@ -57,10 +57,8 @@ import org.jetbrains.compose.resources.painterResource
 /**
  * The prompt row over the signed-in screen: `<user>@mal:~$ ls <watch status>/` on the left, and on
  * the right the three things that are not a query over the list — the Layout, the Theme, and a
- * `more_vert` menu holding the three things the Anime List taking over the screen could otherwise
- * have cost. Reload is the way to pick up a change made on myanimelist.net, sign out is the only way
- * back to the sign-in screen, and diagnostics is the only way a human ever sees the refresh path
- * execute. Nothing was deleted to make room.
+ * `more_vert` menu holding the Main Menu. Sign out is the only way back to the sign-in screen, and
+ * diagnostics is the only way a human ever sees the refresh path execute — and where Reload is.
  *
  * It replaces the top app bar, which neither scrolled nor competed with the list and so was the one
  * place the name could sit; the row is outside the lazy grid for the same reason.
@@ -124,7 +122,7 @@ fun SignedInPromptRow(
             onClick = { actions.onToggleTheme(c.isDark) },
             modifier = Modifier.testTag(SESSION_THEME_TAG),
         )
-        // At wide widths the sidebar carries these three; the menu would only repeat it.
+        // At wide widths the sidebar carries the Main Menu; this would only repeat it.
         if (!wide) {
             // The menu is anchored to this `Box` rather than to the row, so it opens under the button
             // that summoned it instead of at the corner of the window.
@@ -142,15 +140,6 @@ fun SignedInPromptRow(
                 ) {
                     // Each entry closes the menu before it acts. Leaving it open over a screen that has
                     // just started replacing itself would put a second tap one pixel away from the first.
-                    DropdownMenuItem(
-                        text = { Text("reload") },
-                        // The same reset the filter and the Sort Order go through, with neither of them
-                        // changed — so it refetches the list on screen from `offset=0`.
-                        onClick = {
-                            menuOpen = false
-                            actions.onReload()
-                        },
-                    )
                     DropdownMenuItem(
                         text = { Text("diagnostics") },
                         onClick = {

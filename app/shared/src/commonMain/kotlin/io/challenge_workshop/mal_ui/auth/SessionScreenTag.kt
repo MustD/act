@@ -149,7 +149,7 @@ val SESSION_USER_NAME_TAG: String = "$SESSION_TOP_BAR_TAG.userName"
 val SESSION_MENU_BUTTON_TAG: String = "$SESSION_TOP_BAR_TAG.moreButton"
 
 /**
- * The Main Menu itself, once opened: reload, diagnostics, about, privacy, sign out.
+ * The Main Menu itself, once opened: diagnostics, about, privacy, sign out.
  *
  * Its own tag because what is worth asserting is *what is in it*.
  */

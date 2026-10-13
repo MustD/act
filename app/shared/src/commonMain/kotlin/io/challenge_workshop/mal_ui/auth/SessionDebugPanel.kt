@@ -63,7 +63,7 @@ fun SessionDebugPanel(
             }
         }
 
-        // A `FlowRow`, because three buttons of this width do not fit a phone side by side and a
+        // A `FlowRow`, because four buttons of this width do not fit a phone side by side and a
         // `Row` would clip the last of them off the edge with no way to reach it.
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -77,6 +77,9 @@ fun SessionDebugPanel(
             // The only way a human ever sees the refresh path execute against real MAL: a shell-only
             // app never sits open for the hour it would otherwise take.
             TerminalButton("Force 401", onClick = actions.onForceExpireAccessToken, enabled = !state.busy)
+            // Reload, the Anime List's: the same reset a filter or Sort Order change goes through, with
+            // neither changed. Not gated on `busy`, which is the Session's operation and not the list's.
+            TerminalButton("Reload list", onClick = actions.onReloadList)
         }
         Text(
             "Force 401 writes an invalid access token, keeps the refresh token, and drops Ktor's " +

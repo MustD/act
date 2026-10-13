@@ -254,7 +254,7 @@ private fun TerminalProgress(modifier: Modifier = Modifier) {
  * fetches anything.
  *
  * Everything that is *not* a query over the list has left the list entirely: the name, the Layout
- * toggle, Reload and Sign out are in [SignedInPromptRow], which neither scrolls nor
+ * toggle and Sign out are in [SignedInPromptRow], which neither scrolls nor
  * competes with the entries. The filter row and the Sort Order stay between the bar and the list,
  * because those two are the query.
  */
@@ -270,7 +270,7 @@ fun SignedInScreen(
     val layout = state.layout
     val onList = state.screen == SignedInScreen.AnimeList
     val other = !onList
-    // With another Screen showing, a Watch Status or Reload is for the list: go back to it, then act.
+    // With another Screen showing, a Watch Status is for the list: go back to it, then act.
     val actions = remember(actions, state.screen) { actions.returningToList(state.screen) }
     // Android back; Esc is below, with the other keys.
     BackHandler(enabled = !onList, onBack = actions.onBackToList)
@@ -422,17 +422,14 @@ private fun OtherScreen(
 }
 
 /**
- * [actions] for a Screen other than the Anime List: a Watch Status or Reload picked there is about the list,
+ * [actions] for a Screen other than the Anime List: a Watch Status picked there is about the list,
  * so it returns to it first. The same record on the Anime List itself.
  */
 private fun SignedInActions.returningToList(screen: SignedInScreen): SignedInActions =
     if (screen == SignedInScreen.AnimeList) {
         this
     } else {
-        copy(
-            onReload = { onBackToList(); onReload() },
-            onSelectWatchStatus = { onBackToList(); onSelectWatchStatus(it) },
-        )
+        copy(onSelectWatchStatus = { onBackToList(); onSelectWatchStatus(it) })
     }
 
 /**

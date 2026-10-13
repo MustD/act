@@ -161,7 +161,7 @@ class AboutScreenTest {
     }
 
     @Test
-    fun a_watch_status_or_reload_picked_beside_about_returns_to_the_list_and_then_acts() {
+    fun a_watch_status_picked_beside_about_returns_to_the_list_and_then_acts() {
         val actions = RecordedActions()
         runComposeUiTest {
             setContent {
@@ -170,10 +170,9 @@ class AboutScreenTest {
                 }
             }
             onNodeWithText("completed", substring = true).performClick()
-            onNodeWithText("reload").performClick()
             onNodeWithText("sign out").performClick()
             assertEquals(
-                listOf("backToList", "selectWatchStatus", "backToList", "reload", "signOut"),
+                listOf("backToList", "selectWatchStatus", "signOut"),
                 actions.calls,
             )
             assertEquals(listOf<WatchStatus?>(WatchStatus.Completed), actions.watchStatuses)

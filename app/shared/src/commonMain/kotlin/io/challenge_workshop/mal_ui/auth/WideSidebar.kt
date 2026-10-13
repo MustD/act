@@ -107,7 +107,6 @@ internal fun WideSidebar(
         }
         Spacer(Modifier.weight(1f))
         SidebarLabel("// menu")
-        SidebarAction("reload", enabled = true, onClick = actions.onReload)
         SidebarAction("diagnostics", enabled = true, active = state.screen == SignedInScreen.Diagnostics, onClick = actions.onOpenDiagnostics)
         SidebarAction("about", enabled = true, active = state.screen == SignedInScreen.About, onClick = actions.onOpenAbout)
         SidebarAction("privacy", enabled = true, onClick = { uriHandler.openUri(PRIVACY_URL) })

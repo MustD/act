@@ -66,8 +66,8 @@ data class AuthorizingActions(
  * The signed-in screen, which **is** the Anime List.
  *
  * This record is the reason no module exposes an actions record of its own: Sign out and the
- * Diagnostics Screen come from the Session, Reload and the two query controls from the Anime List,
- * and the Layout from its preference.
+ * Diagnostics Screen come from the Session, the two query controls from the Anime List, and the
+ * Layout from its preference.
  *
  * There is no "load the first page": the Anime List asks for it itself as the Session starts.
  */
@@ -75,7 +75,6 @@ data class AuthorizingActions(
 data class SignedInActions(
     val onLoadMore: () -> Unit,
     val onRetry: () -> Unit,
-    val onReload: () -> Unit,
     val onSelectWatchStatus: (WatchStatus?) -> Unit,
     val onSelectSortOrder: (AnimeListSortOrder) -> Unit,
     val onSelectLayout: (AnimeListLayout) -> Unit,
@@ -110,9 +109,9 @@ data class AnimePageActions(
 )
 
 /**
- * The three buttons on the Diagnostics Screen.
+ * The four buttons on the Diagnostics Screen.
  *
- * Its own record rather than three more fields on [SignedInActions], because the panel is on a
+ * Its own record rather than four more fields on [SignedInActions], because the panel is on a
  * Screen that only opens deliberately — and because "Force 401" and "Reload profile" being one row
  * apart is the whole procedure for watching a refresh happen against real MAL.
  */
@@ -121,6 +120,8 @@ data class DiagnosticsActions(
     val onReloadDiagnostics: () -> Unit,
     val onRefreshUser: () -> Unit,
     val onForceExpireAccessToken: () -> Unit,
+    /** Reload: the Anime List from its first page. The Screen stays; the list is underneath it. */
+    val onReloadList: () -> Unit,
 )
 
 /**
@@ -159,7 +160,6 @@ internal fun screenActions(
     signedIn = SignedInActions(
         onLoadMore = animeList::loadMore,
         onRetry = animeList::retry,
-        onReload = animeList::reload,
         onSelectWatchStatus = animeList::setWatchStatus,
         onSelectSortOrder = animeList::setSortOrder,
         // Straight to the preference, which switches inside the click and writes behind it: a Layout
@@ -183,6 +183,7 @@ internal fun screenActions(
             onReloadDiagnostics = { controls.reloadDiagnostics() },
             onRefreshUser = { controls.refreshUser() },
             onForceExpireAccessToken = { controls.forceExpireAccessToken() },
+            onReloadList = animeList::reload,
         ),
     ),
 )

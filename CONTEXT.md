@@ -138,9 +138,9 @@ and that outlives a Session. _Avoid_: Mode, appearance
 **Reload**:
 Discarding every loaded page of the Anime List and fetching it again from the start under the filter and Sort Order
 already on screen — the way to pick up a change made on myanimelist.net. The same operation a filter or Sort Order
-change performs, with neither of them changed. Unqualified "Reload" always means this one, and it is the one in the
-**Main Menu**; the Diagnostics Screen's two buttons are **Reload diagnostics** and **Reload profile**, which reload a
-Session and not a list. _Avoid_: Refresh
+change performs, with neither of them changed. Unqualified "Reload" always means this one. It is the **Diagnostics
+Screen**'s **Reload list** button and leaves that Screen showing; the two beside it are **Reload diagnostics** and
+**Reload profile**, which reload a Session and not a list. _Avoid_: Refresh
 (a **Session** refresh is the token exchange, and the two happen on the same screen), retry (a retry re-requests the one
 page that failed and keeps everything else)
 
@@ -172,7 +172,7 @@ dialog (its earlier forms)
 
 **Main Menu**:
 The controls that move between the signed-in Screens — Anime List, Diagnostics, About — and open the privacy policy,
-plus the two actions that belong nowhere else: Reload and sign out. One menu in two shapes — behind a button when the
+plus the one action that belongs nowhere else: sign out. One menu in two shapes — behind a button when the
 window is narrow, in the sidebar when it is wide — so each item has exactly one place on screen at any width. The Welcome
 Screen has no menu; it links to About and privacy directly. _Avoid_: Drawer, overflow menu, navigation menu, action menu
 (it is both), session menu (most of its items are not about the Session)

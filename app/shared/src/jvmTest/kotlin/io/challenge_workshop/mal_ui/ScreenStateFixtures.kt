@@ -191,7 +191,7 @@ internal const val TEST_AUTHORIZATION_URL: String =
  *
  * What a control *causes* is the Sign-in's, the session controls' or the Anime List's, and all are tested where they live. What
  * is left for a rendering test is that the control the user can see is wired to the right one of
- * them — a Layout toggle bound to `onReload` still renders perfectly.
+ * them — a Layout toggle bound to `onSignOut` still renders perfectly.
  */
 internal class RecordedActions {
     val calls: MutableList<String> = mutableListOf()
@@ -219,7 +219,6 @@ internal class RecordedActions {
         signedIn = SignedInActions(
             onLoadMore = { calls += "loadMore" },
             onRetry = { calls += "retry" },
-            onReload = { calls += "reload" },
             onSelectWatchStatus = { watchStatuses += it; calls += "selectWatchStatus" },
             onSelectSortOrder = { sortOrders += it; calls += "selectSortOrder" },
             onSelectLayout = { layouts += it; calls += "selectLayout" },
@@ -241,6 +240,7 @@ internal class RecordedActions {
                 onReloadDiagnostics = { calls += "reloadDiagnostics" },
                 onRefreshUser = { calls += "refreshUser" },
                 onForceExpireAccessToken = { calls += "forceExpireAccessToken" },
+                onReloadList = { calls += "reload" },
             ),
         ),
     )
