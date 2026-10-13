@@ -254,7 +254,7 @@ class SignedInTopBarTest {
      * everywhere else.
      */
     @Test
-    fun each_debug_panel_button_reaches_its_own_action() {
+    fun each_diagnostics_screen_button_reaches_its_own_action() {
         val actions = RecordedActions()
         runComposeUiTest {
             setContent { PhoneSessionRoute(signedIn(diagnostics = TEST_DIAGNOSTICS, screen = SignedInScreen.Diagnostics), actions.actions) }

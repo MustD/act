@@ -99,7 +99,8 @@ internal fun WideSidebar(
             for (filter in ANIME_LIST_FILTERS) {
                 SidebarWatchStatus(
                     filter,
-                    active = filter == state.list.watchStatus,
+                    // Only while the list shows: with About or Diagnostics open, that item is the current one.
+                    active = filter == state.list.watchStatus && state.screen == SignedInScreen.AnimeList,
                     enabled = state.list.queryControlsEnabled,
                 ) { actions.onSelectWatchStatus(filter) }
             }

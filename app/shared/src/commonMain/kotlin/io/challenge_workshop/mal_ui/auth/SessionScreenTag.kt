@@ -113,7 +113,7 @@ val ANIME_LIST_LAYOUT_TAG: String = "${SessionScreenTag.SignedIn.tag}.layout"
 
 /**
  * The top app bar over the signed-in screen — the chrome that carries the user's name, the Layout
- * toggle and the overflow menu.
+ * toggle and the Main Menu.
  *
  * Derived from [SessionScreenTag.SignedIn] like the Anime List's own tags, because it is part of the
  * same screen: the signed-in branch **is** the Anime List, and the bar is what stops that costing
@@ -138,9 +138,9 @@ val ANIME_LIST_TITLE_TAG: String = "${SessionScreenTag.SignedIn.tag}.title"
 val SESSION_USER_NAME_TAG: String = "$SESSION_TOP_BAR_TAG.userName"
 
 /**
- * The button that opens the overflow menu.
+ * The button that opens the Main Menu.
  *
- * Its own tag because the menu is only reachable through it: the three entries do not exist in the
+ * Its own tag because the menu is only reachable through it: its entries do not exist in the
  * tree until it is clicked, so a test that could not find the button could not assert on any of
  * them. By tag and not by its label, because the label is the one part of it with no meaning — it
  * says "More" only because this project pulls in no Material icon dependency to draw three dots
@@ -149,11 +149,9 @@ val SESSION_USER_NAME_TAG: String = "$SESSION_TOP_BAR_TAG.userName"
 val SESSION_MENU_BUTTON_TAG: String = "$SESSION_TOP_BAR_TAG.moreButton"
 
 /**
- * The overflow menu itself, once opened: reload, diagnostics, about, privacy, sign out.
+ * The Main Menu itself, once opened: reload, diagnostics, about, privacy, sign out.
  *
- * Its own tag because what is worth asserting is *what
- * is in it*, and the three entries in it are the three things the Anime List taking over this screen
- * could otherwise have cost.
+ * Its own tag because what is worth asserting is *what is in it*.
  */
 val SESSION_MENU_TAG: String = "$SESSION_TOP_BAR_TAG.menu"
 

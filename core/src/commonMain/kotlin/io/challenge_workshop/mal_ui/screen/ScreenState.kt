@@ -12,8 +12,8 @@ import io.challenge_workshop.mal_ui.session.SessionState
 import io.challenge_workshop.mal_ui.session.SignedOutReason
 
 /**
- * What one of the app's four destinations. [SignedOut] and [SignedIn] also say which of their own Screens shows needs in order to draw itself: a Session and an Anime List,
- * resolved into a value.
+ * What the app needs in order to draw itself: a Session and an Anime List, resolved into a value.
+ * Four variants, and [SignedOut] and [SignedIn] also say which of their own Screens shows.
  *
  * **Not a synonym for [SessionState].** That is the *Session's* own state — whether there are tokens
  * and what happened to them — and it is one of this value's nine inputs. This is the whole screen,

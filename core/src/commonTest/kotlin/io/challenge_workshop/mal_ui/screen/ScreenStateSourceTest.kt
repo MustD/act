@@ -342,7 +342,7 @@ class ScreenStateSourceTest {
     }
 
     /**
-     * Where this build sends MAL traffic, which the sign-in screen says up front and the debug panel
+     * Where this build sends MAL traffic, which the sign-in screen says up front and the Diagnostics Screen
      * repeats: a browser with no relay running fails at its first request with a bare "Failed to
      * fetch", and nothing else in the app can tell the user why.
      *

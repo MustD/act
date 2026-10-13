@@ -155,7 +155,7 @@ val actVersion: Provider<String> = providers.gradleProperty("act.version").notBl
 
 /**
  * Writes `ACT_VERSION` into `commonMain` as a plain `const val`, the way [generateMalBuildConfig] writes the
- * Client ID: no expect/actual, no BuildKonfig. Read in one place — the About Screen.
+ * Client ID: no expect/actual, no BuildKonfig. Read in two places — the About Screen and the Diagnostics Screen.
  */
 val generateActVersion by tasks.registering {
     val outputDir = layout.buildDirectory.dir("generated/actVersion/kotlin")

@@ -3,7 +3,6 @@ package io.challenge_workshop.mal_ui.auth
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,9 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import io.challenge_workshop.mal_ui.theme.BusyIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -44,7 +40,6 @@ import io.challenge_workshop.mal_ui.animelist.layoutLabel
 import io.challenge_workshop.mal_ui.animelist.next
 import io.challenge_workshop.mal_ui.animelist.promptText
 import io.challenge_workshop.mal_ui.theme.ActMedium
-import io.challenge_workshop.mal_ui.theme.SectionLabel
 import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.theme.Act
 import io.challenge_workshop.mal_ui.theme.ActMedium

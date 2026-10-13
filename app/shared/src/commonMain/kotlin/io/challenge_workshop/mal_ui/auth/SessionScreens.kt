@@ -415,7 +415,9 @@ private fun OtherScreen(
 ) {
     when (state.screen) {
         SignedInScreen.Diagnostics -> DiagnosticsScreen(state, actions.diagnostics, onBack, modifier)
-        else -> AboutScreen(onBack, modifier)
+        SignedInScreen.About -> AboutScreen(onBack, modifier)
+        // Not reached: the caller draws the list itself.
+        SignedInScreen.AnimeList -> Unit
     }
 }
 

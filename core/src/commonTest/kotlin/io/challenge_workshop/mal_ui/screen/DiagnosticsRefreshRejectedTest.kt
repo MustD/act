@@ -12,6 +12,7 @@ import io.challenge_workshop.mal_ui.session.JsonTokenStore
 import io.challenge_workshop.mal_ui.session.MalSessionRepository
 import io.challenge_workshop.mal_ui.session.RefreshResponse
 import io.challenge_workshop.mal_ui.session.SessionControls
+import io.challenge_workshop.mal_ui.session.SignedOutReason
 import io.challenge_workshop.mal_ui.session.TEST_CONFIG
 import io.challenge_workshop.mal_ui.session.TEST_USER
 import io.challenge_workshop.mal_ui.session.VALID_TOKENS
@@ -23,8 +24,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.test.assertNotNull
 
 /**
  * Force 401, then Reload profile, with MAL rejecting the refresh — end to end through the real
@@ -63,15 +64,15 @@ class DiagnosticsRefreshRejectedTest {
         )
 
         choice.openDiagnostics()
-        assertIs<ScreenState.SignedIn>(source.state.value).also { assertIs<SignedInScreen>(it.screen) }
+        assertEquals(SignedInScreen.Diagnostics, assertIs<ScreenState.SignedIn>(source.state.value).screen)
 
         controls.forceExpireAccessToken()
         controls.state.first { !it.busy }
         controls.refreshUser()
         val welcome = source.state.first { it is ScreenState.SignedOut } as ScreenState.SignedOut
 
-        assertIs<SignedOutScreen>(welcome.screen)
-        assertNotNull(welcome.explanation, "the Welcome Screen must say why the Session ended")
+        assertEquals(SignedOutScreen.Welcome, welcome.screen)
+        assertEquals(explain(SignedOutReason.RefreshRejected), welcome.explanation)
         repository.close()
     }
 }
