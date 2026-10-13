@@ -19,7 +19,7 @@ import kotlin.test.assertEquals
  * resumed inside it lands whenever that scheduler gets to it and the race the test means to set up
  * never happens. `runTest`'s [StandardTestDispatcher][kotlinx.coroutines.test.StandardTestDispatcher]
  * and [runCurrent] make the ordering the test's to choose. Being in `:core` it also runs on every
- * Target under `./gradlew :core:allTests`.
+ * Target under `mise run test:core`.
  *
  * Every coroutine here is a child of the test's own scope rather than of `backgroundScope`:
  * [advanceUntilIdle] does not run background work, so a startup read parked on a gate would still be

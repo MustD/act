@@ -14,7 +14,7 @@ internal fun browserOrigin(): String = js("window.location.origin")
 
 /**
  * Browsers must go through the same-origin `:server` relay — see [platformMalEndpoints].
- * Start it with `./gradlew :server:run` before attempting to log in on web.
+ * Start it with `mise run run:server` before attempting to log in on web.
  */
 actual fun platformMalEndpoints(): MalEndpoints = relayEndpointsFor(browserOrigin())
 

@@ -13,8 +13,8 @@ shape of thing one level up: `ScreenStateSource` decides *which* screen and *wha
 what that looks like. Nothing in `:core` imports Compose, and nothing in `ScreenState` is a `Dp`, a `Modifier` or a
 lambda.
 
-The operational half is `./gradlew :core:allTests`, which is the one task in this repository that runs a test on jvm,
-js, wasmJs and android in one command. The mapping is the part of this feature that can be wrong the same way on four
+The operational half is `mise run test:core`, which is the one task in this repository that runs a test on jvm,
+wasmJs and android in one command. The mapping is the part of this feature that can be wrong the same way on three
 Targets; the drawing is the part that can only be tested where a Compose harness already runs.
 
 ## Considered options

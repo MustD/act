@@ -108,8 +108,8 @@ class AppGraphTest {
         // literal: a build configured with `mal.clientId` has to reach the repository.
         //
         // Honest about its reach: in a build configured with no Client ID this compares "" to "" and
-        // cannot fail. It bites in a build that sets one — `./gradlew :app:shared:jvmTest
-        // -Pmal.clientId=...`, or CI with `MAL_CLIENT_ID` set — which is also the only configuration
+        // cannot fail. It bites in a build that sets one — `mise run build`, which loads
+        // `.secure.build.env`, or CI with `MAL_CLIENT_ID` set — which is also the only configuration
         // in which the wiring matters.
         val koin = koin()
 

@@ -95,6 +95,6 @@ The header half is one command and needs no MAL session, no token and no build:
 curl -i https://cdn.myanimelist.net/images/anime/4/19644.jpg -H "Origin: http://localhost:18020" | head -20
 ```
 
-The in-page half needs a dev server (`./gradlew :app:webApp:wasmJsBrowserDevelopmentRun --continuous`) and a browser
+The in-page half needs a dev server (`mise run run:web`) and a browser
 pointed at it; the probe script itself was throwaway and is not kept — `fetch(url).then(r => r.type)` in the page's
 console is the whole test, with `"cors"` the pass and a `TypeError` the fail.

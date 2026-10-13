@@ -1,48 +1,118 @@
-This is a Kotlin Multiplatform project targeting Android, Web, Desktop (JVM), Server.
+# act
 
-* [/app/shared](./app/shared/src) is for code that will be shared across your Compose Multiplatform applications. It
-  contains several subfolders:
-    - [commonMain](./app/shared/src/commonMain/kotlin) is for code that’s common for all targets.
-    - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name. For
-      example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-      the [iosMain](./app/shared/src/iosMain/kotlin) folder would be the right place for such calls. Similarly, if you
-      want to edit the Desktop (JVM) specific part, the [jvmMain](./app/shared/src/jvmMain/kotlin)
-      folder is the appropriate location.
+A [MyAnimeList](https://myanimelist.net) client built with Kotlin Multiplatform and Compose Multiplatform.
 
-* [/core](./core/src) is for the code that will be shared between all targets in the project. The most important
-  subfolder is [commonMain](./core/src/commonMain/kotlin). If preferred, you can add code to the platform-specific
-  folders here too.
+**Live demo:** [https://act.io-workshop.net](https://act.io-workshop.net)
 
-* [/server](./server/src/main/kotlin) is for the Ktor server application.
+## Features
 
-### Running the apps
+- **OAuth2 Authentication** — Full OAuth2 authorization code flow with PKCE (`code_challenge_method=plain`). Each
+  platform captures the redirect differently (loopback on desktop, popup on web, custom-scheme intent on Android). A
+  paste-the-code fallback covers edge cases across all platforms.
+- **Anime List** — Paginated, filterable, sortable list of your MAL anime entries with multiple layout options
+  (grid/list).
+- **Anime Page** — Detail view for individual anime with related entries, list-edit functionality (score, status,
+  episodes watched), and patch-log tracking.
+- **Session Management** — Token storage with automatic refresh, session diagnostics, and sign-out.
+- **Theming** — Light/dark/system theme preference persisted per-device.
 
-Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and
-options:
+## Tech Stack
 
-- Android app: `./gradlew :app:androidApp:assembleDebug`
-- Desktop app:
-    - Hot reload: `./gradlew :app:desktopApp:hotRun --auto`
-    - Standard run: `./gradlew :app:desktopApp:run`
-- Server: `./gradlew :server:run`
-- Web app:
-    - `./gradlew :app:webApp:wasmJsBrowserDevelopmentRun --continuous`
+- **Language**: Kotlin (Kotlin Multiplatform)
+- **UI**: Compose Multiplatform (shared UI across Android, Desktop, and Web)
+- **Build**: Gradle (Kotlin DSL) with [mise](https://mise.jdx.dev) for tool runtime and task orchestration
+- **Networking**: Ktor HttpClient with custom auth-token refresh plugin
+- **Serialization**: Kotlinx Serialization
+- **Async**: Kotlin Coroutines (flow-based reactive state)
+- **DI**: Koin (`:core` is intentionally Koin-free)
+- **Server**: Ktor server (JVM) — MAL relay for the web target
+- **Image Loading**: Coil (Compose Multiplatform)
 
-### Running tests
+## Platform Targets
 
-Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
+| Target            | Description                                                       |
+|-------------------|-------------------------------------------------------------------|
+| **Android**       | Native Android app via Compose Multiplatform                      |
+| **Desktop (JVM)** | Desktop app with single-instance lock and loopback OAuth listener |
+| **Web (Wasm)**    | Web app compiled to WebAssembly, served via webpack dev server    |
 
-- Android tests: `./gradlew :app:shared:testAndroidHostTest`
-- Desktop tests: `./gradlew :app:shared:jvmTest`
-- Server tests: `./gradlew :server:test`
-- Web tests: `./gradlew :app:shared:wasmJsTest`
+## Project Layout
 
----
+| Module                               | Purpose                                                                                                                                                                                              |
+|--------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`core`](./core/src)                 | Pure KMP business logic — no Compose, no Koin. Contains sign-in flow, session management, anime list, anime page, MAL API client, auth (OAuth2/PKCE), and screen state. Targets: JVM, Wasm, Android. |
+| [`app/shared`](./app/shared/src)     | Compose Multiplatform UI + platform abstractions (expect/actual). Contains all screens, navigation, DI setup, theming, and per-platform implementations (auth redirect, key-value store).            |
+| [`app/androidApp`](./app/androidApp) | Thin Android entry point                                                                                                                                                                             |
+| [`app/desktopApp`](./app/desktopApp) | Thin Desktop entry point (single-instance lock, loopback OAuth listener)                                                                                                                             |
+| [`app/webApp`](./app/webApp)         | Thin Web (Wasm) entry point (webpack dev server, `/mal` proxy)                                                                                                                                       |
+| [`server`](./server/src/main/kotlin) | Ktor relay server — forwards MAL API calls under `/mal` so the browser can reach MAL without CORS issues. Supports rate limiting, trusted-proxy X-Forwarded-For, body-size caps, and CORS.           |
+| [`deploy`](./deploy)                 | Dockerfiles, Caddy config, Docker Compose, Terraform, and deploy scripts                                                                                                                             |
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html),
-[Compose Multiplatform](https://github.com/JetBrains/compose-multiplatform/#compose-multiplatform),
-[Kotlin/Wasm](https://kotl.in/wasm/)…
+## Architecture
 
-We would appreciate your feedback on Compose/Web and Kotlin/Wasm in the public Slack
-channel [#compose-web](https://slack-chats.kotlinlang.org/c/compose-web). If you face any issues, please report them
-on [YouTrack](https://youtrack.jetbrains.com/newIssue?project=CMP).
+- **Repository pattern**: `AnimeListRepository`, `AnimePageRepository`, `MalSessionRepository` encapsulate business
+  logic and API calls.
+- **Flow-based reactive state**: All state flows through Kotlin `StateFlow`/`SharedFlow`. The `ScreenState` source
+  combines multiple flows into a single UI-driving stream.
+- **Expect/actual platform abstraction**: Platform-specific code (auth redirect, storage, HTTP endpoints) is isolated
+  via KMP `expect`/`actual`.
+- **Dependency Injection**: Koin manages the shared graph (`appModule`) plus a per-target `platformModule`. Core stays
+  DI-free.
+- **Single authenticated HttpClient**: One `MalSessionRepository` owns token refresh; repositories share it to avoid
+  race conditions.
+- **`:core` has zero Compose and zero Koin dependencies** — it is pure KMP logic that can be tested independently.
+- **Web relay is same-origin** — the relay runs under the same origin as the web app, so CORS is never an issue.
+
+## Setup
+
+Everything runs through [mise](https://mise.jdx.dev); `mise tasks` lists every command.
+
+```bash
+mise install                                  # the JDK (Azul Zulu 21) and Terraform
+cp .secure.build.env.example .secure.build.env   # then fill in MAL_CLIENT_ID
+```
+
+The Client ID comes from an app registered at [myanimelist.net/apiconfig](https://myanimelist.net/apiconfig) with App
+Type `other`. Without one the app still builds, runs and tests; Sign-in is disabled.
+
+In an IDE, point the Gradle JDK at the mise install (`mise where java`) — Gradle no longer downloads one.
+
+## Run
+
+```bash
+mise run run:desktop        # desktop
+mise run run:desktop:hot    # desktop with Compose Hot Reload
+mise run run:server         # relay on :18010
+mise run run:web            # web on :18020 — needs run:server as well
+mise run build:android      # Android debug APK
+```
+
+### Ports
+
+| Port  | Service                               |
+|-------|---------------------------------------|
+| 18010 | `:server` — Ktor MAL relay            |
+| 18020 | `:app:webApp` dev server              |
+| 18040 | Desktop OAuth callback on `127.0.0.1` |
+
+## Test
+
+```bash
+mise run test                                  # everything
+mise run test:core                             # :core on every target
+mise run test:shared:jvm                       # also test:shared:android, test:shared:web
+mise run test:android
+mise run test:server
+mise run test:one core "*.SignInTest"          # one class or method; suites: core, shared, server, android
+mise run build                                 # compile every target and run every test
+```
+
+## Deploy
+
+`mise run deploy` — see the Deployment section of [`CLAUDE.md`](./CLAUDE.md), which is also the full reference for
+everything above. Needs `docker` (with buildx) and `ssh` on the machine; mise does not manage those.
+
+## More Details
+
+For in-depth documentation on authentication, deployment, build configuration, and development conventions, see [
+`CLAUDE.md`](./CLAUDE.md).

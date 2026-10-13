@@ -103,10 +103,10 @@ fun Provider<String>.notBlank(): Provider<String> = map { it.trim() }.filter { i
  * harness — so it was verified by hand, and the check is worth repeating if this task is touched:
  *
  * ```
- * ./gradlew :core:generateMalBuildConfig -Pmal.clientId=one   # writes "one"
- * ./gradlew :core:generateMalBuildConfig -Pmal.clientId=one   # UP-TO-DATE, cache entry reused
- * ./gradlew :core:generateMalBuildConfig -Pmal.clientId=two   # re-runs: input property changed
- * ./gradlew :core:generateMalBuildConfig                      # back to ""
+ * mise run generate:mal-config -- -Pmal.clientId=one   # writes "one"
+ * mise run generate:mal-config -- -Pmal.clientId=one   # UP-TO-DATE, cache entry reused
+ * mise run generate:mal-config -- -Pmal.clientId=two   # re-runs: input property changed
+ * mise run generate:mal-config                         # back to ""
  * ```
  *
  * Replacing the `inputs.property` line with a `clientId.get()` read at configuration time is the drift

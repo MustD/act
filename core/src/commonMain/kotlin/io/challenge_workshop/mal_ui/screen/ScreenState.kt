@@ -28,7 +28,7 @@ import io.challenge_workshop.mal_ui.session.SignedOutReason
  *
  * In `:core` and not in `:app:shared` because the *choice* is `:core`'s and the *drawing* is
  * `:app:shared`'s, exactly as for [AnimeListLayout] and `AnimeListSortOrder` — and because
- * `./gradlew :core:allTests` is the one task that runs a test on every Target in one command. See
+ * `mise run test:core` is the one task that runs a test on every Target in one command. See
  * `docs/adr/0004-screen-state-in-core.md`.
  */
 sealed interface ScreenState {

@@ -1,7 +1,7 @@
 # The act-web image: Caddy, the production Wasm bundle, privacy.html and the Caddyfile.
 #
 # Build context is the bundle, app/webApp/build/dist/wasmJs/productionExecutable, produced by
-# `./gradlew :app:webApp:wasmJsBrowserDistribution` (which refuses to run without a Client ID). The Caddyfile comes
+# `mise run build:web:dist` (which refuses to run without a Client ID). The Caddyfile comes
 # in as a named context so it need not live inside the bundle:
 #
 #   docker build --platform linux/amd64 -f deploy/web.Dockerfile --build-context deploy=deploy \

@@ -34,7 +34,7 @@ const val TAB_SCOPED_STORE: String = "tabScoped"
  * Everything shared by every target.
  *
  * `:core` stays Koin-free — no annotations, no module declarations, no `koin-core` dependency — so
- * `:server` and `./gradlew :core:allTests` are untouched by dependency injection existing at all.
+ * `:server` and `mise run test:core` are untouched by dependency injection existing at all.
  */
 val appModule: Module = module {
     single<Clock> { Clock.System }
