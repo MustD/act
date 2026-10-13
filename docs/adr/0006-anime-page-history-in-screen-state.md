@@ -31,3 +31,11 @@ composable. A reader coming from Android will expect a navigation library. This 
 Back is handled by hand: Android's back gesture and desktop's Esc go one page back, and ✕ closes them all. Browser Back
 is not intercepted. A web URL for an Anime Page can be added later by mapping to and from this value; nothing here
 precludes it.
+
+## Amendment: which Screen is showing follows the same rule
+
+The About Screen and the Diagnostics Screen (see **Screen** in `CONTEXT.md`) are chosen the same way and for the same
+reasons: which Screen is showing is a value in `ScreenState`, produced in `:core`, not a nav graph and not `remember`ed
+state — diagnostics used to be a dialog opened from a `remember` in the signed-in composable, and this replaces that.
+There is no history to hold: one Screen at a time, and a change of Session State returns to the default. The Anime Page
+history is untouched while another Screen is showing, and is there again on return.

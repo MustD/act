@@ -25,7 +25,8 @@ screen going away ends it. Its durable half is the Pending Authorization, which 
 _Avoid_: Login (the event a successful Sign-in produces), auth flow
 
 **Session Controls**:
-The signed-in screen's one-shot operations — sign-out, reloading the profile, the debug panel's buttons — with a status
+The one-shot operations available while signed in — sign-out, and the Diagnostics Screen's buttons, reloading the
+profile among them — with a status
 of their own, so a failed sign-out is never shown as a failed Sign-in. One at a time: a call made while another is
 running is dropped, not queued. It does not know the Sign-in exists. In code it is `SessionControls`.
 _Avoid_: Session actions, account menu
@@ -78,7 +79,7 @@ refresh MAL rejected, or an authorization that failed. Carried so the UI can exp
 
 **Anime List**:
 The user's own collection on MyAnimeList — every anime they have added, whatever they did with it. MAL's own word for
-it, and the thing this app's signed-in screen shows. One per Session: it is fetched when a Session starts and
+it, and the thing the Anime List Screen shows. One per Session: it is fetched when a Session starts and
 discarded when it ends, filter and Sort Order included — the next Session opens on the defaults, whoever signs in.
 _Avoid_: Library, collection, watchlist (a watchlist is at most the
 Plan to Watch slice of one)
@@ -137,17 +138,51 @@ and that outlives a Session. _Avoid_: Mode, appearance
 **Reload**:
 Discarding every loaded page of the Anime List and fetching it again from the start under the filter and Sort Order
 already on screen — the way to pick up a change made on myanimelist.net. The same operation a filter or Sort Order
-change performs, with neither of them changed. Unqualified "Reload" always means this one; the session debug panel's
-two buttons are **Reload diagnostics** and **Reload profile**, which reload a Session and not a list. _Avoid_: Refresh
+change performs, with neither of them changed. Unqualified "Reload" always means this one, and it is the one in the
+**Main Menu**; the Diagnostics Screen's two buttons are **Reload diagnostics** and **Reload profile**, which reload a
+Session and not a list. _Avoid_: Refresh
 (a **Session** refresh is the token exchange, and the two happen on the same screen), retry (a retry re-requests the one
 page that failed and keeps everything else)
 
 ### Screen State
 
+**Screen**:
+One thing the user is doing in the app, filling the window: the **Welcome Screen**, the Authorizing Screen, the **Anime
+List Screen**, the **About Screen**, the **Diagnostics Screen**. Which Screens are possible is the Session's doing: signed
+out it is Welcome or About; signed in it is Anime List, About or Diagnostics, and exactly one of them at a time, with no
+stack — choosing another replaces the one showing. Any change of Session State returns to the default (Welcome, or the
+Anime List), so an expired Session is never explained behind an About Screen. Privacy is not a Screen: it is a web page
+outside the app, and every Target opens it in a browser. _Avoid_: Destination, view, modal or dialog (diagnostics was a
+dialog once), page — see **Page**
+
+**Page**:
+Content shown inside a Screen, which the Screen outlives. There is one kind: the **Anime Page**, inside the Anime List
+Screen. "A page of the Anime List" — one fetched batch of List Entries — is the other, older use of the word, and is
+always qualified that way. _Avoid_: About page, diagnostics page, welcome page (all three are Screens)
+
+**About Screen**:
+What the app is, which version this is, and where to go next — the source on GitHub, reporting an issue, supporting
+MyAnimeList or development, the privacy policy — together with the two notices that it is unofficial and that its data
+is MyAnimeList's. The same content signed in or out. _Avoid_: Info, help, settings
+
+**Diagnostics Screen**:
+Where this build sends MAL traffic and what state the Session's tokens are in, with the buttons that exercise the refresh
+path. Signed in only: most of it describes a Session. Never shows a token value. _Avoid_: Debug panel, diagnostics
+dialog (its earlier forms)
+
+**Main Menu**:
+The controls that move between the signed-in Screens — Anime List, Diagnostics, About — and open the privacy policy,
+plus the two actions that belong nowhere else: Reload and sign out. One menu in two shapes — behind a button when the
+window is narrow, in the sidebar when it is wide — so each item has exactly one place on screen at any width. The Welcome
+Screen has no menu; it links to About and privacy directly. _Avoid_: Drawer, overflow menu, navigation menu, action menu
+(it is both), session menu (most of its items are not about the Session)
+
 **Screen State**:
-What one of the app's four destinations needs in order to draw itself — derived from a Session and an Anime List, and
-carrying data only. One variant per **Session State** subtype: `Restoring`, `SignedOut`, `Authorizing`, `SignedIn`. In
-code it is `ScreenState`, produced in `:core` by `ScreenStateSource` and switched on by `SessionRoute`. _Avoid_:
+What the app needs in order to draw whichever **Screen** is showing — derived from a Session and an Anime List, and
+carrying data only. One variant per **Session State** subtype: `Restoring`, `SignedOut`, `Authorizing`, `SignedIn`. That
+is not one variant per Screen: the signed-out variant says which of its two Screens is showing and the signed-in variant
+which of its three. In code it is `ScreenState`, produced in `:core` by `ScreenStateSource` and switched on by
+`SessionRoute`. _Avoid_:
 `SessionState` — that is the Session's own state and is one of this value's inputs, not a synonym for it. The two are as
 easy to confuse as **Watch Status** and **Airing Status**, and for the same reason: they share their variant names, so
 the mapping between them looks like a rename. See [ADR-0004](docs/adr/0004-screen-state-in-core.md)
