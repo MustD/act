@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * The signed-in screen's one-shot operations — sign-out, reloading the profile, the debug panel's
+ * The signed-in screen's one-shot operations — sign-out, reloading the profile, the Diagnostics Screen's
  * buttons — with a status of their own.
  *
  * Separate from `SignIn` on purpose: a failed sign-out is not a
@@ -38,7 +38,7 @@ class SessionControls(
 
     fun reloadDiagnostics() = operation { reloadDiagnosticsNow() }
 
-    /** Debug panel: invalidate the access token so the next call refreshes against real MAL. */
+    /** Diagnostics Screen: invalidate the access token so the next call refreshes against real MAL. */
     fun forceExpireAccessToken() = operation {
         repository.forceExpireAccessToken()
         reloadDiagnosticsNow()

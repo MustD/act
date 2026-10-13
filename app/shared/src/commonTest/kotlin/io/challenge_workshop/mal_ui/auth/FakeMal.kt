@@ -29,7 +29,7 @@ internal val FAKE_MAL_USER: MalUser = MalUser(id = 42, name = "someone")
  * The Anime List this fake serves, as two List Entries.
  *
  * Deliberately short. The signed-in screen renders every entry it is given, and a fixture with fifty
- * would push the debug panel below it off screen — which the tests that assert the panel is visible
+ * would push the Diagnostics Screen below it off screen — which the tests that assert the panel is visible
  * would then report as the panel being lost.
  *
  * A second hand-written copy of `:core`'s `FakeAnimeList`, because a `commonTest` source set is not

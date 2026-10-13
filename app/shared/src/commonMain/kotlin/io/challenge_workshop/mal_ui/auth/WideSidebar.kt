@@ -53,7 +53,6 @@ import io.challenge_workshop.mal_ui.theme.enabledAlpha
 internal fun WideSidebar(
     state: ScreenState.SignedIn,
     actions: SignedInActions,
-    onShowDiagnostics: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val c = Act.colors
@@ -108,7 +107,7 @@ internal fun WideSidebar(
         Spacer(Modifier.weight(1f))
         SidebarLabel("// menu")
         SidebarAction("reload", enabled = true, onClick = actions.onReload)
-        SidebarAction("diagnostics", enabled = true, onClick = onShowDiagnostics)
+        SidebarAction("diagnostics", enabled = true, active = state.screen == SignedInScreen.Diagnostics, onClick = actions.onOpenDiagnostics)
         SidebarAction("about", enabled = true, active = state.screen == SignedInScreen.About, onClick = actions.onOpenAbout)
         SidebarAction("privacy", enabled = true, onClick = { uriHandler.openUri(PRIVACY_URL) })
         SidebarAction("sign out", enabled = !state.busy, onClick = actions.onSignOut)

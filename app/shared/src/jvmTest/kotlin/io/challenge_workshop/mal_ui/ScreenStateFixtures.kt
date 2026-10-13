@@ -270,9 +270,9 @@ internal fun SemanticsNodeInteraction.textContent(): String =
         .orEmpty()
 
 /**
- * Opens the diagnostics dialog the way a person does: the overflow menu, then its last entry.
+ * Opens the Diagnostics Screen's menu entry the way a person does: the overflow menu, then its entry.
  *
- * The menu closes on the way, so its "diagnostics" entry and the dialog are never on screen at once.
+ * The menu closes on the way, so its "diagnostics" entry and the Screen are never on screen at once.
  */
 internal fun ComposeUiTest.openDiagnostics() {
     onNodeWithTag(SESSION_MENU_BUTTON_TAG).performClick()

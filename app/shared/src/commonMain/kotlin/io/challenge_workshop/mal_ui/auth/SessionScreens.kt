@@ -254,7 +254,7 @@ private fun TerminalProgress(modifier: Modifier = Modifier) {
  * fetches anything.
  *
  * Everything that is *not* a query over the list has left the list entirely: the name, the Layout
- * toggle, Reload, Sign out and the debug panel are in [SignedInPromptRow], which neither scrolls nor
+ * toggle, Reload and Sign out are in [SignedInPromptRow], which neither scrolls nor
  * competes with the entries. The filter row and the Sort Order stay between the bar and the list,
  * because those two are the query.
  */
@@ -266,13 +266,10 @@ fun SignedInScreen(
     modifier: Modifier = Modifier,
 ) {
     val gridState = rememberLazyGridState()
-    // Whether the diagnostics dialog is over the screen. A dialog, not a destination — see
-    // [SESSION_DIAGNOSTICS_TAG].
-    var diagnosticsOpen by remember { mutableStateOf(false) }
     val list = state.list
     val layout = state.layout
     val onList = state.screen == SignedInScreen.AnimeList
-    val other = state.screen == SignedInScreen.About
+    val other = !onList
     // With another Screen showing, a Watch Status or Reload is for the list: go back to it, then act.
     val actions = remember(actions, state.screen) { actions.returningToList(state.screen) }
     // Android back; Esc is below, with the other keys.
@@ -352,7 +349,7 @@ fun SignedInScreen(
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 if (other && !sideBySide) {
                     // Full screen, with a back control. The list, the page and their state are above this and untouched.
-                    AboutScreen(onBack = actions.onBackToList)
+                    OtherScreen(state, actions, onBack = actions.onBackToList)
                 } else {
                     // The list is always laid out; on a phone the page slides in over it and the list steps back.
                     Row(
@@ -364,17 +361,16 @@ fun SignedInScreen(
                         },
                     ) {
                         if (sideBySide) {
-                            WideSidebar(state, actions, onShowDiagnostics = { diagnosticsOpen = true })
+                            WideSidebar(state, actions)
                         }
                         if (other) {
                             // The sidebar stays; the prompt row, the list and the page panel are not drawn.
-                            AboutScreen(onBack = null, modifier = Modifier.weight(1f))
+                            OtherScreen(state, actions, onBack = null, modifier = Modifier.weight(1f))
                         } else {
                             Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
                                 SignedInPromptRow(
                                     state = state,
                                     actions = actions,
-                                    onShowDiagnostics = { diagnosticsOpen = true },
                                     modifier = Modifier.fillMaxWidth(),
                                     wide = sideBySide,
                                 )
@@ -407,13 +403,19 @@ fun SignedInScreen(
             LogBar(state.patchLog, keyHints = sideBySide && keyboard)
         }
     }
+}
 
-    if (diagnosticsOpen) {
-        SessionDiagnosticsDialog(
-            state = state,
-            actions = actions.diagnostics,
-            onDismiss = { diagnosticsOpen = false },
-        )
+/** The Screen showing instead of the Anime List: About or Diagnostics. */
+@Composable
+private fun OtherScreen(
+    state: ScreenState.SignedIn,
+    actions: SignedInActions,
+    onBack: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    when (state.screen) {
+        SignedInScreen.Diagnostics -> DiagnosticsScreen(state, actions.diagnostics, onBack, modifier)
+        else -> AboutScreen(onBack, modifier)
     }
 }
 

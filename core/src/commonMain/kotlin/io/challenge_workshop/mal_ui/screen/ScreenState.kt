@@ -104,7 +104,7 @@ sealed interface ScreenState {
         val patchLog: PatchLog,
         val busy: Boolean,
         val error: ShownError?,
-        /** Null until the diagnostics dialog asks for it, which is the only thing that reads it. */
+        /** Null until the Diagnostics Screen asks for it, which is the only thing that reads it. */
         val diagnostics: SessionDiagnostics?,
         val routing: MalRouting,
         /**
@@ -128,7 +128,7 @@ data class ShownError(val message: String, val relayHint: Boolean)
  * a 401 about the Client ID.
  *
  * On two variants rather than one: the sign-in screen says so up front because a browser with no
- * relay running fails at the first request, and the debug panel says so afterwards.
+ * relay running fails at the first request, and the Diagnostics Screen says so afterwards.
  */
 data class MalRouting(
     val endpoints: MalEndpoints,

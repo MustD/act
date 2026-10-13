@@ -1,6 +1,6 @@
 package io.challenge_workshop.mal_ui.session
 
-/** Where the signed-in screen's one-shot operation is: sign-out, reload profile, the debug panel's buttons. */
+/** Where the signed-in screen's one-shot operation is: sign-out, reload profile, the Diagnostics Screen's buttons. */
 sealed interface SessionOperation {
     data object Idle : SessionOperation
     data object Running : SessionOperation
@@ -8,13 +8,13 @@ sealed interface SessionOperation {
 }
 
 /**
- * What the signed-in screen's operations have to show: token metadata for the debug panel, and how
+ * What the signed-in screen's operations have to show: token metadata for the Diagnostics Screen, and how
  * the last operation went.
  *
  * Never token values: [SessionDiagnostics] has no field that could hold one.
  */
 data class SessionControlsState(
-    /** Null until the diagnostics dialog asks for it, which is the only thing that reads it. */
+    /** Null until the Diagnostics Screen asks for it, which is the only thing that reads it. */
     val diagnostics: SessionDiagnostics? = null,
     val operation: SessionOperation = SessionOperation.Idle,
 ) {

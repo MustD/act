@@ -14,7 +14,7 @@ import io.challenge_workshop.mal_ui.screen.ScreenState
 import io.challenge_workshop.mal_ui.theme.Act
 
 /**
- * Diagnostics for the signed-in state.
+ * The Diagnostics Screen's lines and buttons.
  *
  * Everything in here answers a question that is otherwise unanswerable from inside a running build: a
  * misrouted web build silently talks to the wrong host, a Redirect URI mismatch reports as a 401 about
@@ -23,10 +23,9 @@ import io.challenge_workshop.mal_ui.theme.Act
  * **No token value ever appears here.** [io.challenge_workshop.mal_ui.session.SessionDiagnostics] has
  * no field that could carry one, so that stays true however this panel is edited later.
  *
- * It no longer carries its own expand/collapse. It is opened from the top app bar's overflow menu
- * into [SessionDiagnosticsDialog], and that menu entry is the disclosure — a dialog opening onto a
- * collapsed panel would be two taps to say one thing. "Force 401" is still behind that one tap,
- * which is what keeps it off the screen a stray finger is on.
+ * It carries no expand/collapse of its own: [DiagnosticsScreen] holds it, and the Main Menu's
+ * `diagnostics` entry is the disclosure. "Force 401" is still behind that one pick, which is what
+ * keeps it off the screen a stray finger is on.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

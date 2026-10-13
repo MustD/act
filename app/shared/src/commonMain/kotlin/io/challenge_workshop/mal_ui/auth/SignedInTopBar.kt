@@ -82,7 +82,6 @@ import org.jetbrains.compose.resources.painterResource
 fun SignedInPromptRow(
     state: ScreenState.SignedIn,
     actions: SignedInActions,
-    onShowDiagnostics: () -> Unit,
     modifier: Modifier = Modifier,
     wide: Boolean = false,
 ) {
@@ -161,7 +160,7 @@ fun SignedInPromptRow(
                         text = { Text("diagnostics") },
                         onClick = {
                             menuOpen = false
-                            onShowDiagnostics()
+                            actions.onOpenDiagnostics()
                         },
                     )
                     DropdownMenuItem(
@@ -233,53 +232,3 @@ internal fun BlockCursor(modifier: Modifier = Modifier) {
 }
 
 private const val CURSOR_BLINK_MS = 500L
-
-/**
- * [SessionDebugPanel] in a dialog, which is where the overflow menu's last entry opens it.
- *
- * A dialog and **not a third destination** — see [SESSION_DIAGNOSTICS_TAG]. The signed-in screen is
- * still underneath, with its scroll position and its loaded pages intact.
- *
- * The menu entry is the panel's disclosure now, which is why the panel itself no longer carries one —
- * a dialog that opened onto a collapsed panel would be two taps to say one thing.
- *
- * Scrollable, because the panel is a dozen diagnostic lines and a phone in landscape is shorter than
- * they are.
- *
- * The user's MAL id is here rather than in the bar because the bar has one line and the name has to
- * have it. The id is the half of the old profile row nobody reads until something is wrong — two
- * accounts on one device, or a name that was renamed — which is the definition of a diagnostic.
- */
-@Composable
-fun SessionDiagnosticsDialog(
-    state: ScreenState.SignedIn,
-    actions: DiagnosticsActions,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        modifier = modifier.testTag(SESSION_DIAGNOSTICS_TAG),
-        containerColor = Act.colors.sf,
-        shape = ActMedium,
-        title = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                SectionLabel("diagnostics")
-                Text("Session diagnostics", style = Act.type.sheetTitle, color = Act.colors.ink)
-            }
-        },
-        text = {
-            Column(
-                Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                LabelledValue(
-                    "Signed in as",
-                    state.user?.let { "${it.name} (MAL id ${it.id})" } ?: "—",
-                )
-                SessionDebugPanel(state, actions)
-            }
-        },
-        confirmButton = { TerminalButton("Close", onClick = onDismiss) },
-    )
-}

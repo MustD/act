@@ -64,7 +64,7 @@ frame it last drew.
 by the `SignedOut` and `SignedIn` variants. It was not asked for: it is what the screens lost when they stopped taking
 `MalSessionViewModel`, which exposed `endpoints`, `redirectUri` and `usesRelay` directly. Both readers need it and
 neither can compute it — the sign-in screen says so up front because a browser with no relay running fails at its first
-request with a bare "Failed to fetch", and the debug panel says so afterwards. It is *not* one more constructor
+request with a bare "Failed to fetch", and the Diagnostics Screen says so afterwards. It is *not* one more constructor
 parameter: `platformMalEndpoints()` is an `expect fun` and so already this Target's answer, and injecting it would be
 the same one-implementation seam that kept a `(PendingAuthorization) -> String` adapter out.
 

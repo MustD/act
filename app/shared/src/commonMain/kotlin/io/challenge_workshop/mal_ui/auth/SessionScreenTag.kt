@@ -117,7 +117,7 @@ val ANIME_LIST_LAYOUT_TAG: String = "${SessionScreenTag.SignedIn.tag}.layout"
  *
  * Derived from [SessionScreenTag.SignedIn] like the Anime List's own tags, because it is part of the
  * same screen: the signed-in branch **is** the Anime List, and the bar is what stops that costing
- * the profile row and the debug panel.
+ * the profile row and the Diagnostics Screen.
  */
 val SESSION_TOP_BAR_TAG: String = "${SessionScreenTag.SignedIn.tag}.topBar"
 
@@ -149,7 +149,7 @@ val SESSION_USER_NAME_TAG: String = "$SESSION_TOP_BAR_TAG.userName"
 val SESSION_MENU_BUTTON_TAG: String = "$SESSION_TOP_BAR_TAG.moreButton"
 
 /**
- * The overflow menu itself, once opened: Reload, Sign out, Session diagnostics.
+ * The overflow menu itself, once opened: reload, diagnostics, about, privacy, sign out.
  *
  * Its own tag because what is worth asserting is *what
  * is in it*, and the three entries in it are the three things the Anime List taking over this screen
@@ -158,13 +158,16 @@ val SESSION_MENU_BUTTON_TAG: String = "$SESSION_TOP_BAR_TAG.moreButton"
 val SESSION_MENU_TAG: String = "$SESSION_TOP_BAR_TAG.menu"
 
 /**
- * The dialog the Session diagnostics menu entry opens, holding [SessionDebugPanel].
- *
- * **Not a third destination.** `App.kt`'s `when` over `ScreenState` stays a four-branch switch and
- * no navigation library is added — a dialog is drawn over the signed-in screen, which is still the
- * screen underneath it.
+ * The Diagnostics Screen, in either of its frames. A Screen like About, chosen in `ScreenState.SignedIn.screen`;
+ * the Anime List is still underneath it with its scroll position and loaded pages intact.
  */
 val SESSION_DIAGNOSTICS_TAG: String = "${SessionScreenTag.SignedIn.tag}.diagnostics"
+
+/** Its back control, absent where the sidebar is the way out. */
+val DIAGNOSTICS_BACK_TAG: String = "$SESSION_DIAGNOSTICS_TAG.back"
+
+/** The `ACT <version>` line. */
+val DIAGNOSTICS_VERSION_TAG: String = "$SESSION_DIAGNOSTICS_TAG.version"
 
 /** Each of Watch Status, progress and score on a wide List row. A stacked row has none. */
 val ANIME_LIST_ROW_COLUMN_TAG: String = "$ANIME_LIST_TAG.rowColumn"

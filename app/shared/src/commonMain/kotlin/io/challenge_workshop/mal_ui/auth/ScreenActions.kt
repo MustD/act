@@ -66,7 +66,7 @@ data class AuthorizingActions(
  * The signed-in screen, which **is** the Anime List.
  *
  * This record is the reason no module exposes an actions record of its own: Sign out and the
- * diagnostics dialog come from the Session, Reload and the two query controls from the Anime List,
+ * Diagnostics Screen come from the Session, Reload and the two query controls from the Anime List,
  * and the Layout from its preference.
  *
  * There is no "load the first page": the Anime List asks for it itself as the Session starts.
@@ -110,10 +110,10 @@ data class AnimePageActions(
 )
 
 /**
- * The three buttons in the session debug panel.
+ * The three buttons on the Diagnostics Screen.
  *
- * Its own record rather than three more fields on [SignedInActions], because the panel is behind a
- * dialog that only opens deliberately — and because "Force 401" and "Reload profile" being one row
+ * Its own record rather than three more fields on [SignedInActions], because the panel is on a
+ * Screen that only opens deliberately — and because "Force 401" and "Reload profile" being one row
  * apart is the whole procedure for watching a refresh happen against real MAL.
  */
 @Immutable
