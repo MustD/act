@@ -44,9 +44,12 @@ if (config.devServer) {
     config.devServer.historyApiFallback = {
         index: '/index.html',
         disableDotRule: false,
-        // /privacy is the static privacy.html. Extension-less like the callback, so without this the
-        // fallback answers it with the app's index.html. Prod does the same in the Caddyfile.
-        rewrites: [{ from: /^\/privacy\/?$/, to: '/privacy.html' }],
+        // /privacy and /about are the static privacy.html and about.html. Extension-less like the callback, so
+        // without this the fallback answers them with the app's index.html. Prod does the same in the Caddyfile.
+        rewrites: [
+            { from: /^\/privacy\/?$/, to: '/privacy.html' },
+            { from: /^\/about\/?$/, to: '/about.html' },
+        ],
     };
 
     // DO NOT add Cross-Origin-Opener-Policy: same-origin here, or to :server, or to the reverse

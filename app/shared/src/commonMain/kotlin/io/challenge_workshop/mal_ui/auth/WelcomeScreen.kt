@@ -75,22 +75,24 @@ fun WelcomeScreen(
         state.error?.let { ErrorCard("Sign-in failed", it.withRelayAdvice()) }
         state.signInError?.let { ErrorCard("Sign-in failed", it.withRelayAdvice()) }
 
-        PaneSection("links") {
-            Column {
-                TerminalLink("About", onClick = actions.onOpenAbout, modifier = Modifier.testTag(WELCOME_ABOUT_TAG))
-                TerminalLink("Support MyAnimeList", onClick = { uriHandler.openUri(SUPPORT_MAL_URL) })
-                TerminalLink("Support development", onClick = { uriHandler.openUri(SUPPORT_DEVELOPMENT_URL) })
-                TerminalLink("Report an issue", onClick = { uriHandler.openUri(REPORT_ISSUE_URL) })
-            }
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("A MyAnimeList account is required.", style = Act.type.body, color = Act.colors.dim)
+            TerminalLink(
+                "Create one on myanimelist.net",
+                onClick = { uriHandler.openUri(MAL_REGISTER_URL) },
+                modifier = Modifier.testTag(WELCOME_REGISTER_TAG),
+            )
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                "Unofficial \u2014 not affiliated with or endorsed by MyAnimeList.",
-                style = Act.type.meta,
-                color = Act.colors.dim,
-            )
-            TerminalLink("Anime data provided by MyAnimeList.net", onClick = { uriHandler.openUri(MAL_HOME_URL) })
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            TerminalLink("about", onClick = actions.onOpenAbout, modifier = Modifier.testTag(WELCOME_ABOUT_TAG))
+            TerminalLink("privacy", onClick = { uriHandler.openUri(PRIVACY_URL) }, modifier = Modifier.testTag(WELCOME_PRIVACY_TAG))
         }
+
+        Text(
+            "Unofficial \u2014 not affiliated with or endorsed by MyAnimeList.",
+            style = Act.type.meta,
+            color = Act.colors.dim,
+        )
     }
 }

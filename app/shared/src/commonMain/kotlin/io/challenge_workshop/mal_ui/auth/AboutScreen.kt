@@ -32,6 +32,7 @@ const val SUPPORT_DEVELOPMENT_URL: String = "https://patreon.com/MustD"
 const val GITHUB_URL: String = "https://github.com/MustD/act"
 const val REPORT_ISSUE_URL: String = "$GITHUB_URL/issues"
 const val MAL_HOME_URL: String = "https://myanimelist.net"
+const val MAL_REGISTER_URL: String = "https://myanimelist.net/register.php"
 
 /** The privacy policy, on the production origin on every Target: there is no in-app copy of it. */
 const val PRIVACY_URL: String = "https://act.io-workshop.net/privacy"

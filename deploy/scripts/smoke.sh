@@ -29,6 +29,9 @@ no_coop; check "/webApp.js has no Cross-Origin-Opener-Policy" $?
 fetch "$ACT_URL/privacy" && grep -qi 'privacy policy' "$hdr.body"; check "/privacy serves the policy" $?
 no_coop; check "/privacy has no Cross-Origin-Opener-Policy" $?
 
+fetch "$ACT_URL/about" && grep -qi 'MyAnimeList account is required' "$hdr.body"; check "/about serves the static page" $?
+no_coop; check "/about has no Cross-Origin-Opener-Policy" $?
+
 # An anonymous call is 403 from MAL; a bogus bearer token gets the 401 that proves relay -> MAL.
 code="$(fetch -H 'Authorization: Bearer smoke' "$ACT_URL/mal/v2/anime?q=x" -w '%{http_code}')"
 # Read into a variable first: a $(...) in check's description would reset $? before check sees it.

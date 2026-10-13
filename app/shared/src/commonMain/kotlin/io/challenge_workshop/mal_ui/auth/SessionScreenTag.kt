@@ -271,3 +271,9 @@ val ABOUT_VERSION_TAG: String = "$ABOUT_SCREEN_TAG.version"
 
 /** The `about` link on the Welcome Screen. */
 val WELCOME_ABOUT_TAG: String = "${SessionScreenTag.SignIn.tag}.about"
+
+/** The `privacy` link on the Welcome Screen. */
+val WELCOME_PRIVACY_TAG: String = "${SessionScreenTag.SignIn.tag}.privacy"
+
+/** The link to MAL's registration page on the Welcome Screen. */
+val WELCOME_REGISTER_TAG: String = "${SessionScreenTag.SignIn.tag}.register"

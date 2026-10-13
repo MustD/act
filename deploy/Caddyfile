@@ -71,6 +71,13 @@
 		file_server
 	}
 
+	@about path /about /about/
+	handle @about {
+		rewrite * /about.html
+		header Cache-Control no-cache
+		file_server
+	}
+
 	handle {
 		# Stable names, so revalidate by ETag on every load — including the index.html that the SPA fallback answers
 		# deep links with (/oauth/callback).

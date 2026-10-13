@@ -46,7 +46,7 @@ sealed interface ScreenState {
      * That is display copy in `:core`, which the Sort Order labels deliberately are not; the
      * difference is that this text is the state, and the tests that hold the reasons apart are the
      * reason the state exists. `null` for [SignedOutReason.NeverSignedIn]: a first visit has nothing
-     * to explain, and the welcome page shows no line for it.
+     * to explain, and the Welcome Screen shows no line for it.
      */
     data class SignedOut(
         val explanation: String?,

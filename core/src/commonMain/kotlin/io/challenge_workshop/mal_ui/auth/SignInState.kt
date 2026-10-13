@@ -34,7 +34,7 @@ sealed interface SignInPhase {
  * process death is correct — everything durable belongs to `MalSessionRepository`.
  */
 data class SignInState(
-    /** The build carries no Client ID, so a Sign-in cannot start; the welcome page says why. */
+    /** The build carries no Client ID, so a Sign-in cannot start; the Welcome Screen says why. */
     val clientIdMissing: Boolean = false,
     val pastedRedirect: String = "",
     val phase: SignInPhase = SignInPhase.Idle,
