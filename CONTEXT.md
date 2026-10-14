@@ -113,6 +113,12 @@ The anime MAL links to another by a named relation — sequel, prequel, side sto
 of which opens its own Anime Page, whether or not it is on the list. Manga relations are not included. _Avoid_:
 Recommendations (MAL's separate, user-voted "if you liked this" list, which this is not)
 
+**Adult Cover**:
+The cover of an anime MAL marks as adult — rated Rx, or not marked safe for work, or with either mark missing. On some
+Targets a placeholder is drawn in its place, everywhere a cover appears, with no way to reveal it. Only the picture is
+withheld: the anime still appears in the Anime List, on its Anime Page and among Related Anime. _Avoid_: NSFW cover,
+censored entry, hidden anime (nothing is hidden but the picture)
+
 **Watch Status**:
 The user's own disposition towards an anime: watching, completed, on hold, dropped, or plan to watch. Exactly one per
 List Entry. _Avoid_: **Status**, unqualified — MAL's API calls this `status` and calls **Airing Status** `status` too,
