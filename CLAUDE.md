@@ -19,6 +19,7 @@ Build / run:
 
 ```bash
 mise run build:android      # Android debug APK
+mise run build:android:release  # signed, minified .aab; needs .secure.release.env (the upload key)
 mise run run:desktop        # Desktop
 mise run run:desktop:hot    # Desktop with Compose Hot Reload
 mise run run:server         # Ktor server on :18010
@@ -246,8 +247,8 @@ so a tag is immutable. `deploy/` holds the Dockerfiles, the Caddyfile, `docker-c
 bring the original failure back; the edge must pass `/mal` through with `PATCH` and `Authorization`, and must not add
 `Cross-Origin-Opener-Policy` (see [the popup](#web-sign-in-the-popup-and-two-things-that-must-not-change)).
 
-**Env files:** two, gitignored (`.secure.*.env`), each with a committed `.example` listing every key.
-`.secure.build.env` holds `MAL_CLIENT_ID` and `DOCKERHUB_USER`; `.secure.deploy.env` holds `DIGITALOCEAN_TOKEN`,
+**Env files:** three, gitignored (`.secure.*.env`), each with a committed `.example` listing every key.
+`.secure.build.env` holds `MAL_CLIENT_ID` and `DOCKERHUB_USER`; `.secure.release.env` holds the four `ACT_UPLOAD_*` upload-keystore variables, is loaded by `build:android:release` alone, and Gradle reads it only through `providers.environmentVariable` (`requireUploadSigning` fails a release build naming what is unset; debug builds never read it); `.secure.deploy.env` holds `DIGITALOCEAN_TOKEN`,
 `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`, `EDGE_SSH` and the `TF_VAR_*`. **mise reads them, per task**
 (`env = { _ = { file = ... } }` in `mise.toml`) — never a global `[env]` — so the DO token reaches only `infra:*` and
 `deploy*`; `deploy` and `deploy:status` load the file for `EDGE_SSH` and `unset` the token at once (`terraform output`
@@ -267,6 +268,7 @@ The Client ID ends up in plain text in a public image, deliberately: it is equal
 |---------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
 | `mise run run:*` / `build*` / `test*`             | the [Commands](#commands) above; the clients and builds with `.secure.build.env` loaded, the tests with nothing                             |
 | `mise run infra:plan` / `infra:apply`             | Terraform (`deploy/terraform/`), by hand — never from a deploy; a replaced droplet moves its private IP, so the edge's upstream must follow |
+| `mise run build:android:release`                  | `bundleRelease`: signed with the upload key, R8 and resource shrinking on; the mapping ships in the AAB                                       |
 | `mise run deploy:build`                           | `build:web:dist` + `build:server:dist`, then both images (`linux/amd64`)                                                                    |
 | `mise run deploy:push`                            | pushes both; refuses if either tag exists on Docker Hub                                                                                     |
 | `mise run deploy [version]`                       | the whole path below; with a version, only redeploys that pushed tag                                                                        |
@@ -425,7 +427,7 @@ Four things in `app/androidApp/src/main/AndroidManifest.xml` are each a silent f
 
 ## Conventions
 
-- **The product version is `act.version` in `gradle.properties`** — `:server`'s `version` and Android's `versionName` read it via `providers.gradleProperty`. Shell tasks read it without Gradle: `grep '^act.version=' gradle.properties | cut -d= -f2`. `versionCode` is separate. It is also generated into `:core` `commonMain` as `const val ACT_VERSION` by `generateActVersion`, the way `MAL_CLIENT_ID` is (a lazy `Provider`, `inputs.property`, no BuildKonfig), and is read in two places: the About Screen and the Diagnostics Screen.
+- **The product version is `act.version` in `gradle.properties`** — `:server`'s `version` and Android's `versionName` read it via `providers.gradleProperty`. Shell tasks read it without Gradle: `grep '^act.version=' gradle.properties | cut -d= -f2`. `versionCode` is derived from it as `major*1_000_000 + minor*1_000 + patch` (ADR-0008), per variant through a `Provider`; a malformed version or a part above 999 fails the build. It is also generated into `:core` `commonMain` as `const val ACT_VERSION` by `generateActVersion`, the way `MAL_CLIENT_ID` is (a lazy `Provider`, `inputs.property`, no BuildKonfig), and is read in two places: the About Screen and the Diagnostics Screen.
 - **All dependency and plugin versions live in `gradle/libs.versions.toml`.** Build scripts reference `libs.*` aliases only — never inline a version string in a `build.gradle.kts`.
 - Java is 21, Azul Zulu, **pinned in `mise.toml` and not downloaded by Gradle**: `gradle/gradle-daemon-jvm.properties` names the vendor and version, there is no foojay resolver and no `toolchainUrl.*`, so a machine without that JDK fails with "No defined toolchain download url" rather than fetching one — the fix is `mise install`, not `updateDaemonJvm` (which would write the URLs back). An IDE's Gradle sync does not go through mise: set its Gradle JDK to the mise install once (`mise where java`). Android and Android-KMP modules compile to **JVM target 11**.
 - Gradle configuration cache and build cache are enabled in `gradle.properties`. Build logic that reads state at execution time will fail configuration-cache validation.

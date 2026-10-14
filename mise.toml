@@ -48,6 +48,11 @@ description = "Android debug APK"
 env = { _ = { file = ".secure.build.env" } }
 run = "./gradlew :app:androidApp:assembleDebug"
 
+[tasks."build:android:release"]
+description = "Signed, minified Android App Bundle; needs .secure.release.env"
+env = { _ = { file = [".secure.build.env", ".secure.release.env"] } }
+run = "./gradlew :app:androidApp:bundleRelease"
+
 [tasks."build:web:dist"]
 description = "Production Wasm bundle; fails without a Client ID"
 env = { _ = { file = ".secure.build.env" } }
