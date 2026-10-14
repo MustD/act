@@ -1,0 +1,179 @@
+package net.io_workshop.act.di
+
+import net.io_workshop.act.animelist.AnimeListRepository
+import net.io_workshop.act.animelist.LayoutPreference
+import net.io_workshop.act.screen.ScreenChoice
+import net.io_workshop.act.theme.ThemePreference
+import net.io_workshop.act.animepage.AnimePageRepository
+import net.io_workshop.act.auth.SignIn
+import net.io_workshop.act.auth.StartupRedirect
+import net.io_workshop.act.mal.HttpClientFactory
+import net.io_workshop.act.mal.MAL_CLIENT_ID
+import net.io_workshop.act.mal.MalAuthConfig
+import net.io_workshop.act.session.JsonTokenStore
+import net.io_workshop.act.session.KeyValueStore
+import net.io_workshop.act.session.MalSessionRepository
+import net.io_workshop.act.session.SessionControls
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.serialization.json.Json
+import org.koin.core.KoinApplication
+import org.koin.core.context.startKoin
+import org.koin.core.module.Module
+import org.koin.core.qualifier.named
+import org.koin.dsl.module
+import kotlin.time.Clock
+
+/**
+ * Koin qualifier of the store that holds the Pending Authorization, where a target has one apart
+ * from the durable store.
+ */
+const val TAB_SCOPED_STORE: String = "tabScoped"
+
+/**
+ * Everything shared by every target.
+ *
+ * `:core` stays Koin-free — no annotations, no module declarations, no `koin-core` dependency — so
+ * `:server` and `mise run test:core` are untouched by dependency injection existing at all.
+ */
+val appModule: Module = module {
+    single<Clock> { Clock.System }
+
+    // Lenient because MAL adds fields, and `ignoreUnknownKeys` is what stops a MAL-side addition
+    // turning a stored Session into a corrupt blob on the next launch.
+    single { Json { ignoreUnknownKeys = true; isLenient = true } }
+
+    // Only web binds a second store; everywhere else the tab-scoped store is the durable one.
+    single {
+        val durable = get<KeyValueStore>()
+        JsonTokenStore(
+            durable = durable,
+            tabScoped = getOrNull<KeyValueStore>(named(TAB_SCOPED_STORE)) ?: durable,
+            json = get(),
+            clock = get(),
+        )
+    }
+
+    single { HttpClientFactory.Default }
+
+    // A `single`, and it matters: two repositories would mean two Ktor `AuthTokenHolder` caches over
+    // one store, and therefore a refresh race that the plugin's own mutex cannot see.
+    single {
+        MalSessionRepository(
+            store = get(),
+            clock = get(),
+            // The build's Client ID, and the only one: a build without one disables Sign-in. This is
+            // the only place the generated constant is read — `:core` keeps `clientId` a required
+            // parameter so its own tests cannot pick up whatever this machine's build was configured
+            // with.
+            initialConfig = MalAuthConfig(clientId = MAL_CLIENT_ID),
+            clientFactory = get(),
+            // Collects the Session record's changes for the life of the process, like the preferences below.
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+        )
+    }
+
+    // A `single`, matching the lifetime of the store it reads: the Layout is a device preference,
+    // not a screen's state, and it is one of the Screen State's six inputs — so it has to outlive
+    // every composition that reads it, and be the same instance for the source and the actions.
+    //
+    // `Dispatchers.Main.immediate` confines the preference's `chosen` guard to one thread, and runs a
+    // Layout switch inside the click that asked for it. A scope of its own rather than a
+    // `viewModelScope`, because a startup read cancelled by a screen going away would leave the
+    // shipped default on screen for the rest of the launch.
+    single {
+        LayoutPreference(
+            store = get(),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+        )
+    }
+
+    // A `single`, because which Screen is open is process state like the Layout: the source and the
+    // actions must see the same instance. It watches the Session, so it is built from the repository.
+    single {
+        ScreenChoice(
+            session = get<MalSessionRepository>().state,
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+        )
+    }
+
+    // A `single` for the same reasons as the Layout above. Not a Screen State input: `App()` reads it
+    // directly, because the Theme applies to all four destinations.
+    single {
+        ThemePreference(
+            store = get(),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+        )
+    }
+
+    // A `single` with a scope of its own, like the Anime List: a Sign-in lasts until it ends, and
+    // nothing about a screen or composition going away is one of the ways it ends. `Main.immediate` so
+    // that `start` runs inside the click that asked for it — a web popup's user activation depends on it.
+    // Constructing it restores the Session, so `App()` resolving it is what starts the app.
+    single {
+        SignIn(
+            repository = get(),
+            startupRedirect = get(),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+        )
+    }
+
+    // A `single` with a scope of its own, like `SignIn`, so an operation outlives a screen going away.
+    // `Main.immediate` runs one inside the click that asked for it.
+    single {
+        SessionControls(
+            repository = get(),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+        )
+    }
+
+    // A `single`, like the Session it watches: it builds one list per Session and discards it when the
+    // Session ends, so that lifetime is its own interface rather than a consequence of scoping here.
+    // It takes the Session's repository rather than a client of its own, because every page must
+    // ride the one authenticated `HttpClient` that owns refresh.
+    //
+    // `Dispatchers.Main.immediate`, as for the Layout above: it confines the pager to one thread and
+    // starts an operation inside the click that asked for it.
+    single {
+        AnimeListRepository(
+            session = get(),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+        )
+    }
+
+    // A `single` for the same reason as the Anime List beside it: the open Anime Pages last one
+    // Session, by the repository's own rule, and the Anime List is the other half of what a fetched
+    // page writes to.
+    single {
+        AnimePageRepository(
+            session = get(),
+            animeList = get(),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+        )
+    }
+}
+
+/**
+ * The per-target half of the graph: whatever `KeyValueStore` this platform can actually open, and
+ * whichever [StartupRedirect] it can be launched with.
+ *
+ * A `Module` rather than a `expect fun platformKeyValueStore(namespace)` because the Android
+ * implementation needs a `Context`, and a Koin definition is the one place that reliably has one.
+ */
+expect val platformModule: Module
+
+/**
+ * Starts Koin. Called by every entry point, so they cannot drift.
+ *
+ * @param extra additional modules, used by tests to override a binding.
+ * @param declaration runs before the modules are loaded. Android uses it for `androidContext(this)`,
+ * which has to happen before anything resolves a `Context`.
+ */
+fun initKoin(
+    extra: List<Module> = emptyList(),
+    declaration: KoinApplication.() -> Unit = {},
+): KoinApplication = startKoin {
+    declaration()
+    modules(listOf(appModule, platformModule) + extra)
+}

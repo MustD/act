@@ -8,9 +8,9 @@
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <exclude domain="sharedpref" path="io.challenge_workshop.mal_ui.xml"/>
+        <exclude domain="sharedpref" path="net.io_workshop.act.xml"/>
     </cloud-backup>
     <device-transfer>
-        <exclude domain="sharedpref" path="io.challenge_workshop.mal_ui.xml"/>
+        <exclude domain="sharedpref" path="net.io_workshop.act.xml"/>
     </device-transfer>
 </data-extraction-rules>

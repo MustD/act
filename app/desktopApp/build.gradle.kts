@@ -20,11 +20,11 @@ dependencies {
 
 compose.desktop {
     application {
-        mainClass = "io.challenge_workshop.mal_ui.MainKt"
+        mainClass = "net.io_workshop.act.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "io.challenge_workshop.mal_ui"
+            packageName = "net.io_workshop.act"
             packageVersion = "1.0.0"
 
             // `LoopbackRedirectListener` uses `com.sun.net.httpserver`, and Compose's

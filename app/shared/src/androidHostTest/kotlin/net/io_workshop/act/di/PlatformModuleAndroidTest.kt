@@ -1,0 +1,53 @@
+package net.io_workshop.act.di
+
+import net.io_workshop.act.auth.AndroidStartupRedirect
+import net.io_workshop.act.auth.StartupRedirect
+import net.io_workshop.act.session.AndroidKeyValueStore
+import net.io_workshop.act.session.KeyValueStore
+import net.io_workshop.act.session.MalSessionRepository
+import org.junit.runner.RunWith
+import org.koin.android.ext.koin.androidContext
+import org.koin.core.context.stopKoin
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+import kotlin.test.AfterTest
+import kotlin.test.Test
+import kotlin.test.assertIs
+import kotlin.test.assertTrue
+import kotlin.test.fail
+
+@RunWith(RobolectricTestRunner::class)
+class PlatformModuleAndroidTest {
+
+    @AfterTest
+    fun tearDown() = stopKoin()
+
+    @Test
+    fun initKoin_with_an_android_context_wires_shared_preferences() {
+        val koin = initKoin { androidContext(RuntimeEnvironment.getApplication()) }.koin
+
+        assertIs<AndroidKeyValueStore>(koin.get<KeyValueStore>())
+        // A redirect normally reaches a running Activity and goes to the armed channel. It reaches
+        // a *launch* when the process was killed while the user was away on myanimelist.net, and
+        // then this binding is the only thing left that can deliver it.
+        assertIs<AndroidStartupRedirect>(koin.get<StartupRedirect>())
+
+        koin.get<MalSessionRepository>().close()
+    }
+
+    @Test
+    fun initKoin_without_a_context_fails_with_an_explanation_rather_than_an_npe() {
+        // The ordering hazard the ticket names: Koin started from anywhere but Application.onCreate
+        // leaves the store with no Context. Failing loudly at resolution beats crashing at the first
+        // token read, hours later and nowhere near the cause.
+        val koin = initKoin().koin
+
+        try {
+            koin.get<KeyValueStore>()
+            fail("resolving the store without an Android Context should not have succeeded")
+        } catch (e: Exception) {
+            val message = e.message.orEmpty() + (e.cause?.message ?: "")
+            assertTrue("androidContext" in message, "unhelpful failure: $message")
+        }
+    }
+}

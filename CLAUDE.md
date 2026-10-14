@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Kotlin Multiplatform / Compose Multiplatform project targeting Android, Web (Wasm), Desktop (JVM), and a Ktor server. Package namespace throughout: `io.challenge_workshop.mal_ui`.
+Kotlin Multiplatform / Compose Multiplatform project targeting Android, Web (Wasm), Desktop (JVM), and a Ktor server. Package namespace throughout: `net.io_workshop.act`.
 
 ## Commands
 
@@ -128,7 +128,7 @@ Single test — `test:one <suite> <filter>`, where the suite is `core`, `shared`
 module's JVM-hosted test task (the only kind that can filter):
 
 ```bash
-mise run test:one shared "io.challenge_workshop.mal_ui.auth.LoopbackRedirectListenerTest"
+mise run test:one shared "net.io_workshop.act.auth.LoopbackRedirectListenerTest"
 mise run test:one core "*.SignInTest.signing_in_is_blocked_when_the_build_has_no_client_id"
 ```
 
@@ -313,7 +313,7 @@ The two additions to that are both sign-in plumbing that only an entry point can
 
 ### Compose resources
 
-Assets go in `app/shared/src/commonMain/composeResources/<qualifier>/` and are reached through the generated accessor package `mal_ui.app.shared.generated.resources.Res` (e.g. `Res.drawable.compose_multiplatform`). The generated package is derived from the module path, so it changes if the module is moved or renamed.
+Assets go in `app/shared/src/commonMain/composeResources/<qualifier>/` and are reached through the generated accessor package `act.app.shared.generated.resources.Res` (e.g. `Res.drawable.compose_multiplatform`). The generated package is derived from the module path, so it changes if the module is moved or renamed.
 
 ### Web hosting page
 

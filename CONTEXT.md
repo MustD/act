@@ -1,4 +1,4 @@
-# mal_ui
+# ACT
 
 A MyAnimeList client for Android, desktop, and the browser. MAL offers only the OAuth2 authorization code grant with
 PKCE, so the user's password is only ever typed on myanimelist.net — everything this project calls a "sign-in" is a

@@ -20,7 +20,7 @@
     </queries>
 
     <application
-            android:name="io.challenge_workshop.mal_ui.MalUiApplication"
+            android:name="net.io_workshop.act.ActApplication"
             android:allowBackup="false"
             android:dataExtractionRules="@xml/data_extraction_rules"
             android:fullBackupContent="@xml/backup_rules"
@@ -59,7 +59,7 @@
                 <data
                         android:host="oauth"
                         android:path="/callback"
-                        android:scheme="io.challenge-workshop.malui"/>
+                        android:scheme="net.io-workshop.act"/>
             </intent-filter>
         </activity>
     </application>

@@ -23,7 +23,7 @@ kotlin {
     }
 
     android {
-        namespace = "io.challenge_workshop.mal_ui.app.shared"
+        namespace = "net.io_workshop.act.app.shared"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
 

@@ -26,11 +26,11 @@ dependencies {
 }
 
 android {
-    namespace = "io.challenge_workshop.mal_ui"
+    namespace = "net.io_workshop.act"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "io.challenge_workshop.mal_ui"
+        applicationId = "net.io_workshop.act"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1

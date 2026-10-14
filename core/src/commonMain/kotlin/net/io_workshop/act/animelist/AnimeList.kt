@@ -1,0 +1,236 @@
+package net.io_workshop.act.animelist
+
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+
+/**
+ * What the user did with an anime.
+ *
+ * Named for the glossary rather than for MAL, which calls this `status` and calls [AiringStatus]
+ * `status` too — the two live in different objects of the same response, which is exactly how they
+ * get confused. See `CONTEXT.md`.
+ *
+ * [Unknown] is not a MAL value and is never sent: it is where a value MAL adds later lands, so a
+ * single new status cannot crash a list the user is looking at.
+ */
+@Serializable(with = WatchStatusSerializer::class)
+enum class WatchStatus(
+    /** MAL's own spelling, or null for [Unknown], which has none and is never sent as a filter. */
+    val wireValue: String?,
+) {
+    Watching("watching"),
+    Completed("completed"),
+    OnHold("on_hold"),
+    Dropped("dropped"),
+    PlanToWatch("plan_to_watch"),
+    Unknown(null),
+    ;
+
+    companion object {
+        fun fromWire(value: String?): WatchStatus = entries.firstOrNull { it.wireValue == value } ?: Unknown
+    }
+}
+
+/**
+ * The filter every Session opens on. Watching rather than All: the list people open the app for is
+ * what they are in the middle of, and All is the sixth and last tab.
+ */
+internal val DEFAULT_WATCH_STATUS: WatchStatus = WatchStatus.Watching
+
+/**
+ * What the anime itself is doing — true for everyone, and unrelated to any user's list.
+ *
+ * [Unknown] exists for the same reason as [WatchStatus.Unknown].
+ */
+@Serializable(with = AiringStatusSerializer::class)
+enum class AiringStatus(val wireValue: String?) {
+    CurrentlyAiring("currently_airing"),
+    FinishedAiring("finished_airing"),
+    NotYetAired("not_yet_aired"),
+    Unknown(null),
+    ;
+
+    companion object {
+        fun fromWire(value: String?): AiringStatus = entries.firstOrNull { it.wireValue == value } ?: Unknown
+    }
+}
+
+/**
+ * The orderings MAL offers, each with a **fixed direction and no direction parameter**.
+ *
+ * There is deliberately no reverse toggle: the Anime List is paged, so reversing what happens to be
+ * loaded is a bug that looks like a feature. See `docs/adr/0003-mal-owns-filtering-and-ordering.md`.
+ *
+ * `anime_id` is a fifth value MAL's documentation marks "under development", and is not offered.
+ *
+ * Wire values only. The user-facing labels have to name the direction each one sorts in — "Score"
+ * alone reads as ascending to about half of everyone — but that is display copy, and `:core` is the
+ * tier `:server` also depends on, so they live beside the control in `:app:shared`
+ * (`AnimeListSortOrder.sortLabel`).
+ */
+enum class AnimeListSortOrder(val wireValue: String) {
+    LastUpdated("list_updated_at"),
+    Score("list_score"),
+    Title("anime_title"),
+    StartDate("anime_start_date"),
+}
+
+/** The two cover-art sizes MAL serves for an anime. Both come from `cdn.myanimelist.net`. */
+@Serializable
+data class AnimePicture(
+    val medium: String? = null,
+    val large: String? = null,
+)
+
+/**
+ * One anime as MAL describes it to everyone — nobody's List Entry in it. What an Anime Page's header
+ * draws, and the half of an [AnimeListEntry] that is not the user's.
+ */
+data class Anime(
+    val animeId: Long,
+    val title: String,
+    val picture: AnimePicture?,
+    /** MAL reports `0` for an anime whose total is not yet known, not null. */
+    val totalEpisodes: Int,
+    /** MAL's `media_type`, verbatim: `tv`, `movie`, `ova`, … Left a string because MAL adds them. */
+    val mediaType: String?,
+    val airingStatus: AiringStatus,
+)
+
+/**
+ * One anime together with *this user's* relationship to it — the unit the Anime List is made of.
+ *
+ * Flattened from MAL's two-object shape (`node` plus `list_status`) on purpose: every list row has
+ * both, and keeping the split would mean every call site reaching through a wrapper to answer "how
+ * far through is this". The Anime Page, which can have one without the other, takes the halves
+ * apart with [anime] and [listEntry].
+ */
+data class AnimeListEntry(
+    val animeId: Long,
+    val title: String,
+    val picture: AnimePicture?,
+    /** MAL reports `0` for an anime whose total is not yet known, not null. */
+    val totalEpisodes: Int,
+    /** MAL's `media_type`, verbatim: `tv`, `movie`, `ova`, … Left a string because MAL adds them. */
+    val mediaType: String?,
+    val airingStatus: AiringStatus,
+    val watchStatus: WatchStatus,
+    /** 0–10, where 0 means the user has not scored it. MAL does not distinguish those two. */
+    val score: Int,
+    val episodesWatched: Int,
+    /** MAL's ISO-8601 stamp, verbatim. Nothing here parses it — the sort happens server-side. */
+    val updatedAt: String?,
+) {
+    /** The anime's half of this entry. */
+    val anime: Anime get() = Anime(animeId, title, picture, totalEpisodes, mediaType, airingStatus)
+
+    /** The user's half of this entry. Without dates: the list endpoint is not asked for them. */
+    val listEntry: ListEntry
+        get() = ListEntry(
+            watchStatus,
+            score,
+            episodesWatched,
+            startDate = null,
+            finishDate = null,
+            updatedAt = updatedAt
+        )
+
+    /** This row with [entry] as the user's half. Its dates have nowhere to go here. */
+    internal fun with(entry: ListEntry): AnimeListEntry = copy(
+        watchStatus = entry.watchStatus,
+        score = entry.score,
+        episodesWatched = entry.episodesWatched,
+        updatedAt = entry.updatedAt,
+    )
+}
+
+/**
+ * *This user's* relationship to one anime, without the anime: a List Entry in the glossary's sense.
+ * What `GET /anime/{id}` and a `PATCH .../my_list_status` report, and what an Anime Page edits —
+ * [AnimeListEntry]'s own half of it plus the two dates, which the list endpoint is not asked for.
+ * An anime that is not on the list has none, so it is held as `ListEntry?`.
+ *
+ * The dates are **strings, verbatim**. MAL sends `yyyy-MM-dd`, but also `yyyy` and `yyyy-MM` for a
+ * partial date, and a type that could only hold a full date could not show what is on the account.
+ * An unset date is null.
+ */
+data class ListEntry(
+    val watchStatus: WatchStatus,
+    /** 0–10, where 0 is "no score". */
+    val score: Int,
+    val episodesWatched: Int,
+    val startDate: String?,
+    val finishDate: String?,
+    val updatedAt: String?,
+)
+
+/**
+ * One page of an Anime List.
+ *
+ * [hasMore] is the *presence* of `paging.next` and nothing else. The URL itself is deliberately
+ * discarded: it is absolute and points at `api.myanimelist.net`, which the web target must never
+ * request — it has to stay on the Relay's origin — so `offset` is driven from this side instead.
+ */
+data class AnimeListPage(
+    val entries: List<AnimeListEntry>,
+    val hasMore: Boolean,
+)
+
+/** Maps an enum to and from MAL's spelling, treating anything unrecognised as the fallback value. */
+internal abstract class WireEnumSerializer<T>(
+    serialName: String,
+    private val toWire: (T) -> String?,
+    private val fromWire: (String) -> T,
+) : KSerializer<T> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor(serialName, PrimitiveKind.STRING)
+    override fun serialize(encoder: Encoder, value: T) = encoder.encodeString(toWire(value).orEmpty())
+    override fun deserialize(decoder: Decoder): T = fromWire(decoder.decodeString())
+}
+
+internal object WatchStatusSerializer : WireEnumSerializer<WatchStatus>(
+    serialName = "WatchStatus",
+    toWire = { it.wireValue },
+    fromWire = WatchStatus::fromWire,
+)
+
+internal object AiringStatusSerializer : WireEnumSerializer<AiringStatus>(
+    serialName = "AiringStatus",
+    toWire = { it.wireValue },
+    fromWire = AiringStatus::fromWire,
+)
+
+/**
+ * How the Anime List is drawn: cards with cover art, dense rows, or an `ls -l` table.
+ *
+ * Presentation, and yet it lives here rather than beside the composables, for the reason
+ * [AnimeListSortOrder] does: it is the *choice*, not the drawing of it, and the choice is the half
+ * that gets stored — as `JsonTokenStore`'s fourth record, and the store is `:core`'s.
+ *
+ * Nothing about it reaches MAL: a Layout change re-draws what is already loaded and issues no
+ * request, which is why [AnimeListPager] has never heard of it. The Compose side of it — how many
+ * columns each one gets, how wide it may be — is in `:app:shared`, because `:server` depends on this
+ * module and has no business carrying a `Dp`.
+ *
+ * [Cards] is the default. The feature was asked for as a grid of cover art, and a first launch that
+ * opened on the dense list would be showing the Layout nobody chose.
+ *
+ * [List] is drawn and labelled as **rows**: the name stayed because it is what an earlier build
+ * stored, and renaming it would silently reset that preference. [Table] was added after it, so
+ * the order — cards, rows, table — is the order the Layout button cycles through.
+ *
+ * Serialized **by name**, because it is what `JsonTokenStore`'s fourth record holds. That makes the
+ * three names below a stored format: renaming one is a preference silently reset, not a compile error.
+ * A value this build has no name for reads as the default rather than throwing — see
+ * `JsonTokenStore.readLayout`.
+ */
+@Serializable
+enum class AnimeListLayout {
+    Cards,
+    List,
+    Table,
+}

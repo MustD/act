@@ -1,0 +1,355 @@
+package net.io_workshop.act.animelist
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridItemSpanScope
+import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import net.io_workshop.act.theme.BusyIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import net.io_workshop.act.auth.ANIME_LIST_EMPTY_TAG
+import net.io_workshop.act.auth.ANIME_LIST_ERROR_TAG
+import net.io_workshop.act.auth.ANIME_LIST_MORE_TAG
+import net.io_workshop.act.auth.ANIME_LIST_SKELETON_TAG
+import net.io_workshop.act.auth.ErrorCard
+import net.io_workshop.act.theme.Act
+import net.io_workshop.act.theme.ActSmall
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+
+/**
+ * The Anime List: the user's own List Entries, as a grid of cards or as a dense list.
+ *
+ * **Items contributed to the caller's lazy grid, not a composable of its own.** Two things need
+ * that. The list has to be lazy, because it is unbounded — [LoadMoreWhenNearEnd] reads the trigger
+ * off the layout's own last-visible index. And a lazy layout cannot be nested inside the signed-in
+ * screen's scrolling column, so there is exactly one scroll container and the chrome around the list
+ * scrolls with it.
+ *
+ * **A grid for both Layouts, not a grid and a list.** The dense Layout is the same grid at one
+ * column. Two lazy layouts would mean two scroll states, two paging triggers and two sets of the
+ * five screen states below, and switching Layout would drop the user's scroll position on the floor
+ * — which is what the Layout toggle would then have to be forgiven for, on every tap.
+ *
+ * Everything this screen can be *other* than a list of entries is here too: the skeleton, the two
+ * empty states, and the two failures. Which of them it is is not decided here — it is
+ * [AnimeListState.content], decided in `:core` and tested on every Target — so this is a `when` over
+ * that value and draws each variant, with no condition of its own.
+ */
+fun LazyGridScope.animeListItems(
+    state: AnimeListState,
+    layout: AnimeListLayout,
+    onRetry: () -> Unit,
+    onShowAll: () -> Unit,
+    onOpen: (AnimeListEntry) -> Unit,
+    /** The anime whose page is open, drawn highlighted; null when none is. */
+    openAnimeId: Long? = null,
+) {
+    val inset = layout.chromeInset()
+    when (val content = state.content) {
+        // Nothing asked for: only ever outside a Session, so only for the frame this screen is on its
+        // way out. The heading alone is the honest thing to draw.
+        AnimeListContent.NotRequested -> Unit
+
+        // A first page with nothing behind it. A reset keeps the previous entries on screen instead
+        // — that is `Entries` with `replacing` — which is what stops the screen flashing on a tap.
+        AnimeListContent.FirstPageLoading -> items(SKELETON_ITEMS) {
+            // Ordinary cells, not one spanning item with its own row of placeholders inside. A
+            // skeleton is a promise about the shape the content arrives in, and the only thing that
+            // can keep that promise on an `Adaptive` grid — whose columns stretch to whatever width
+            // is left over — is the grid itself. Laying the placeholders out by hand beside it would
+            // put them at a column width nothing else uses, and the page would jump on arrival:
+            // precisely the jump the skeleton exists to prevent.
+            when (layout) {
+                AnimeListLayout.Cards -> AnimeCardSkeleton(Modifier.testTag(ANIME_LIST_SKELETON_TAG))
+                AnimeListLayout.List -> AnimeRowSkeleton(Modifier.testTag(ANIME_LIST_SKELETON_TAG))
+                AnimeListLayout.Table -> AnimeTableSkeleton(Modifier.testTag(ANIME_LIST_SKELETON_TAG))
+            }
+        }
+
+        // Nothing is loaded — a failed first page discards whatever it was replacing, so this cannot
+        // become an error card floating over somebody else's slice — so this *is* the screen, and it
+        // reuses `ErrorCard` rather than growing one of its own.
+        is AnimeListContent.FirstPageFailed -> item(span = fullLineSpan) {
+            Column(
+                Modifier.padding(inset).testTag(ANIME_LIST_ERROR_TAG),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                ErrorCard("Could not load your Anime List", content.message)
+                TerminalButton("Retry", onRetry)
+            }
+        }
+
+        // An empty account, and a filter that matched nothing: one variant, two screens, because the
+        // fix for each is different and collapsing them tells a user with four hundred completed
+        // shows that their MyAnimeList is empty. The Watch Status beside the variant says which.
+        AnimeListContent.Empty -> item(span = fullLineSpan) {
+            EmptyAnimeList(state.watchStatus, onShowAll, Modifier.padding(inset))
+        }
+
+        is AnimeListContent.Entries -> {
+            // Deliberately **unkeyed**. The obvious key is the anime id, and a duplicate one is a
+            // hard crash in a lazy layout — which is reachable, because `list_updated_at` reorders
+            // under us between two page requests and can hand the same entry back on both sides of
+            // a page boundary. Nothing here needs keys: pages only ever append, so positional
+            // identity is already stable.
+            //
+            // One cell each, and the Layout is what decides how many cells fit a line — the grid's
+            // own `GridCells`, chosen in `SignedInScreen`. That is the whole of the difference
+            // between the two Layouts, which is why there is no second copy of anything here.
+            val entries = content.entries
+            // The table's column names, as the first line of the same grid so they scroll with it.
+            if (layout == AnimeListLayout.Table) item(span = fullLineSpan) { AnimeListTableHeader() }
+            items(entries.size) { index ->
+                val entry = entries[index]
+                when (layout) {
+                    AnimeListLayout.Cards -> AnimeListCard(entry, onOpen = { onOpen(entry) }, selected = entry.animeId == openAnimeId)
+                    AnimeListLayout.List -> AnimeListRow(entry, onOpen = { onOpen(entry) }, selected = entry.animeId == openAnimeId)
+                    AnimeListLayout.Table -> AnimeListTableRow(entry, onOpen = { onOpen(entry) }, selected = entry.animeId == openAnimeId)
+                }
+            }
+            animeListTail(content.tail, onRetry, inset)
+        }
+    }
+}
+
+/** A text button in the terminal style: outlined, mono 12, 2dp corners, 40dp tall. */
+@Composable
+private fun TerminalButton(label: String, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, shape = ActSmall, modifier = Modifier.height(40.dp)) {
+        Text(label, style = Act.type.body)
+    }
+}
+
+/** The one or two ways out of an empty Anime List, which depend on whether it is filtered. */
+@Composable
+private fun EmptyAnimeList(watchStatus: WatchStatus?, onShowAll: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            // The `> ` is part of the string, so one node carries the whole line.
+            "> " + (watchStatus?.emptyListMessage() ?: "You have nothing on your MyAnimeList yet."),
+            style = Act.type.body,
+            color = Act.colors.dim,
+            modifier = Modifier.testTag(ANIME_LIST_EMPTY_TAG),
+        )
+        if (watchStatus == null) {
+            // The way out of an empty account is not in this app: this release only reads, so there
+            // is nothing here that could add the first entry.
+            val uriHandler = LocalUriHandler.current
+            TerminalButton("Open myanimelist.net") { uriHandler.openUri(MY_ANIME_LIST_URL) }
+        } else {
+            // The way out of an empty slice is one tap, rather than the user having to work out that
+            // the chip they tapped is what emptied the screen.
+            TerminalButton("Show all", onShowAll)
+        }
+    }
+}
+
+/**
+ * The bottom of an unbounded list, which is where the user finds out whether there is more.
+ *
+ * Nothing at all for [AnimeListTail.Idle] and [AnimeListTail.End]: the first is about to become a
+ * page by scrolling, and the second is a list that has simply finished.
+ */
+private fun LazyGridScope.animeListTail(tail: AnimeListTail, onRetry: () -> Unit, inset: Dp) {
+    when (tail) {
+        AnimeListTail.Idle, AnimeListTail.End -> Unit
+
+        AnimeListTail.LoadingMore -> item(span = fullLineSpan) {
+            Row(
+                Modifier.padding(inset).testTag(ANIME_LIST_MORE_TAG),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                BusyIndicator(Modifier.padding(4.dp))
+                Text("> loading more…", style = Act.type.body, color = Act.colors.dim)
+            }
+        }
+
+        // A later page failed. Everything already loaded stays exactly where it is: a transient
+        // failure at the bottom must not cost the user their place, and the retry re-requests only
+        // the offset that failed.
+        is AnimeListTail.MoreFailed -> item(span = fullLineSpan) {
+            Column(
+                Modifier.padding(inset).testTag(ANIME_LIST_MORE_TAG),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                ErrorCard("Could not load more", tail.message)
+                TerminalButton("Try again", onRetry)
+            }
+        }
+    }
+}
+
+/**
+ * A grid item that takes the whole line, whatever the current column count is.
+ *
+ * Every part of this screen that is not a List Entry gets it: an error card, an empty-state message,
+ * a "loading more" row or the profile chrome squeezed into one cell of a five-column grid would be a
+ * column of text a hundred pixels wide. `internal` rather than private because the signed-in screen
+ * contributes chrome of its own to the same grid and must span it the same way.
+ */
+internal val fullLineSpan: LazyGridItemSpanScope.() -> GridItemSpan = { GridItemSpan(maxLineSpan) }
+
+/**
+ * Asks for the next page about a screenful before the end of what is laid out.
+ *
+ * Reads the last-visible index off the lazy layout rather than counting pixels or attaching to a
+ * scroll offset, so it behaves identically on every Target — a mouse wheel, a fling and a
+ * `Page Down` all move the same index. "A screenful" is measured in items rather than fixed at a
+ * number, so it adapts to whatever the current Layout fits on screen — which is also what makes it
+ * correct for a grid, where a screenful is a dozen cards rather than five rows;
+ * [MIN_PREFETCH_DISTANCE] is only a floor for the case where one item fills the window.
+ *
+ * **[loadedCount] is both the re-arm key and the staleness guard**, and it is deliberately the
+ * pager's count rather than the layout's:
+ *
+ * - As the *emitted* value it is what makes landing a page re-arm the trigger. A bare boolean would
+ *   go true once and never change, and the list would stop at two pages. The laid-out item count
+ *   looks like it would do as well and does not: firing inserts the "loading more" row and landing
+ *   removes it again, so a page of exactly one entry nets zero change and the trigger latches.
+ * - As a *floor* on `totalItemsCount` it rejects a layout from before the entries were measured.
+ *   That frame is real — the first page can land before the layout that draws it, and the effect
+ *   can be dispatched inside the same frame on Android — and a chrome-only layout is trivially
+ *   "near its end", so without the floor the trigger fires over a list nobody has seen a row of.
+ *
+ * **[revision] disarms it across a replacement.** When a filter change swaps the content out, the
+ * layout in hand was measured against the list that is gone — and if the user changed filter from
+ * the bottom of a long list, that layout says "near the end" while the replacement is fifty entries
+ * that nobody has scrolled a pixel of. Firing there fetches a second page of the new list before its
+ * first page has been looked at. So the effect restarts on a new revision and waits for the list to
+ * be back at the top, which is where the screen has already asked it to go.
+ *
+ * [enabled] is [AnimeListState.pagingArmed], decided in `:core`: it is what stops this asking over
+ * a list that has ended or has nothing on it yet.
+ *
+ * Being asked more often than a page is wanted is normal and expected — a fling crosses the
+ * threshold on every frame. The pager in `:core` holds every guard against that; nothing here counts.
+ */
+@Composable
+fun LoadMoreWhenNearEnd(
+    gridState: LazyGridState,
+    loadedCount: Int,
+    revision: Int,
+    enabled: Boolean,
+    onLoadMore: () -> Unit,
+) {
+    if (!enabled) return
+    // Read through `rememberUpdatedState`, not captured: the effect is keyed on the grid and the
+    // revision, so it survives every recomposition — and a captured `loadedCount` would be the count
+    // from the composition that started it, which is the one count guaranteed to be stale. Reading a
+    // `State` inside `snapshotFlow` also makes the change itself an emission, which is the re-arm.
+    val currentCount = rememberUpdatedState(loadedCount)
+    val currentLoadMore = rememberUpdatedState(onLoadMore)
+    LaunchedEffect(gridState, revision) {
+        // Read off the *laid-out* items rather than off `firstVisibleItemIndex`: the screen sends
+        // the list back to the top with `requestScrollToItem`, which moves that index immediately
+        // and leaves the layout itself untouched until the next measure. Waiting on the index would
+        // therefore wave through the very layout this is here to reject. Returns at once when the
+        // list is already at the top, so the first page pays nothing for this.
+        if (revision > 0) {
+            snapshotFlow { gridState.layoutInfo.visibleItemsInfo.firstOrNull()?.index }.first { it == 0 }
+        }
+        snapshotFlow {
+            val loaded = currentCount.value
+            val layout = gridState.layoutInfo
+            val last = layout.visibleItemsInfo.lastOrNull() ?: return@snapshotFlow NOT_NEAR_END
+            if (layout.totalItemsCount < loaded) return@snapshotFlow NOT_NEAR_END
+            val remaining = layout.totalItemsCount - 1 - last.index
+            if (remaining <= maxOf(layout.visibleItemsInfo.size, MIN_PREFETCH_DISTANCE)) {
+                loaded
+            } else {
+                NOT_NEAR_END
+            }
+        }
+            .distinctUntilChanged()
+            .filter { it != NOT_NEAR_END }
+            .collect { currentLoadMore.value() }
+    }
+}
+
+/** Not a possible entry count, so it cannot collide with the value the trigger emits. */
+private const val NOT_NEAR_END: Int = -1
+
+/** A floor under "a screenful", for a Layout whose items are taller than the window. */
+private const val MIN_PREFETCH_DISTANCE: Int = 5
+
+/**
+ * Where the user goes to do something about an empty Anime List, since this release only reads.
+ *
+ * The site root rather than a deep link to the user's own list: that URL contains their MAL
+ * username, and the one screen this is reachable from is the one where nothing has been loaded to
+ * read it off.
+ */
+const val MY_ANIME_LIST_URL: String = "https://myanimelist.net"
+
+/**
+ * How many placeholders the first-page skeleton draws.
+ *
+ * Enough to fill a phone in either Layout, and to make the shape read as a list of things; not
+ * enough to matter on a desktop, where the real page lands before anyone counts. A skeleton is a
+ * promise about shape, not about length — the page holds fifty.
+ *
+ * Every one of them carries [ANIME_LIST_SKELETON_TAG], so a test asks `onAllNodesWithTag`: the
+ * alternative was one tagged wrapper, and a wrapper is the thing that cannot be laid out by the
+ * grid. See the note beside the skeleton itself.
+ */
+private const val SKELETON_ITEMS: Int = 8
+
+/**
+ * How many columns each Layout gets, and therefore what the Layout *is*.
+ *
+ * [AnimeListLayout.Cards] is [GridCells.Adaptive], not a column count per breakpoint: the grid
+ * divides whatever width it is given by [ANIME_CARD_MIN_WIDTH] and stretches the cards to fit, so a
+ * phone lands on one column, a desktop window on as many as fit, and a browser dragged between the
+ * two changes column count as it goes — with no size class and nothing to keep in step with the
+ * three Targets' idea of a screen.
+ *
+ * [AnimeListLayout.List] and [AnimeListLayout.Table] are the same grid at one column, which is what
+ * makes them Layouts rather than extra lazy containers. See [animeListItems].
+ */
+internal fun AnimeListLayout.gridCells(): GridCells = when (this) {
+    AnimeListLayout.Cards -> GridCells.Adaptive(ANIME_CARD_MIN_WIDTH)
+    AnimeListLayout.List, AnimeListLayout.Table -> GridCells.Fixed(1)
+}
+
+/**
+ * The grid's outer padding and the gap between cells. Cards sit on the page with a gap; rows and
+ * table lines run edge to edge and are separated by their own 1dp rule instead.
+ */
+internal fun AnimeListLayout.gridPadding(): PaddingValues = when (this) {
+    AnimeListLayout.Cards -> PaddingValues(12.dp)
+    AnimeListLayout.List, AnimeListLayout.Table -> PaddingValues(0.dp)
+}
+
+internal fun AnimeListLayout.gridSpacing(): Dp = when (this) {
+    AnimeListLayout.Cards -> 10.dp
+    AnimeListLayout.List, AnimeListLayout.Table -> 0.dp
+}
+
+/** What the grid's own padding does not give a non-entry line: the same 16dp as the chrome above. */
+private fun AnimeListLayout.chromeInset(): Dp = when (this) {
+    AnimeListLayout.Cards -> 4.dp
+    AnimeListLayout.List, AnimeListLayout.Table -> 16.dp
+}
