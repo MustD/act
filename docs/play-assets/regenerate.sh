@@ -11,7 +11,7 @@ tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 rsvg-convert -w 512 -h 512 "$here/icon.svg" -o "$here/store-icon-512.png"
 rsvg-convert "$here/feature-graphic.svg" -o "$here/feature-graphic-1024x500.png"
 
-# Android < 26 ignores adaptive icons: the launcher icon is the 66dp-safe crop at 48dp, per density.
+# Android < 26 ignores adaptive icons: the launcher icon is the middle of the canvas, per density.
 # The adaptive canvas is 108dp and the visible part 72dp, so crop the middle 72/108.
 for d in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
   dir="mipmap-${d%%:*}"; px="${d##*:}"
