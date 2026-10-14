@@ -21,6 +21,7 @@ Build / run:
 mise run build:android      # Android debug APK
 mise run build:android:release  # signed, minified .aab; needs .secure.release.env (the upload key)
 mise run run:android        # install the debug build on the real device in ANDROID_TEST_DEVICE_ID and launch it
+mise run run:android:release  # the same with the signed, minified release build; needs .secure.release.env
 mise run run:desktop        # Desktop
 mise run run:desktop:hot    # Desktop with Compose Hot Reload
 mise run licences           # regenerate the About Screen's licence list (AboutLibraries) after a dependency change; commit it
@@ -251,7 +252,7 @@ bring the original failure back; the edge must pass `/mal` through with `PATCH` 
 `Cross-Origin-Opener-Policy` (see [the popup](#web-sign-in-the-popup-and-two-things-that-must-not-change)).
 
 **Env files:** three, gitignored (`.secure.*.env`), each with a committed `.example` listing every key.
-`.secure.build.env` holds `MAL_CLIENT_ID`, `DOCKERHUB_USER` and `ANDROID_TEST_DEVICE_ID`; `.secure.release.env` holds the four `ACT_UPLOAD_*` upload-keystore variables, is loaded by `build:android:release` alone, and Gradle reads it only through `providers.environmentVariable` (`requireUploadSigning` fails a release build naming what is unset; debug builds never read it); `.secure.deploy.env` holds `DIGITALOCEAN_TOKEN`,
+`.secure.build.env` holds `MAL_CLIENT_ID`, `DOCKERHUB_USER` and `ANDROID_TEST_DEVICE_ID`; `.secure.release.env` holds the four `ACT_UPLOAD_*` upload-keystore variables, is loaded by `build:android:release` and `run:android:release` alone, and Gradle reads it only through `providers.environmentVariable` (`requireUploadSigning` fails a release build naming what is unset; debug builds never read it); `.secure.deploy.env` holds `DIGITALOCEAN_TOKEN`,
 `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`, `EDGE_SSH` and the `TF_VAR_*`. **mise reads them, per task**
 (`env = { _ = { file = ... } }` in `mise.toml`) — never a global `[env]` — so the DO token reaches only `infra:*` and
 `deploy*`; `deploy` and `deploy:status` load the file for `EDGE_SSH` and `unset` the token at once (`terraform output`
