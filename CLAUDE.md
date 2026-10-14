@@ -204,8 +204,7 @@ can); `MAL_CLIENT_ID` is the straightforward route for CI.
 Set nowhere it is `""` and Sign-in is disabled; **a missing value does not fail a dev run or a test** (nor a build of anything but a release artifact).
 The exception is a release artifact: `:app:webApp:wasmJsBrowserDistribution` depends on `:core:requireMalClientId`,
 which fails naming the two sources, because that bundle ships to users who cannot be prompted for a build-time
-default. The Android release build is to reuse the same task (play-release 05) rather than add a second check; it
-does not depend on it yet. Every step is a lazy
+default. The Android `bundleRelease`/`assembleRelease` depend on the same task rather than a second check. Every step is a lazy
 `Provider` and the value is declared with `inputs.property`, which is what keeps the task configuration-cache-safe and
 still invalidated when the value changes — reading a file with `Properties().load(...)` at configuration
 time is exactly the trap the Conventions section warns about.

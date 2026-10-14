@@ -186,8 +186,8 @@ kotlin.sourceSets.commonMain { kotlin.srcDir(generateActVersion) }
 
 /**
  * Fails when no build-time Client ID resolved. Release artifacts `dependsOn(":core:requireMalClientId")`
- * rather than re-implementing the check — the production web bundle today, and the Android release build
- * once play-release 05 lands, so the message and the two sources it names live in one place. Dev runs
+ * rather than re-implementing the check — the production web bundle and the Android
+ * `bundleRelease`/`assembleRelease`, so the message and the two sources it names live in one place. Dev runs
  * and tests do not depend on it, and keep "empty → prompt".
  *
  * Declares no outputs, so it runs every time; the check is a string comparison. The `Provider` is

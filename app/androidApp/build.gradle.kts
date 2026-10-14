@@ -120,5 +120,6 @@ val requireUploadSigning by tasks.registering {
 }
 
 tasks.matching { it.name == "bundleRelease" || it.name == "assembleRelease" }.configureEach {
-    dependsOn(requireUploadSigning)
+    // The Client ID check lives in :core, shared with the web distribution — no second copy of it.
+    dependsOn(requireUploadSigning, ":core:requireMalClientId")
 }
