@@ -20,6 +20,7 @@ Build / run:
 ```bash
 mise run build:android      # Android debug APK
 mise run build:android:release  # signed, minified .aab; needs .secure.release.env (the upload key)
+mise run run:android        # install the debug build on the real device in .secure.device.env and launch it
 mise run run:desktop        # Desktop
 mise run run:desktop:hot    # Desktop with Compose Hot Reload
 mise run run:server         # Ktor server on :18010
@@ -31,7 +32,7 @@ mise run build              # everything: every target compiled, every test run
 starts webpack-dev-server without blocking, so without it Gradle finishes (`BUILD SUCCESSFUL` in well under a second)
 and takes the dev server down with it, leaving nothing on the port.
 
-The `run:desktop*`, `run:web` and `build*` tasks load `.secure.build.env` (the Client ID); the `test*` tasks load
+The `run:desktop*`, `run:web`, `run:android` and `build*` tasks load `.secure.build.env` (the Client ID); `run:android` also loads `.secure.device.env` (`ANDROID_SERIAL`, from `adb devices`); the `test*` tasks load
 nothing, because a test must pass the same with or without one — the two that `deploy` runs inherit its Client ID all
 the same. See [Deployment](#deployment) for the env files.
 
