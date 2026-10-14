@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 1024x500 Play feature graphic: the same glyphs as icon.svg, scaled 6x and centred. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+  <rect width="1024" height="500" fill="#0D0E0C"/>
+  <g transform="translate(188 -77) scale(6)">
+  <g fill="none" stroke-width="5" stroke-linejoin="miter" stroke-linecap="butt">
+    <path stroke="#E8EAE2" d="M26.5 60 L34 40 L41.5 60 M29.5 53 H38.5 M61.5 40 H50 Q46.5 40 46.5 43.5 V56.5 Q46.5 60 50 60 H61.5 M66.5 40 H81.5 M74 40 V60"/>
+    <path stroke="#8CEB7B" d="M66.5 69 H81.5"/>
+  </g>
+  </g>
+</svg>

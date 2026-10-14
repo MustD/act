@@ -1,5 +1,8 @@
 package net.io_workshop.act
 
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.res.loadImageBitmap
+import androidx.compose.ui.res.useResource
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import net.io_workshop.act.di.initKoin
@@ -39,6 +42,7 @@ private fun ui() = application {
     Window(
         onCloseRequest = ::exitApplication,
         title = "ACT",
+        icon = BitmapPainter(useResource("icon.png", ::loadImageBitmap)),
     ) {
         App()
     }

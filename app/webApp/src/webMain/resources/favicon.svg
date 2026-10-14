@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The one source of every ACT icon. 108x108 is the Android adaptive canvas: everything that matters sits inside the
+     central 66x66 safe zone. Colours are Act's dark theme: bg #0D0E0C, ink #E8EAE2, accent (phosphor) #8CEB7B.
+     See README.md for what is derived from this and how. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
+  <rect width="108" height="108" fill="#0D0E0C"/>
+  <g fill="none" stroke-width="5" stroke-linejoin="miter" stroke-linecap="butt">
+    <path stroke="#E8EAE2" d="M26.5 60 L34 40 L41.5 60 M29.5 53 H38.5 M61.5 40 H50 Q46.5 40 46.5 43.5 V56.5 Q46.5 60 50 60 H61.5 M66.5 40 H81.5 M74 40 V60"/>
+    <path stroke="#8CEB7B" d="M66.5 69 H81.5"/>
+  </g>
+</svg>

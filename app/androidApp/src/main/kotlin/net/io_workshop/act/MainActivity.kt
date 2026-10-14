@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import net.io_workshop.act.auth.AuthRedirectInbox
 
 /**
@@ -22,6 +23,8 @@ import net.io_workshop.act.auth.AuthRedirectInbox
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Before super.onCreate: swaps Theme.ACT.Starting for Theme.ACT, so the splash follows the system theme.
+        installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         // A cold start *is* a redirect delivery when the process was killed while the user was away.
