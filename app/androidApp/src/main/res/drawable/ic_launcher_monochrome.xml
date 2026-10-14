@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+        android:width="108dp"
+        android:height="108dp"
+        android:viewportWidth="108"
+        android:viewportHeight="108">
+    <!-- Themed-icon layer: one colour, the launcher tints it. Same path data as docs/play-assets/icon.svg. -->
+    <path
+            android:pathData="M26.5,60 L34,40 L41.5,60 M29.5,53 H38.5 M61.5,40 H50 Q46.5,40 46.5,43.5 V56.5 Q46.5,60 50,60 H61.5 M66.5,40 H81.5 M74,40 V60"
+            android:strokeColor="#000000"
+            android:strokeWidth="5"/>
+    <path
+            android:pathData="M66.5,69 H81.5"
+            android:strokeColor="#000000"
+            android:strokeWidth="5"/>
+</vector>

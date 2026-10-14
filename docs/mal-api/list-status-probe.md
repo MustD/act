@@ -136,7 +136,7 @@ upper bound to clamp to, which matches the spec's "no upper limit when the total
 ## Re-running it
 
 Needs an access token for an account whose list can be touched. The desktop Session stores one in
-`~/.local/state/io.challenge_workshop.mal_ui/store.json` under `mal.session.v1` → `tokens.access_token`; pick anime that
+`~/.local/state/net.io_workshop.act/store.json` under `mal.session.v1` → `tokens.access_token`; pick anime that
 are not on that list and `DELETE /v2/anime/{id}/my_list_status` them afterwards (a DELETE for an anime not on the list
 is also a 200, so the cleanup is safe to repeat).
 

@@ -1,0 +1,53 @@
+package net.io_workshop.act.auth
+
+/**
+ * A redirect this process was *launched* with, rather than one an armed [AuthRedirectChannel]
+ * captured while it was running.
+ *
+ * Web and Android have one; desktop does not. Web's popup Redirect Capture falls back to a
+ * full-page redirect when the browser blocks the popup, and that path destroys the document by
+ * design — the app that comes back is a fresh process whose only evidence of a sign-in is a
+ * `?code=…` in its own address bar and the Pending Authorization in `sessionStorage`. Android gets
+ * one when the process was killed behind the browser and the redirect Intent relaunches it. Either
+ * way there is no armed channel left to deliver it to, so it arrives here instead, at startup.
+ *
+ * Separate from [AuthRedirectChannel] because it is not a phase of a capture: nothing armed it,
+ * nothing opened a browser for it, and it is answered once per process rather than once per
+ * sign-in. Injected rather than probed for, so desktop, which can never have one, is wired to
+ * [None] and says so.
+ */
+fun interface StartupRedirect {
+
+    /**
+     * Takes the redirect this process was launched with, if there is one.
+     *
+     * **Consuming, not peeking**: the second call answers null. An authorization code is single-use
+     * and, under `plain` PKCE, travels next to the verifier, so nothing may be left where a reload
+     * would find it.
+     *
+     * @return the redirect exactly as the platform saw it — the same unparsed string a paste or a
+     * capture produces, so all three go through one parser and fail identically — together with a
+     * fact about it. The platform states the fact; `SignIn` decides what to do with it.
+     */
+    suspend fun consume(): LaunchRedirect?
+
+    companion object {
+        /**
+         * Desktop: a loopback redirect can only reach a process that is already listening for it,
+         * so there is never one to answer at startup. Android has its own — a redirect *does*
+         * launch a process there, when the last one was killed behind the browser.
+         */
+        val None: StartupRedirect = StartupRedirect { null }
+    }
+}
+
+/**
+ * What a platform found at launch.
+ *
+ * @property rawRedirect the unparsed redirect.
+ * @property reportIfStale whether the redirect is still worth reporting when no sign-in is in
+ * progress. Web says yes: a `?code=` in the address bar always means the user *just* came back from
+ * MyAnimeList. Android says no: a launch Intent is not a user action, and the system re-delivers it
+ * on every later relaunch of the task, days after the login it belongs to finished.
+ */
+data class LaunchRedirect(val rawRedirect: String, val reportIfStale: Boolean)

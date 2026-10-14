@@ -1,0 +1,325 @@
+@file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+
+package net.io_workshop.act.animelist
+
+import net.io_workshop.act.session.FakeClock
+import net.io_workshop.act.session.FakeKeyValueStore
+import net.io_workshop.act.session.FakeMal
+import net.io_workshop.act.session.JsonTokenStore
+import net.io_workshop.act.session.MalSessionRepository
+import net.io_workshop.act.session.RefreshResponse
+import net.io_workshop.act.session.SessionState
+import net.io_workshop.act.session.SignedOutReason
+import net.io_workshop.act.session.TEST_CONFIG
+import net.io_workshop.act.session.TEST_USER
+import net.io_workshop.act.session.VALID_TOKENS
+import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import kotlin.coroutines.cancellation.CancellationException
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.test.assertNull
+
+/**
+ * The Anime List lasts exactly one Session, and this is the module that says so.
+ *
+ * Built over a **real** [MalSessionRepository] and the fake MAL behind it, and driven by real
+ * sign-ins, sign-outs, restores and refresh rejections — the lifetime rule is about what the Session
+ * does, so a stubbed `StateFlow<SessionState>` would test the rule against a Session that cannot
+ * actually happen.
+ *
+ * What is asserted is what a caller can see: the list's state and the requests the fake MAL was
+ * asked. Never which pager exists or which coroutine did what.
+ *
+ * The repository runs in `backgroundScope`, on the test's own single-threaded scheduler — the stand-in
+ * for the one main thread it is confined to in the app — and is cancelled with the test. Pages land
+ * whenever the engine answers, so every step waits on the list's state rather than on the clock.
+ */
+class AnimeListRepositoryTest {
+
+    private class Harness(
+        val mal: FakeMal,
+        val store: JsonTokenStore,
+        val session: MalSessionRepository,
+        val list: AnimeListRepository,
+    ) {
+        suspend fun awaitList(predicate: (AnimeListState) -> Boolean): AnimeListState =
+            list.state.first(predicate)
+
+        /** Entries on screen, and nothing in flight behind or below them. */
+        suspend fun awaitSettled(): List<AnimeListEntry> =
+            (awaitList { it.settled() }.content as AnimeListContent.Entries).entries
+
+        suspend fun awaitFailed(): AnimeListState = awaitList { it.content is AnimeListContent.FirstPageFailed }
+
+        /** The list a Session that has ended leaves behind: nothing at all. */
+        suspend fun awaitDiscarded(): AnimeListState = awaitList { it == AnimeListState() }
+
+        /** A real sign-in: a Pending Authorization minted, then completed by a redirect carrying its `state`. */
+        suspend fun signIn() {
+            session.beginAuthorization()
+            val pending = assertIs<SessionState.Authorizing>(session.state.value).pending
+            session.completeAuthorization("${TEST_CONFIG.redirectUri}?code=a-code&state=${pending.state}")
+        }
+
+        fun close() = session.close()
+    }
+
+    /**
+     * @param signedIn whether the store starts out holding a Session, for [MalSessionRepository.restore]
+     * to find.
+     */
+    private suspend fun TestScope.harness(
+        signedIn: Boolean,
+        refreshResponse: RefreshResponse = RefreshResponse.Rotated("fresh-access", "fresh-refresh"),
+        animeList: (Int) -> AnimeListResponse = { AnimeListResponse.Page(fakeEntries(3), hasMore = false) },
+        holdAnimeList: suspend (Int) -> Unit = {},
+    ): Harness {
+        val mal = FakeMal(
+            refreshResponse = refreshResponse,
+            acceptedAccessToken = VALID_TOKENS.accessToken,
+            animeList = animeList,
+            holdAnimeList = holdAnimeList,
+        )
+        val store = JsonTokenStore(FakeKeyValueStore(), clock = FakeClock())
+        if (signedIn) store.writeSession(VALID_TOKENS, TEST_USER)
+        val session = MalSessionRepository(
+            store = store,
+            clock = FakeClock(),
+            initialConfig = TEST_CONFIG,
+            clientFactory = mal.clientFactory,
+        )
+        return Harness(mal, store, session, AnimeListRepository(session, backgroundScope))
+    }
+
+    private val FakeMal.statuses: List<String?> get() = animeListRequests.map { it.parameters["status"] }
+    private val FakeMal.sorts: List<String?> get() = animeListRequests.map { it.parameters["sort"] }
+
+    @Test
+    fun a_session_restored_from_storage_starts_loading_its_list_at_once() = runTest {
+        val h = harness(signedIn = true)
+
+        h.session.restore()
+
+        assertEquals(3, h.awaitSettled().size)
+        assertEquals(1, h.mal.animeListRequests.size, "nothing on screen asked — the Session starting did")
+        h.close()
+    }
+
+    @Test
+    fun signing_in_starts_loading_the_list_at_once() = runTest {
+        val h = harness(signedIn = false)
+        h.session.restore()
+        runCurrent()
+        assertEquals(0, h.mal.animeListRequests.size, "no Session, so nothing to ask for")
+
+        h.signIn()
+
+        assertEquals(3, h.awaitSettled().size)
+        assertEquals(1, h.mal.animeListRequests.size)
+        h.close()
+    }
+
+    /**
+     * The bug this module exists for: sign out, sign in, and the previous Session's list — under its
+     * filter and Sort Order — was still on screen, with no request made for the new one.
+     */
+    @Test
+    fun signing_out_discards_the_list_and_the_next_session_opens_fresh_on_the_defaults() = runTest {
+        val h = harness(signedIn = true)
+        h.session.restore()
+        h.awaitSettled()
+        h.list.setWatchStatus(WatchStatus.OnHold)
+        h.awaitList { it.watchStatus == WatchStatus.OnHold && it.settled() }
+        h.list.setSortOrder(AnimeListSortOrder.Title)
+        h.awaitList { it.sortOrder == AnimeListSortOrder.Title && it.settled() }
+
+        h.session.signOut()
+        h.awaitDiscarded()
+
+        h.signIn()
+        assertEquals(3, h.awaitSettled().size)
+        val fresh = h.list.state.value
+
+        assertEquals(WatchStatus.Watching, fresh.watchStatus, "the next Session opens on Watching")
+        assertEquals(AnimeListSortOrder.LastUpdated, fresh.sortOrder, "and on the default Sort Order")
+        assertEquals(4, h.mal.animeListRequests.size, "the new Session asked for its own first page")
+        assertEquals("watching", h.mal.statuses.last())
+        assertEquals(AnimeListSortOrder.LastUpdated.wireValue, h.mal.sorts.last())
+        h.close()
+    }
+
+    /** A refresh MAL rejected ends the Session as surely as a sign-out, and the list goes with it. */
+    @Test
+    fun a_rejected_refresh_discards_the_list_the_same_way_a_sign_out_does() = runTest {
+        val h = harness(
+            signedIn = true,
+            refreshResponse = RefreshResponse.Rejected(HttpStatusCode.BadRequest, "invalid_grant"),
+        )
+        h.session.restore()
+        h.awaitSettled()
+        h.list.setWatchStatus(WatchStatus.Dropped)
+        h.awaitList { it.watchStatus == WatchStatus.Dropped && it.settled() }
+
+        // The next request meets a 401, the refresh it drives is rejected, and the Session is over.
+        h.session.forceExpireAccessToken()
+        h.list.reload()
+        h.session.state.first { it is SessionState.SignedOut }
+        assertEquals(
+            SignedOutReason.RefreshRejected,
+            assertIs<SessionState.SignedOut>(h.session.state.value).reason,
+        )
+        h.awaitDiscarded()
+
+        // Signing in again — here, a Session put back in the store and restored — fetches afresh.
+        h.store.writeSession(VALID_TOKENS, TEST_USER)
+        h.session.restore()
+        h.awaitSettled()
+
+        assertEquals(WatchStatus.Watching, h.list.state.value.watchStatus)
+        assertEquals("watching", h.mal.statuses.last())
+        h.close()
+    }
+
+    /**
+     * A page still in flight when the Session ends is abandoned rather than allowed to land: a late
+     * response must not put a list on screen for a Session that no longer exists.
+     */
+    @Test
+    fun a_page_in_flight_at_sign_out_is_cancelled_and_never_lands() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val held = CompletableDeferred<Unit>()
+        val abandoned = CompletableDeferred<Unit>()
+        val h = harness(
+            signedIn = true,
+            holdAnimeList = {
+                held.complete(Unit)
+                try {
+                    gate.await()
+                } catch (e: CancellationException) {
+                    abandoned.complete(Unit)
+                    throw e
+                }
+            },
+        )
+        h.session.restore()
+        // Genuinely at MAL, not merely claimed: a request cancelled before it got there proves nothing.
+        held.await()
+
+        h.session.signOut()
+        h.awaitDiscarded()
+        abandoned.await()
+        gate.complete(Unit)
+        runCurrent()
+
+        assertEquals(AnimeListState(), h.list.state.value, "the abandoned page must not have landed")
+        h.close()
+    }
+
+    /**
+     * The Session changing *within* itself — its user fetched, a refresh flag set and cleared — is not
+     * a new Session, and rebuilding the list on it would throw away the user's filter mid-scroll.
+     */
+    @Test
+    fun a_signed_in_session_changing_within_itself_does_not_rebuild_the_list() = runTest {
+        val h = harness(signedIn = false)
+        h.session.restore()
+
+        // A sign-in emits `SignedIn(user = null)` and then `SignedIn(user)` once the user is fetched.
+        h.signIn()
+        h.awaitSettled()
+        assertEquals(1, h.mal.animeListRequests.size, "the user arriving did not ask for a second list")
+
+        h.list.setWatchStatus(WatchStatus.Completed)
+        h.awaitList { it.watchStatus == WatchStatus.Completed && it.settled() }
+
+        // A real refresh: `refreshing` goes true and back to false on the same Session.
+        h.session.forceExpireAccessToken()
+        h.session.fetchUser()
+        assertEquals(2, h.mal.tokenEndpointHits, "the sign-in's exchange, then the one refresh the 401 drove")
+        runCurrent()
+
+        assertEquals(WatchStatus.Completed, h.list.state.value.watchStatus)
+        assertEquals(2, h.mal.animeListRequests.size, "the refresh did not rebuild the list")
+        h.close()
+    }
+
+    @Test
+    fun re_picking_the_filter_or_sort_order_on_screen_is_dropped_and_reload_is_not() = runTest {
+        val h = harness(signedIn = true)
+        h.session.restore()
+        h.awaitSettled()
+
+        h.list.setWatchStatus(WatchStatus.Watching)
+        h.list.setSortOrder(AnimeListSortOrder.LastUpdated)
+        runCurrent()
+        assertEquals(1, h.mal.animeListRequests.size, "re-picking what is on screen asks for nothing")
+
+        h.list.reload()
+        h.awaitList { it.revision == 2 && it.settled() }
+        assertEquals(2, h.mal.animeListRequests.size, "Reload is a request for exactly that")
+
+        // Two quick taps on the same new chip are one pick: the second is judged against the list the
+        // first has already asked for, not against a copy of the state that has not caught up.
+        h.list.setWatchStatus(WatchStatus.Completed)
+        h.list.setWatchStatus(WatchStatus.Completed)
+        h.awaitList { it.watchStatus == WatchStatus.Completed && it.settled() }
+        runCurrent()
+        assertEquals(3, h.mal.animeListRequests.size, "the second tap on the same chip asked for nothing")
+        h.close()
+    }
+
+    /** Unless the query on screen failed, when picking it again is the obvious retry. */
+    @Test
+    fun re_picking_a_filter_or_sort_order_whose_first_page_failed_fetches_it_again() = runTest {
+        var failing = true
+        val h = harness(
+            signedIn = true,
+            animeList = {
+                if (failing) AnimeListResponse.Failure() else AnimeListResponse.Page(fakeEntries(2), hasMore = false)
+            },
+        )
+        h.session.restore()
+        h.awaitFailed()
+
+        h.list.setWatchStatus(null)
+        // The launch has to have run before the wait, or the failure being waited for is the old one.
+        runCurrent()
+        h.awaitFailed()
+        assertEquals(2, h.mal.animeListRequests.size, "the failed filter re-picked is a retry")
+
+        failing = false
+        h.list.setSortOrder(AnimeListSortOrder.LastUpdated)
+        assertEquals(2, h.awaitSettled().size)
+        assertEquals(3, h.mal.animeListRequests.size, "and so is the failed Sort Order")
+        h.close()
+    }
+
+    @Test
+    fun list_operations_outside_a_session_do_nothing() = runTest {
+        val h = harness(signedIn = false)
+        h.session.restore()
+        runCurrent()
+
+        h.list.loadMore()
+        h.list.retry()
+        h.list.reload()
+        h.list.setWatchStatus(WatchStatus.Completed)
+        h.list.setSortOrder(AnimeListSortOrder.Score)
+        runCurrent()
+
+        assertEquals(0, h.mal.animeListRequests.size)
+        assertEquals(AnimeListState(), h.list.state.value)
+        h.close()
+    }
+}
+
+/** Entries on screen, and nothing in flight behind or below them. */
+private fun AnimeListState.settled(): Boolean = content.let {
+    it is AnimeListContent.Entries && !it.replacing && it.tail != AnimeListTail.LoadingMore
+}

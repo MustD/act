@@ -3,10 +3,10 @@ plugins {
     alias(libs.plugins.ktor)
 }
 
-group = "io.challenge_workshop.mal_ui"
+group = "net.io_workshop.act"
 version = providers.gradleProperty("act.version").get()
 application {
-    mainClass = "io.challenge_workshop.mal_ui.ApplicationKt"
+    mainClass = "net.io_workshop.act.ApplicationKt"
 }
 
 dependencies {

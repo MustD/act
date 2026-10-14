@@ -3,9 +3,10 @@
 #
 # mise loads the env files per task — never a global [env] — so DIGITALOCEAN_TOKEN reaches only the infra and deploy
 # tasks, not Gradle or an interactive shell. See CLAUDE.md, "Deployment".
-#   .secure.build.env   MAL_CLIENT_ID, DOCKERHUB_USER   (run:desktop*, run:web, build*, deploy, deploy:build, deploy:push)
+#   .secure.build.env   MAL_CLIENT_ID, DOCKERHUB_USER, ANDROID_TEST_DEVICE_ID   (run:desktop*, run:web*, run:android*, build*, deploy, deploy:build, deploy:push)
+#   .secure.release.env ACT_UPLOAD_* (the upload keystore)   (build:android:release, run:android:release)
 #   .secure.deploy.env  DIGITALOCEAN_TOKEN, AWS_* (state bucket), EDGE_SSH, TF_VAR_*   (infra:*, deploy, deploy:status)
-# The test tasks load neither: a test must pass the same with or without a Client ID. (The two that `deploy` runs
+# The test tasks load none of them: a test must pass the same with or without a Client ID. (The two that `deploy` runs
 # inherit its build env, Client ID included — lib.sh's `task` strips only the deploy secrets.)
 #
 # Not managed here: docker (with buildx) and ssh, which the deploy tasks expect on the machine.
@@ -16,6 +17,10 @@ java = "zulu-21"
 terraform = "1.15.9" # inside versions.tf's "~> 1.15"
 
 # --- run locally -------------------------------------------------------------------------------------------------
+
+[tasks.licences]
+description = "Regenerate the About Screen's open-source licence list (commit the result)"
+run = "./gradlew :app:shared:exportLibraryDefinitions"
 
 [tasks."run:desktop"]
 description = "Desktop app, with the Client ID from .secure.build.env"
@@ -32,9 +37,43 @@ description = "Ktor relay on :18010"
 run = "./gradlew :server:run"
 
 [tasks."run:web"]
-description = "Web dev server on :18020 (needs run:server too)"
+description = "Web dev server on :18020, no live reload (needs run:server too)"
+env = { ACT_WEB_HOT = "0", _ = { file = ".secure.build.env" } }
+run = "./gradlew :app:webApp:wasmJsBrowserDevelopmentRun --continuous"
+
+[tasks."run:web:hot"]
+description = "Web dev server on :18020 with live reload (needs run:server too)"
 env = { _ = { file = ".secure.build.env" } }
 run = "./gradlew :app:webApp:wasmJsBrowserDevelopmentRun --continuous"
+
+[tasks."run:android"]
+description = "Install the debug build on the device named by ANDROID_TEST_DEVICE_ID and launch it"
+env = { _ = { file = ".secure.build.env" } }
+run = """
+if [ -z "${ANDROID_TEST_DEVICE_ID:-}" ]; then
+  echo "ANDROID_TEST_DEVICE_ID is not set: put the serial from adb devices in .secure.build.env" >&2
+  exit 1
+fi
+# adb and Gradle's installDebug both read ANDROID_SERIAL, so one value picks the device for install and launch.
+export ANDROID_SERIAL="$ANDROID_TEST_DEVICE_ID"
+./gradlew :app:androidApp:installDebug
+adb shell am start -n net.io_workshop.act/.MainActivity
+"""
+
+[tasks."run:android:release"]
+description = "Install the signed, minified release build on ANDROID_TEST_DEVICE_ID and launch it; needs .secure.release.env"
+env = { _ = { file = [".secure.build.env", ".secure.release.env"] } }
+run = """
+if [ -z "${ANDROID_TEST_DEVICE_ID:-}" ]; then
+  echo "ANDROID_TEST_DEVICE_ID is not set: put the serial from adb devices in .secure.build.env" >&2
+  exit 1
+fi
+export ANDROID_SERIAL="$ANDROID_TEST_DEVICE_ID"
+# Debug and release share the applicationId but not the signing key, so a debug build on the device makes this
+# install fail with INSTALL_FAILED_UPDATE_INCOMPATIBLE. Uninstall it first (that drops its Session).
+./gradlew :app:androidApp:installRelease
+adb shell am start -n net.io_workshop.act/.MainActivity
+"""
 
 # --- build -------------------------------------------------------------------------------------------------------
 
@@ -47,6 +86,16 @@ run = "./gradlew build"
 description = "Android debug APK"
 env = { _ = { file = ".secure.build.env" } }
 run = "./gradlew :app:androidApp:assembleDebug"
+
+[tasks."build:android:release"]
+description = "Signed, minified Android App Bundle; needs .secure.release.env"
+env = { _ = { file = [".secure.build.env", ".secure.release.env"] } }
+run = "./gradlew :app:androidApp:bundleRelease"
+
+[tasks."build:web"]
+description = "Development Wasm bundle, no server; build:web:dist is the production one"
+env = { _ = { file = ".secure.build.env" } }
+run = "./gradlew :app:webApp:wasmJsBrowserDevelopmentWebpack"
 
 [tasks."build:web:dist"]
 description = "Production Wasm bundle; fails without a Client ID"

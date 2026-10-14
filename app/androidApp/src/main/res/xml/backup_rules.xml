@@ -7,5 +7,5 @@
   because lint rightly refuses to accept extraction rules that only cover half the supported range.
 -->
 <full-backup-content>
-    <exclude domain="sharedpref" path="io.challenge_workshop.mal_ui.xml"/>
+    <exclude domain="sharedpref" path="net.io_workshop.act.xml"/>
 </full-backup-content>

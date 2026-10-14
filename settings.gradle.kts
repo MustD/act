@@ -1,4 +1,4 @@
-rootProject.name = "mal_ui"
+rootProject.name = "act"
 
 pluginManagement {
     repositories {

@@ -1,0 +1,7 @@
+<resources>
+    <color name="act_bg">#0D0E0C</color>
+
+    <style name="Theme.ACT" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/act_bg</item>
+    </style>
+</resources>

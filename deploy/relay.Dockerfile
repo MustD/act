@@ -29,6 +29,6 @@ USER relay
 EXPOSE 18010
 
 HEALTHCHECK --interval=15s --timeout=3s --start-period=30s --retries=3 \
-    CMD wget -q -O - "http://127.0.0.1:${ACT_RELAY_PORT}/" | grep -q '^mal_ui relay$' || exit 1
+    CMD wget -q -O - "http://127.0.0.1:${ACT_RELAY_PORT}/" | grep -q '^act relay$' || exit 1
 
 ENTRYPOINT ["/opt/relay/bin/server"]

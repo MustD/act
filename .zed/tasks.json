@@ -25,6 +25,15 @@
     "command": "mise run run:web",
     "use_new_terminal": true
   },
+  {
+    "label": "run:web:hot",
+    "command": "mise run run:web:hot",
+    "use_new_terminal": true
+  },
+  {
+    "label": "run:android",
+    "command": "mise run run:android"
+  },
   // Test.
   {
     "label": "test",
@@ -77,6 +86,14 @@
     "command": "mise run build:android"
   },
   {
+    "label": "build:android:release",
+    "command": "mise run build:android:release"
+  },
+  {
+    "label": "build:web",
+    "command": "mise run build:web"
+  },
+  {
     "label": "build:web:dist",
     "command": "mise run build:web:dist"
   },
@@ -87,6 +104,10 @@
   {
     "label": "generate:mal-config",
     "command": "mise run generate:mal-config"
+  },
+  {
+    "label": "licences",
+    "command": "mise run licences"
   },
   // Deploy and infra: the ones that only build locally or only read.
   {

@@ -1,0 +1,17 @@
+<resources>
+    <!-- Colours are Act's, from ActTheme.kt: bg dark 0D0E0C / light F1F0E9. The icon sits on the dark tile in both. -->
+    <color name="act_bg">#F1F0E9</color>
+    <color name="act_icon_bg">#0D0E0C</color>
+
+    <!-- What the window shows once the splash is gone and before Compose has drawn: same colour, so no flash. -->
+    <style name="Theme.ACT" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/act_bg</item>
+    </style>
+
+    <style name="Theme.ACT.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/act_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/act_icon_bg</item>
+        <item name="postSplashScreenTheme">@style/Theme.ACT</item>
+    </style>
+</resources>

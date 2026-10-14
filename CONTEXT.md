@@ -1,4 +1,4 @@
-# mal_ui
+# ACT
 
 A MyAnimeList client for Android, desktop, and the browser. MAL offers only the OAuth2 authorization code grant with
 PKCE, so the user's password is only ever typed on myanimelist.net — everything this project calls a "sign-in" is a
@@ -113,6 +113,12 @@ The anime MAL links to another by a named relation — sequel, prequel, side sto
 of which opens its own Anime Page, whether or not it is on the list. Manga relations are not included. _Avoid_:
 Recommendations (MAL's separate, user-voted "if you liked this" list, which this is not)
 
+**Adult Cover**:
+The cover of an anime MAL marks as adult — rated Rx, or not marked safe for work, or with either mark missing. On some
+Targets a placeholder is drawn in its place, everywhere a cover appears, with no way to reveal it. Only the picture is
+withheld: the anime still appears in the Anime List, on its Anime Page and among Related Anime. _Avoid_: NSFW cover,
+censored entry, hidden anime (nothing is hidden but the picture)
+
 **Watch Status**:
 The user's own disposition towards an anime: watching, completed, on hold, dropped, or plan to watch. Exactly one per
 List Entry. _Avoid_: **Status**, unqualified — MAL's API calls this `status` and calls **Airing Status** `status` too,
@@ -163,7 +169,8 @@ always qualified that way. _Avoid_: About page, diagnostics page, welcome page (
 **About Screen**:
 What the app is, which version this is, and where to go next — the source on GitHub, reporting an issue, supporting
 MyAnimeList or development, the privacy policy — together with the two notices that it is unofficial and that its data
-is MyAnimeList's. The same content signed in or out. _Avoid_: Info, help, settings
+is MyAnimeList's (a link to myanimelist.net), and a `// licences` section listing the open-source libraries the build
+ships, collapsed until asked for. The same content signed in or out. _Avoid_: Info, help, settings
 
 **Diagnostics Screen**:
 Where this build sends MAL traffic and what state the Session's tokens are in, with the buttons that exercise the refresh

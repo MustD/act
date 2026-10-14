@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Kotlin Multiplatform / Compose Multiplatform project targeting Android, Web (Wasm), Desktop (JVM), and a Ktor server. Package namespace throughout: `io.challenge_workshop.mal_ui`.
+Kotlin Multiplatform / Compose Multiplatform project targeting Android, Web (Wasm), Desktop (JVM), and a Ktor server. Package namespace throughout: `net.io_workshop.act`.
 
 ## Commands
 
@@ -19,18 +19,24 @@ Build / run:
 
 ```bash
 mise run build:android      # Android debug APK
+mise run build:android:release  # signed, minified .aab; needs .secure.release.env (the upload key)
+mise run run:android        # install the debug build on the real device in ANDROID_TEST_DEVICE_ID and launch it
+mise run run:android:release  # the same with the signed, minified release build; needs .secure.release.env
 mise run run:desktop        # Desktop
 mise run run:desktop:hot    # Desktop with Compose Hot Reload
+mise run licences           # regenerate the About Screen's licence list (AboutLibraries) after a dependency change; commit it
 mise run run:server         # Ktor server on :18010
-mise run run:web            # Web, Wasm target, on :18020
+mise run run:web            # Web, Wasm target, on :18020; no live reload
+mise run run:web:hot        # Web with live reload on change
+mise run build:web          # Web development bundle only, no server (build:web:dist is the production one)
 mise run build              # everything: every target compiled, every test run
 ```
 
-`run:web` passes Gradle `--continuous`, which is required for the web target, not just for hot reload: the run task
+`run:web` and `run:web:hot` pass Gradle `--continuous`, which is required for the web target, not just for hot reload: the run task
 starts webpack-dev-server without blocking, so without it Gradle finishes (`BUILD SUCCESSFUL` in well under a second)
 and takes the dev server down with it, leaving nothing on the port.
 
-The `run:desktop*`, `run:web` and `build*` tasks load `.secure.build.env` (the Client ID); the `test*` tasks load
+The `run:desktop*`, `run:web*`, `run:android` and `build*` tasks load `.secure.build.env` (the Client ID); `run:android` reads `ANDROID_TEST_DEVICE_ID` from it too (the serial from `adb devices`); the `test*` tasks load
 nothing, because a test must pass the same with or without one — the two that `deploy` runs inherit its Client ID all
 the same. See [Deployment](#deployment) for the env files.
 
@@ -128,7 +134,7 @@ Single test — `test:one <suite> <filter>`, where the suite is `core`, `shared`
 module's JVM-hosted test task (the only kind that can filter):
 
 ```bash
-mise run test:one shared "io.challenge_workshop.mal_ui.auth.LoopbackRedirectListenerTest"
+mise run test:one shared "net.io_workshop.act.auth.LoopbackRedirectListenerTest"
 mise run test:one core "*.SignInTest.signing_in_is_blocked_when_the_build_has_no_client_id"
 ```
 
@@ -203,8 +209,7 @@ can); `MAL_CLIENT_ID` is the straightforward route for CI.
 Set nowhere it is `""` and Sign-in is disabled; **a missing value does not fail a dev run or a test** (nor a build of anything but a release artifact).
 The exception is a release artifact: `:app:webApp:wasmJsBrowserDistribution` depends on `:core:requireMalClientId`,
 which fails naming the two sources, because that bundle ships to users who cannot be prompted for a build-time
-default. The Android release build is to reuse the same task (play-release 05) rather than add a second check; it
-does not depend on it yet. Every step is a lazy
+default. The Android release tasks depend on the same task rather than a second check — the ones that package and sign the artifact, not only the `bundleRelease`/`assembleRelease` lifecycle tasks, so no unsigned or ID-less output is written before it fails. Every step is a lazy
 `Provider` and the value is declared with `inputs.property`, which is what keeps the task configuration-cache-safe and
 still invalidated when the value changes — reading a file with `Properties().load(...)` at configuration
 time is exactly the trap the Conventions section warns about.
@@ -246,8 +251,8 @@ so a tag is immutable. `deploy/` holds the Dockerfiles, the Caddyfile, `docker-c
 bring the original failure back; the edge must pass `/mal` through with `PATCH` and `Authorization`, and must not add
 `Cross-Origin-Opener-Policy` (see [the popup](#web-sign-in-the-popup-and-two-things-that-must-not-change)).
 
-**Env files:** two, gitignored (`.secure.*.env`), each with a committed `.example` listing every key.
-`.secure.build.env` holds `MAL_CLIENT_ID` and `DOCKERHUB_USER`; `.secure.deploy.env` holds `DIGITALOCEAN_TOKEN`,
+**Env files:** three, gitignored (`.secure.*.env`), each with a committed `.example` listing every key.
+`.secure.build.env` holds `MAL_CLIENT_ID`, `DOCKERHUB_USER` and `ANDROID_TEST_DEVICE_ID`; `.secure.release.env` holds the four `ACT_UPLOAD_*` upload-keystore variables, is loaded by `build:android:release` and `run:android:release` alone, and Gradle reads it only through `providers.environmentVariable` (`requireUploadSigning` fails a release build naming what is unset; debug builds never read it); `.secure.deploy.env` holds `DIGITALOCEAN_TOKEN`,
 `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`, `EDGE_SSH` and the `TF_VAR_*`. **mise reads them, per task**
 (`env = { _ = { file = ... } }` in `mise.toml`) — never a global `[env]` — so the DO token reaches only `infra:*` and
 `deploy*`; `deploy` and `deploy:status` load the file for `EDGE_SSH` and `unset` the token at once (`terraform output`
@@ -267,6 +272,7 @@ The Client ID ends up in plain text in a public image, deliberately: it is equal
 |---------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
 | `mise run run:*` / `build*` / `test*`             | the [Commands](#commands) above; the clients and builds with `.secure.build.env` loaded, the tests with nothing                             |
 | `mise run infra:plan` / `infra:apply`             | Terraform (`deploy/terraform/`), by hand — never from a deploy; a replaced droplet moves its private IP, so the edge's upstream must follow |
+| `mise run build:android:release`                  | `bundleRelease`: signed with the upload key, R8 and resource shrinking on; the mapping ships in the AAB                                       |
 | `mise run deploy:build`                           | `build:web:dist` + `build:server:dist`, then both images (`linux/amd64`)                                                                    |
 | `mise run deploy:push`                            | pushes both; refuses if either tag exists on Docker Hub                                                                                     |
 | `mise run deploy [version]`                       | the whole path below; with a version, only redeploys that pushed tag                                                                        |
@@ -295,7 +301,7 @@ Two tiers of shared code, deliberately separated:
 
 The three client modules (`:app:androidApp`, `:app:desktopApp`, `:app:webApp`) are thin entry points only: each has a `main`/`Activity` that sets up its platform's window and calls the single `App()` composable from `:app:shared`. Put UI in `:app:shared`, not in the app modules.
 
-**Screens take a value, not a ViewModel.** `SessionRoute` switches on a sealed `ScreenState` produced in `:core` by `ScreenStateSource` — a total combine over nine flows — and each screen takes its variant plus a separate actions record. `App()` resolves `MalSessionRepository` (whose `state` and `config` are two of the nine flows) plus `SignIn`, `SessionControls`, `AnimeListRepository`, `AnimePageRepository`, `LayoutPreference`, `ScreenChoice` (which Screen is open; see ADR-0006) and `ThemePreference` (process-scoped `single`s in `:core`, each with its own scope), and `AppScreen` wires them to the value and binds the `AuthRedirectChannel`; `ThemePreference` is the one input read outside the Screen State, by `App()` itself, because the theme wraps every screen including the ones before a Session; below that, nothing is a ViewModel, and none should be added — see `docs/adr/0005-no-viewmodels.md`. The Anime List lasts one Session by `AnimeListRepository`'s own rule — it builds a pager on entering `SignedIn` and discards it on leaving — not by how anything is scoped; the open Anime Pages (`AnimePageRepository`, history in `ScreenState.SignedIn`, ADR-0006) end with the Session by the same rule. The actions stay out of `ScreenState` because Compose skips on `equals` and a `data class` holding a `() -> Unit` is neither equal nor stable. See `docs/adr/0004-screen-state-in-core.md`, which also carries the answer to "why is a UI type in the module `:server` depends on".
+**Screens take a value, not a ViewModel.** `SessionRoute` switches on a sealed `ScreenState` produced in `:core` by `ScreenStateSource` — a total combine over nine flows — and each screen takes its variant plus a separate actions record. `App()` resolves `MalSessionRepository` (whose `state` and `config` are two of the nine flows) plus `SignIn`, `SessionControls`, `AnimeListRepository`, `AnimePageRepository`, `LayoutPreference`, `ScreenChoice` (which Screen is open; see ADR-0006) and `ThemePreference` (process-scoped `single`s in `:core`, each with its own scope), plus `CoverPolicy`, and `AppScreen` wires them to the value and binds the `AuthRedirectChannel`. Two inputs are read outside the Screen State, by `App()` itself: `ThemePreference`, because the theme wraps every screen including the ones before a Session; and `CoverPolicy` (whether a Target hides Adult Covers), because it is a per-Target constant bound in each platform's Koin module, not state — nothing about it changes, so it has nothing to say to `ScreenStateSource`, and it reaches `AnimeCoverBox` through `LocalCoverPolicy`; below that, nothing is a ViewModel, and none should be added — see `docs/adr/0005-no-viewmodels.md`. The Anime List lasts one Session by `AnimeListRepository`'s own rule — it builds a pager on entering `SignedIn` and discards it on leaving — not by how anything is scoped; the open Anime Pages (`AnimePageRepository`, history in `ScreenState.SignedIn`, ADR-0006) end with the Session by the same rule. The actions stay out of `ScreenState` because Compose skips on `equals` and a `data class` holding a `() -> Unit` is neither equal nor stable. See `docs/adr/0004-screen-state-in-core.md`, which also carries the answer to "why is a UI type in the module `:server` depends on".
 
 The two additions to that are both sign-in plumbing that only an entry point can do, and both forward immediately into `:app:shared` rather than deciding anything: `MainActivity.onCreate`/`onNewIntent` hand the redirect Intent to `AuthRedirectInbox`, and web's `main()` relays a popup's redirect to its opener before Koin starts. Neither is a place to add behaviour.
 
@@ -313,7 +319,7 @@ The two additions to that are both sign-in plumbing that only an entry point can
 
 ### Compose resources
 
-Assets go in `app/shared/src/commonMain/composeResources/<qualifier>/` and are reached through the generated accessor package `mal_ui.app.shared.generated.resources.Res` (e.g. `Res.drawable.compose_multiplatform`). The generated package is derived from the module path, so it changes if the module is moved or renamed.
+Assets go in `app/shared/src/commonMain/composeResources/<qualifier>/` and are reached through the generated accessor package `act.app.shared.generated.resources.Res` (e.g. `Res.drawable.compose_multiplatform`). The generated package is derived from the module path, so it changes if the module is moved or renamed.
 
 ### Web hosting page
 
@@ -425,7 +431,7 @@ Four things in `app/androidApp/src/main/AndroidManifest.xml` are each a silent f
 
 ## Conventions
 
-- **The product version is `act.version` in `gradle.properties`** — `:server`'s `version` and Android's `versionName` read it via `providers.gradleProperty`. Shell tasks read it without Gradle: `grep '^act.version=' gradle.properties | cut -d= -f2`. `versionCode` is separate. It is also generated into `:core` `commonMain` as `const val ACT_VERSION` by `generateActVersion`, the way `MAL_CLIENT_ID` is (a lazy `Provider`, `inputs.property`, no BuildKonfig), and is read in two places: the About Screen and the Diagnostics Screen.
+- **The product version is `act.version` in `gradle.properties`** — `:server`'s `version` and Android's `versionName` read it via `providers.gradleProperty`. Shell tasks read it without Gradle: `grep '^act.version=' gradle.properties | cut -d= -f2`. `versionCode` is derived from it as `major*1_000_000 + minor*1_000 + patch` (ADR-0008), per variant through a `Provider`; a malformed version or a part above 999 fails the build. It is also generated into `:core` `commonMain` as `const val ACT_VERSION` by `generateActVersion`, the way `MAL_CLIENT_ID` is (a lazy `Provider`, `inputs.property`, no BuildKonfig), and is read in two places: the About Screen and the Diagnostics Screen.
 - **All dependency and plugin versions live in `gradle/libs.versions.toml`.** Build scripts reference `libs.*` aliases only — never inline a version string in a `build.gradle.kts`.
 - Java is 21, Azul Zulu, **pinned in `mise.toml` and not downloaded by Gradle**: `gradle/gradle-daemon-jvm.properties` names the vendor and version, there is no foojay resolver and no `toolchainUrl.*`, so a machine without that JDK fails with "No defined toolchain download url" rather than fetching one — the fix is `mise install`, not `updateDaemonJvm` (which would write the URLs back). An IDE's Gradle sync does not go through mise: set its Gradle JDK to the mise install once (`mise where java`). Android and Android-KMP modules compile to **JVM target 11**.
 - Gradle configuration cache and build cache are enabled in `gradle.properties`. Build logic that reads state at execution time will fail configuration-cache validation.

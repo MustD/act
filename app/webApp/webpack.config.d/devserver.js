@@ -9,6 +9,13 @@ if (config.devServer) {
     // refused through the proxy with the dev server apparently running fine.
     config.devServer.host = '127.0.0.1';
 
+    // `run:web:hot` leaves ACT_WEB_HOT unset and gets live reload; `run:web` sets it to 0, so the page only
+    // changes when the developer reloads it by hand.
+    if (process.env.ACT_WEB_HOT === '0') {
+        config.devServer.hot = false;
+        config.devServer.liveReload = false;
+    }
+
     // A leading dot allows the host and all its subdomains. Without this the dev server
     // answers `Invalid Host header` to anything but localhost, so requests arriving via
     // https://act.io-workshop.localhost never reach the app.

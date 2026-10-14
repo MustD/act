@@ -1,0 +1,318 @@
+@file:OptIn(ExperimentalTestApi::class)
+
+package net.io_workshop.act
+
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.platform.ClipboardManager
+import androidx.compose.ui.platform.UriHandler
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.ComposeUiTest
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.text.AnnotatedString
+import net.io_workshop.act.animelist.AiringStatus
+import net.io_workshop.act.animelist.AnimeListEntry
+import net.io_workshop.act.animelist.AnimeListLayout
+import net.io_workshop.act.animelist.AnimeListSortOrder
+import net.io_workshop.act.animelist.AnimeListContent
+import net.io_workshop.act.animelist.AnimeListState
+import net.io_workshop.act.animelist.AnimeListTail
+import net.io_workshop.act.animelist.WatchStatus
+import net.io_workshop.act.animepage.AnimePageHistory
+import net.io_workshop.act.animepage.PatchLog
+import net.io_workshop.act.animepage.ListEdit
+import net.io_workshop.act.animepage.RelatedAnime
+import net.io_workshop.act.auth.AnimePageActions
+import net.io_workshop.act.auth.AuthorizingActions
+import net.io_workshop.act.auth.DiagnosticsActions
+import net.io_workshop.act.auth.SESSION_MENU_BUTTON_TAG
+import net.io_workshop.act.auth.SignInState
+import net.io_workshop.act.auth.ScreenActions
+import net.io_workshop.act.auth.WelcomeActions
+import net.io_workshop.act.auth.SignedInActions
+import net.io_workshop.act.mal.DESKTOP_REDIRECT_URI
+import net.io_workshop.act.mal.MalAuthConfig
+import net.io_workshop.act.mal.MalEndpoints
+import net.io_workshop.act.mal.MalUser
+import net.io_workshop.act.screen.MalRouting
+import net.io_workshop.act.screen.ScreenState
+import net.io_workshop.act.screen.ShownError
+import net.io_workshop.act.screen.SignedInScreen
+import net.io_workshop.act.screen.SignedOutScreen
+import net.io_workshop.act.screen.explain
+import net.io_workshop.act.session.SessionDiagnostics
+import net.io_workshop.act.session.SignedOutReason
+/**
+ * Every screen this app has, as a literal.
+ *
+ * This file is what the Screen State seam bought. Rendering a screen used to mean standing up a
+ * `MalSessionRepository`, a `JsonTokenStore`, a fake MAL engine and `Dispatchers.setMain` — and
+ * binding port 18040 — per case, which is why the test that did it was the largest file in the
+ * repository. A screen takes a value now, so a case is a `copy()`.
+ *
+ * The one test that still builds the real stack is
+ * `WelcomeScreenTest.signing_in_arms_this_targets_capture_and_still_offers_paste_the_code`, which is
+ * about that stack: it is the seam between a click and this Target's Redirect Capture, and there is
+ * nothing to assert about it that a literal could stand in for.
+ *
+ * **What is *not* here is as deliberate.** Nothing in this file decides anything. Which screen a
+ * Session produces, what a filter or a Sort Order change produces, and what each Signed Out
+ * Reason says — `NeverSignedIn` nothing — are all `ScreenStateSourceTest`'s, in `:core`, on every Target. These fixtures only
+ * say what a screen is handed.
+ */
+internal val TEST_ROUTING = MalRouting(
+    endpoints = MalEndpoints(
+        tokenEndpoint = MalAuthConfig.DEFAULT_TOKEN_ENDPOINT,
+        apiBaseUrl = MalAuthConfig.DEFAULT_API_BASE_URL,
+    ),
+    redirectUri = DESKTOP_REDIRECT_URI,
+)
+
+internal fun signedOut(
+    reason: SignedOutReason = SignedOutReason.NeverSignedIn,
+    error: String? = null,
+    signIn: SignInState = SignInState(),
+    errorRelayHint: Boolean = false,
+    signInRelayHint: Boolean = false,
+    screen: SignedOutScreen = SignedOutScreen.Welcome,
+) = ScreenState.SignedOut(
+    explanation = explain(reason),
+    error = error?.let { ShownError(it, errorRelayHint) },
+    signIn = signIn,
+    routing = TEST_ROUTING,
+    signInError = signIn.error?.let { ShownError(it, signInRelayHint) },
+    screen = screen,
+)
+
+internal fun authorizing(
+    authorizationUrl: String = TEST_AUTHORIZATION_URL,
+    signIn: SignInState = SignInState(),
+    relayHint: Boolean = false,
+) = ScreenState.Authorizing(
+    authorizationUrl = authorizationUrl,
+    signIn = signIn,
+    signInError = signIn.error?.let { ShownError(it, relayHint) },
+)
+
+internal fun signedIn(
+    user: MalUser? = MalUser(1, "someone"),
+    refreshing: Boolean = false,
+    list: AnimeListState = loadedList(),
+    layout: AnimeListLayout = AnimeListLayout.Cards,
+    animePages: AnimePageHistory = AnimePageHistory(),
+    patchLog: PatchLog = PatchLog(),
+    busy: Boolean = false,
+    error: String? = null,
+    diagnostics: SessionDiagnostics? = null,
+    relayHint: Boolean = false,
+    screen: SignedInScreen = SignedInScreen.AnimeList,
+) = ScreenState.SignedIn(
+    user = user,
+    refreshing = refreshing,
+    list = list,
+    layout = layout,
+    animePages = animePages,
+    patchLog = patchLog,
+    busy = busy,
+    error = error?.let { ShownError(it, relayHint) },
+    diagnostics = diagnostics,
+    routing = TEST_ROUTING,
+    screen = screen,
+)
+
+/**
+ * Entries on screen, all of the list there is — the resting state of the signed-in screen.
+ *
+ * [tail] defaults to [AnimeListTail.End] so a case that is about the entries is not also about paging:
+ * a list that has ended arms no trigger, so scrolling it asks for nothing.
+ */
+internal fun loadedList(
+    titles: List<String> = FIXTURE_TITLES,
+    watchStatus: WatchStatus? = null,
+    sortOrder: AnimeListSortOrder = AnimeListSortOrder.LastUpdated,
+    tail: AnimeListTail = AnimeListTail.End,
+    replacing: Boolean = false,
+    revision: Int = 0,
+) = AnimeListState(
+    content = AnimeListContent.Entries(
+        entries = titles.mapIndexed { index, title -> listEntry(id = index + 1L, title = title) },
+        tail = tail,
+        replacing = replacing,
+    ),
+    watchStatus = watchStatus,
+    sortOrder = sortOrder,
+    revision = revision,
+)
+
+/** Any of the Anime List screens that has no entries on it. */
+internal fun listShowing(content: AnimeListContent, watchStatus: WatchStatus? = null) =
+    AnimeListState(content = content, watchStatus = watchStatus)
+
+/**
+ * One List Entry carrying every fact the spec asks it to.
+ *
+ * No `picture`, deliberately: fetching cover art is Coil's job over a real network, which a unit test
+ * must not do. What that leaves on screen is the placeholder path, which is the case the spec cares
+ * most about anyway — MAL omits the field for entries whose art it has none of.
+ */
+internal fun listEntry(id: Long, title: String) = AnimeListEntry(
+    animeId = id,
+    title = title,
+    picture = null,
+    totalEpisodes = 26,
+    mediaType = "tv",
+    airingStatus = AiringStatus.FinishedAiring,
+    watchStatus = WatchStatus.Watching,
+    score = 8,
+    // Varied per entry so "3 / 26" names one card rather than every card. The rest is shared
+    // deliberately: a metadata line that were unique per entry would be testing the fixture.
+    episodesWatched = ((id.toInt() - 1) % 3) + 3,
+    updatedAt = "2026-08-01T12:00:00+00:00",
+)
+
+internal val FIXTURE_TITLES: List<String> = listOf("Cowboy Bebop", "Mushishi")
+
+/**
+ * Shaped like the real thing so the copy button's assertion is about a URL rather than a word, and
+ * carrying a `code_challenge` because under `plain` PKCE the code verifier is inside this string —
+ * which is why nothing ever logs it. What goes *into* the URL is `ScreenStateSourceTest`'s.
+ */
+internal const val TEST_AUTHORIZATION_URL: String =
+    "https://myanimelist.net/v1/oauth2/authorize?response_type=code&client_id=a-client-id" +
+        "&code_challenge=a-verifier&code_challenge_method=plain&state=a-state"
+
+/**
+ * A [ScreenActions] that writes down what it was asked to do.
+ *
+ * What a control *causes* is the Sign-in's, the session controls' or the Anime List's, and all are tested where they live. What
+ * is left for a rendering test is that the control the user can see is wired to the right one of
+ * them — a Layout toggle bound to `onSignOut` still renders perfectly.
+ */
+internal class RecordedActions {
+    val calls: MutableList<String> = mutableListOf()
+    val pastes: MutableList<String> = mutableListOf()
+    val watchStatuses: MutableList<WatchStatus?> = mutableListOf()
+    val sortOrders: MutableList<AnimeListSortOrder> = mutableListOf()
+    val layouts: MutableList<AnimeListLayout> = mutableListOf()
+    val themes: MutableList<Boolean> = mutableListOf()
+    val opened: MutableList<AnimeListEntry> = mutableListOf()
+    val edits: MutableList<ListEdit> = mutableListOf()
+    val added: MutableList<WatchStatus> = mutableListOf()
+    val openedRelated: MutableList<RelatedAnime> = mutableListOf()
+
+    val actions: ScreenActions = ScreenActions(
+        signIn = WelcomeActions(
+            onSignIn = { calls += "signIn" },
+            onOpenAbout = { calls += "openAbout" },
+            onBack = { calls += "backFromAbout" },
+        ),
+        authorizing = AuthorizingActions(
+            onPastedRedirectChange = { pastes += it; calls += "pastedRedirectChange" },
+            onCompleteSignIn = { calls += "completeSignIn" },
+            onCancelSignIn = { calls += "cancelSignIn" },
+        ),
+        signedIn = SignedInActions(
+            onLoadMore = { calls += "loadMore" },
+            onRetry = { calls += "retry" },
+            onSelectWatchStatus = { watchStatuses += it; calls += "selectWatchStatus" },
+            onSelectSortOrder = { sortOrders += it; calls += "selectSortOrder" },
+            onSelectLayout = { layouts += it; calls += "selectLayout" },
+            onToggleTheme = { themes += it; calls += "toggleTheme" },
+            onSignOut = { calls += "signOut" },
+            onOpenAbout = { calls += "openAbout" },
+            onOpenDiagnostics = { calls += "openDiagnostics" },
+            onBackToList = { calls += "backToList" },
+            onOpenAnime = { opened += it; calls += "openAnime" },
+            animePage = AnimePageActions(
+                onBack = { calls += "animePageBack" },
+                onClose = { calls += "animePageClose" },
+                onRetry = { calls += "animePageRetry" },
+                onEdit = { edits += it; calls += "animePageEdit" },
+                onAdd = { added += it; calls += "animePageAdd" },
+                onOpenRelated = { openedRelated += it; calls += "animePageOpenRelated" },
+            ),
+            diagnostics = DiagnosticsActions(
+                onReloadDiagnostics = { calls += "reloadDiagnostics" },
+                onRefreshUser = { calls += "refreshUser" },
+                onForceExpireAccessToken = { calls += "forceExpireAccessToken" },
+                onReloadList = { calls += "reload" },
+            ),
+        ),
+    )
+}
+
+// --- The rendering harness, shared by the five per-screen tests --------------------------------
+
+/**
+ * Generous, because the one test that waits is waiting for a real socket and a real dispatcher rather
+ * than for a frame. A wait that is too short reads as a flaky test; one that is too long only costs
+ * time when something is already broken.
+ */
+internal const val WAIT_MS: Long = 5_000
+
+internal val TEST_DIAGNOSTICS = SessionDiagnostics(
+    obtainedAtEpochMs = 1_754_000_000_000,
+    ageMillis = 60_000,
+    accessTokenLength = 512,
+    hasRefreshToken = true,
+    accessTokenIsDeliberatelyInvalid = true,
+)
+
+/** The concatenated text a node draws, for assertions about copy rather than about structure. */
+internal fun SemanticsNodeInteraction.textContent(): String =
+    fetchSemanticsNode().config.getOrNull(SemanticsProperties.Text)
+        ?.joinToString("") { it.text }
+        .orEmpty()
+
+/**
+ * Opens the Diagnostics Screen's menu entry the way a person does: the overflow menu, then its entry.
+ *
+ * The menu closes on the way, so its "diagnostics" entry and the Screen are never on screen at once.
+ */
+internal fun ComposeUiTest.openDiagnostics() {
+    onNodeWithTag(SESSION_MENU_BUTTON_TAG).performClick()
+    onNodeWithText("diagnostics").performClick()
+    waitForIdle()
+}
+
+/** Stands in for the desktop clipboard, which a unit test must not actually write to. */
+@Suppress("DEPRECATION")
+internal class RecordingClipboard : ClipboardManager {
+    private var copied: AnnotatedString? = null
+
+    override fun setText(annotatedString: AnnotatedString) {
+        copied = annotatedString
+    }
+
+    override fun getText(): AnnotatedString? = copied
+}
+
+/** Stands in for the platform's browser, which a unit test must not actually start. */
+internal class RecordingUriHandler(private val opened: MutableList<String>) : UriHandler {
+    override fun openUri(uri: String) {
+        opened += uri
+    }
+}
+
+/**
+ * [SessionRoute] inside the Theme `App()` would have put it in. The screens read their colours and
+ * type from `Act`, which has no default on purpose: a screen drawn outside the Theme should fail
+ * loudly rather than in the wrong colours.
+ */
+@androidx.compose.runtime.Composable
+internal fun ThemedSessionRoute(state: ScreenState, actions: ScreenActions) {
+    net.io_workshop.act.theme.ActTheme(dark = true) { SessionRoute(state, actions) }
+}
+
+/** [ThemedSessionRoute] at phone width, where the tabs and the More menu are what is on screen. */
+@androidx.compose.runtime.Composable
+internal fun PhoneSessionRoute(state: ScreenState, actions: ScreenActions) {
+    androidx.compose.foundation.layout.Box(
+        androidx.compose.ui.Modifier.width(400.dp),
+    ) { ThemedSessionRoute(state, actions) }
+}
