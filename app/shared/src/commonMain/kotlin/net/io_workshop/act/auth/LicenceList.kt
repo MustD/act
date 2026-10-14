@@ -40,6 +40,13 @@ internal suspend fun loadLicences(): List<LicenceLine>? = runCatching {
         }
 }.getOrNull()
 
+/** Where [LicenceList] is: a failed load stays distinct from a list that loaded. */
+private sealed interface LicencesState {
+    data object Loading : LicencesState
+    data object Failed : LicencesState
+    data class Loaded(val lines: List<LicenceLine>) : LicencesState
+}
+
 /**
  * The `// licences` body: collapsed to one link, because the list is a couple of hundred lines on a Screen
  * that is mostly about something else, and a plain column (not a lazy one) because the Screen scrolls.
@@ -47,8 +54,10 @@ internal suspend fun loadLicences(): List<LicenceLine>? = runCatching {
 @Composable
 internal fun LicenceList() {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    val lines by produceState<List<LicenceLine>?>(null, expanded) {
-        if (expanded && value == null) value = loadLicences() ?: emptyList()
+    val licences by produceState<LicencesState>(LicencesState.Loading, expanded) {
+        if (expanded && value == LicencesState.Loading) {
+            value = loadLicences()?.let(LicencesState::Loaded) ?: LicencesState.Failed
+        }
     }
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(
@@ -63,13 +72,12 @@ internal fun LicenceList() {
         )
         if (expanded) {
             Column(Modifier.testTag(ABOUT_LICENCES_TAG), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                val shown = lines
-                if (shown == null) {
-                    Text("loading…", style = Act.type.meta, color = Act.colors.dim)
-                } else if (shown.isEmpty()) {
-                    Text("The licence list could not be loaded.", style = Act.type.meta, color = Act.colors.dim)
-                } else {
-                    shown.forEach { Text(it.text, style = Act.type.meta, color = Act.colors.ink) }
+                when (val shown = licences) {
+                    LicencesState.Loading -> Text("loading…", style = Act.type.meta, color = Act.colors.dim)
+                    LicencesState.Failed ->
+                        Text("The licence list could not be loaded.", style = Act.type.meta, color = Act.colors.dim)
+                    is LicencesState.Loaded ->
+                        shown.lines.forEach { Text(it.text, style = Act.type.meta, color = Act.colors.ink) }
                 }
             }
         }

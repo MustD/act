@@ -120,7 +120,14 @@ val requireUploadSigning by tasks.registering {
     }
 }
 
-tasks.matching { it.name == "bundleRelease" || it.name == "assembleRelease" }.configureEach {
+// On the tasks that write or sign a release artifact, not only on the lifecycle tasks above them: a
+// lifecycle dependency runs before bundleRelease, not before packageRelease, so with parallel execution an
+// unsigned APK or AAB could reach build/outputs before the check failed.
+val releaseArtifactTasks = setOf(
+    "validateSigningRelease", "packageRelease", "packageReleaseBundle", "signReleaseBundle",
+    "bundleRelease", "assembleRelease",
+)
+tasks.matching { it.name in releaseArtifactTasks }.configureEach {
     // The Client ID check lives in :core, shared with the web distribution — no second copy of it.
     dependsOn(requireUploadSigning, ":core:requireMalClientId")
 }

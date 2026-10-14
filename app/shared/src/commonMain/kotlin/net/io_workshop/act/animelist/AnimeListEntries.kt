@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -38,6 +39,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import act.app.shared.generated.resources.Res
+import act.app.shared.generated.resources.visibility_off
 import coil3.compose.AsyncImage
 import net.io_workshop.act.auth.ANIME_LIST_ROW_COLUMN_TAG
 import net.io_workshop.act.theme.Act
@@ -47,6 +50,7 @@ import net.io_workshop.act.theme.ContinuousProgress
 import net.io_workshop.act.theme.CoverPlaceholder
 import net.io_workshop.act.theme.EpisodeCells
 import net.io_workshop.act.theme.TickingNumber
+import org.jetbrains.compose.resources.painterResource
 
 /** The narrowest a card may be. The grid divides the window by it, so a phone gets one column. */
 val ANIME_CARD_MIN_WIDTH = 320.dp
@@ -316,19 +320,28 @@ internal fun AnimeCoverBox(
 }
 
 /**
- * What an Adult Cover is replaced with where [CoverPolicy] hides it. No image is ever requested, and
- * there is deliberately nothing to tap: it has no way to reveal the cover.
+ * What an Adult Cover is replaced with where [CoverPolicy] hides it: an icon over "18+". No image is
+ * ever requested, and there is deliberately nothing to tap: it has no way to reveal the cover. A Row's
+ * cover is too short for both, so below [ADULT_COVER_ICON_MIN_HEIGHT] it keeps the "18+" alone.
  */
 @Composable
 internal fun AdultCoverPlaceholder(modifier: Modifier = Modifier) {
     val c = Act.colors
-    Box(
+    BoxWithConstraints(
         modifier.clip(ActSmall).background(c.sf2).testTag(ADULT_COVER_PLACEHOLDER_TAG),
         contentAlignment = Alignment.Center,
     ) {
-        Text("18+", style = Act.type.rowTitle, color = c.dim)
+        val showIcon = maxHeight >= ADULT_COVER_ICON_MIN_HEIGHT
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (showIcon) {
+                Icon(painterResource(Res.drawable.visibility_off), contentDescription = null, tint = c.dim, modifier = Modifier.size(20.dp))
+            }
+            Text("18+", style = Act.type.rowTitle, color = c.dim)
+        }
     }
 }
+
+private val ADULT_COVER_ICON_MIN_HEIGHT = 72.dp
 
 internal const val ADULT_COVER_PLACEHOLDER_TAG: String = "adultCoverPlaceholder"
 

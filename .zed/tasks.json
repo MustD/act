@@ -105,6 +105,10 @@
     "label": "generate:mal-config",
     "command": "mise run generate:mal-config"
   },
+  {
+    "label": "licences",
+    "command": "mise run licences"
+  },
   // Deploy and infra: the ones that only build locally or only read.
   {
     "label": "deploy:build",
