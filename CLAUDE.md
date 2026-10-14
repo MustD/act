@@ -24,7 +24,8 @@ mise run run:android        # install the debug build on the real device in .sec
 mise run run:desktop        # Desktop
 mise run run:desktop:hot    # Desktop with Compose Hot Reload
 mise run run:server         # Ktor server on :18010
-mise run run:web            # Web, Wasm target, on :18020
+mise run run:web            # Web, Wasm target, on :18020; rebuilds and reloads on change
+mise run build:web          # Web development bundle only, no server (build:web:dist is the production one)
 mise run build              # everything: every target compiled, every test run
 ```
 

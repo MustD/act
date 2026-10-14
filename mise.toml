@@ -66,6 +66,11 @@ description = "Signed, minified Android App Bundle; needs .secure.release.env"
 env = { _ = { file = [".secure.build.env", ".secure.release.env"] } }
 run = "./gradlew :app:androidApp:bundleRelease"
 
+[tasks."build:web"]
+description = "Development Wasm bundle, no server; build:web:dist is the production one"
+env = { _ = { file = ".secure.build.env" } }
+run = "./gradlew :app:webApp:wasmJsBrowserDevelopmentWebpack"
+
 [tasks."build:web:dist"]
 description = "Production Wasm bundle; fails without a Client ID"
 env = { _ = { file = ".secure.build.env" } }
