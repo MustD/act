@@ -25,6 +25,11 @@
     "command": "mise run run:web",
     "use_new_terminal": true
   },
+  {
+    "label": "run:web:hot",
+    "command": "mise run run:web:hot",
+    "use_new_terminal": true
+  },
   // Test.
   {
     "label": "test",

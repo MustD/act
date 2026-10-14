@@ -24,16 +24,17 @@ mise run run:android        # install the debug build on the real device in .sec
 mise run run:desktop        # Desktop
 mise run run:desktop:hot    # Desktop with Compose Hot Reload
 mise run run:server         # Ktor server on :18010
-mise run run:web            # Web, Wasm target, on :18020; rebuilds and reloads on change
+mise run run:web            # Web, Wasm target, on :18020; no live reload
+mise run run:web:hot        # Web with live reload on change
 mise run build:web          # Web development bundle only, no server (build:web:dist is the production one)
 mise run build              # everything: every target compiled, every test run
 ```
 
-`run:web` passes Gradle `--continuous`, which is required for the web target, not just for hot reload: the run task
+`run:web` and `run:web:hot` pass Gradle `--continuous`, which is required for the web target, not just for hot reload: the run task
 starts webpack-dev-server without blocking, so without it Gradle finishes (`BUILD SUCCESSFUL` in well under a second)
 and takes the dev server down with it, leaving nothing on the port.
 
-The `run:desktop*`, `run:web`, `run:android` and `build*` tasks load `.secure.build.env` (the Client ID); `run:android` also loads `.secure.device.env` (`ANDROID_SERIAL`, from `adb devices`); the `test*` tasks load
+The `run:desktop*`, `run:web*`, `run:android` and `build*` tasks load `.secure.build.env` (the Client ID); `run:android` also loads `.secure.device.env` (`ANDROID_SERIAL`, from `adb devices`); the `test*` tasks load
 nothing, because a test must pass the same with or without one — the two that `deploy` runs inherit its Client ID all
 the same. See [Deployment](#deployment) for the env files.
 

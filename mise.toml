@@ -3,7 +3,7 @@
 #
 # mise loads the env files per task — never a global [env] — so DIGITALOCEAN_TOKEN reaches only the infra and deploy
 # tasks, not Gradle or an interactive shell. See CLAUDE.md, "Deployment".
-#   .secure.build.env   MAL_CLIENT_ID, DOCKERHUB_USER   (run:desktop*, run:web, build*, deploy, deploy:build, deploy:push)
+#   .secure.build.env   MAL_CLIENT_ID, DOCKERHUB_USER   (run:desktop*, run:web*, build*, deploy, deploy:build, deploy:push)
 #   .secure.device.env  ANDROID_SERIAL   (run:android)
 #   .secure.deploy.env  DIGITALOCEAN_TOKEN, AWS_* (state bucket), EDGE_SSH, TF_VAR_*   (infra:*, deploy, deploy:status)
 # The test tasks load neither: a test must pass the same with or without a Client ID. (The two that `deploy` runs
@@ -33,21 +33,14 @@ description = "Ktor relay on :18010"
 run = "./gradlew :server:run"
 
 [tasks."run:web"]
-description = "Web dev server on :18020 (needs run:server too)"
-env = { _ = { file = ".secure.build.env" } }
+description = "Web dev server on :18020, no live reload (needs run:server too)"
+env = { ACT_WEB_HOT = "0", _ = { file = ".secure.build.env" } }
 run = "./gradlew :app:webApp:wasmJsBrowserDevelopmentRun --continuous"
 
-[tasks."run:android"]
-description = "Install the debug build on the device in .secure.device.env and launch it"
-env = { _ = { file = [".secure.build.env", ".secure.device.env"] } }
-run = """
-if [ -z "${ANDROID_SERIAL:-}" ]; then
-  echo "ANDROID_SERIAL is not set: copy .secure.device.env.example to .secure.device.env and put the serial from adb devices in it" >&2
-  exit 1
-fi
-./gradlew :app:androidApp:installDebug
-adb shell am start -n net.io_workshop.act/.MainActivity
-"""
+[tasks."run:web:hot"]
+description = "Web dev server on :18020 with live reload (needs run:server too)"
+env = { _ = { file = ".secure.build.env" } }
+run = "./gradlew :app:webApp:wasmJsBrowserDevelopmentRun --continuous"
 
 # --- build -------------------------------------------------------------------------------------------------------
 
