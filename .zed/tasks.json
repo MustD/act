@@ -30,6 +30,10 @@
     "command": "mise run run:web:hot",
     "use_new_terminal": true
   },
+  {
+    "label": "run:android",
+    "command": "mise run run:android"
+  },
   // Test.
   {
     "label": "test",
@@ -80,6 +84,14 @@
   {
     "label": "build:android",
     "command": "mise run build:android"
+  },
+  {
+    "label": "build:android:release",
+    "command": "mise run build:android:release"
+  },
+  {
+    "label": "build:web",
+    "command": "mise run build:web"
   },
   {
     "label": "build:web:dist",
