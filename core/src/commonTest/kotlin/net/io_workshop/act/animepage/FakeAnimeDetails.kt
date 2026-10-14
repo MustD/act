@@ -34,11 +34,15 @@ data class FakeAnimeDetails(
     val finishDate: String? = null,
     val updatedAt: String = "2026-09-01T12:00:00+00:00",
     val related: List<FakeRelated> = emptyList(),
+    val rating: String? = "pg_13",
+    val nsfw: String? = "white",
 ) {
     fun json(): String = buildString {
         append("""{"id":$id,"title":"$title",""")
         append(""""main_picture":{"medium":"https://cdn.myanimelist.net/images/anime/4/$id.jpg",""")
         append(""""large":"https://cdn.myanimelist.net/images/anime/4/${id}l.jpg"},""")
+        rating?.let { append(""""rating":"$it",""") }
+        nsfw?.let { append(""""nsfw":"$it",""") }
         synopsis?.let { append(""""synopsis":"$it",""") }
         append(""""num_episodes":$numEpisodes,"media_type":"$mediaType","status":"$airingStatus"""")
         if (watchStatus != null) {
@@ -61,10 +65,14 @@ data class FakeRelated(
     val relation: String = "Sequel",
     val onListAs: String? = null,
     val withPicture: Boolean = true,
+    val rating: String? = "pg_13",
+    val nsfw: String? = "white",
 ) {
     fun json(): String = buildString {
         append("""{"node":{"id":$id,"title":"$title"""")
         if (withPicture) append(""","main_picture":{"medium":"https://cdn.myanimelist.net/images/anime/9/$id.jpg"}""")
+        rating?.let { append(""","rating":"$it"""") }
+        nsfw?.let { append(""","nsfw":"$it"""") }
         if (onListAs != null) {
             append(""","my_list_status":{"status":"$onListAs","score":0,"num_episodes_watched":0,"is_rewatching":false}""")
         }

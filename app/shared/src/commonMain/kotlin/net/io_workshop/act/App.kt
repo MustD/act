@@ -32,6 +32,9 @@ import net.io_workshop.act.session.MalSessionRepository
 import net.io_workshop.act.session.SessionControls
 import net.io_workshop.act.theme.ActTheme
 import net.io_workshop.act.theme.ThemePreference
+import androidx.compose.runtime.CompositionLocalProvider
+import net.io_workshop.act.animelist.CoverPolicy
+import net.io_workshop.act.animelist.LocalCoverPolicy
 import org.koin.compose.koinInject
 
 /**
@@ -55,6 +58,7 @@ fun App(
     layout: LayoutPreference = koinInject(),
     screenChoice: ScreenChoice = koinInject(),
     theme: ThemePreference = koinInject(),
+    coverPolicy: CoverPolicy = koinInject(),
 ) {
     // Coil's singleton, replaced here at the root because its default cannot fetch over the network
     // on the web Target — see [malImageLoader]. `setSingletonImageLoaderFactory` remembers the
@@ -67,9 +71,11 @@ fun App(
     val systemDark = isSystemInDarkTheme()
     val dark = theme.value.collectAsStateWithLifecycle().value.isDark(systemDark)
 
-    ActTheme(dark = dark) {
-        Surface(modifier = Modifier) {
-            AppScreen(repository, signIn, controls, animeList, animePages, layout, screenChoice, theme)
+    CompositionLocalProvider(LocalCoverPolicy provides coverPolicy) {
+        ActTheme(dark = dark) {
+            Surface(modifier = Modifier) {
+                AppScreen(repository, signIn, controls, animeList, animePages, layout, screenChoice, theme)
+            }
         }
     }
 }

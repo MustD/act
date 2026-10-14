@@ -96,7 +96,7 @@ internal fun AnimeListCard(
             .padding(12.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        AnimeCoverBox(entry.title, entry.coverUrl(preferLarge = true), Modifier.size(CARD_COVER_WIDTH, CARD_COVER_HEIGHT))
+        AnimeCoverBox(entry.title, entry.coverUrl(preferLarge = true), entry.adultCover, Modifier.size(CARD_COVER_WIDTH, CARD_COVER_HEIGHT))
         Column(Modifier.weight(1f).height(CARD_COVER_HEIGHT), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(entry.title, style = Act.type.cardTitle, color = c.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(entry.metaLine(), style = Act.type.meta, color = c.dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -138,6 +138,7 @@ internal fun AnimeListRow(
                 AnimeCoverBox(
                     entry.title,
                     entry.coverUrl(preferLarge = false),
+                    entry.adultCover,
                     Modifier.size(ROW_COVER_WIDTH, ROW_COVER_HEIGHT),
                     letterSize = 15,
                 )
@@ -290,7 +291,17 @@ private fun TableColumn(text: String, width: Dp) {
  * cover is decorative and a screen reader announcing it would read the title twice.
  */
 @Composable
-internal fun AnimeCoverBox(title: String, url: String?, modifier: Modifier = Modifier, letterSize: Int = 26) {
+internal fun AnimeCoverBox(
+    title: String,
+    url: String?,
+    adult: Boolean,
+    modifier: Modifier = Modifier,
+    letterSize: Int = 26,
+) {
+    if (adult && LocalCoverPolicy.current.hidesAdultCovers()) {
+        AdultCoverPlaceholder(modifier)
+        return
+    }
     Box(modifier.clip(ActSmall)) {
         CoverPlaceholder(title, Modifier.fillMaxSize(), letterSize)
         url?.let {
@@ -303,6 +314,23 @@ internal fun AnimeCoverBox(title: String, url: String?, modifier: Modifier = Mod
         }
     }
 }
+
+/**
+ * What an Adult Cover is replaced with where [CoverPolicy] hides it. No image is ever requested, and
+ * there is deliberately nothing to tap: it has no way to reveal the cover.
+ */
+@Composable
+internal fun AdultCoverPlaceholder(modifier: Modifier = Modifier) {
+    val c = Act.colors
+    Box(
+        modifier.clip(ActSmall).background(c.sf2).testTag(ADULT_COVER_PLACEHOLDER_TAG),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text("18+", style = Act.type.rowTitle, color = c.dim)
+    }
+}
+
+internal const val ADULT_COVER_PLACEHOLDER_TAG: String = "adultCoverPlaceholder"
 
 /**
  * The colour behind every skeleton, and behind the bars an Anime Page draws while it loads.

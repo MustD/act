@@ -46,11 +46,14 @@ data class FakeEntry(
     val score: Int = 8,
     val watched: Int = 3,
     val updatedAt: String = "2026-08-01T12:00:00+00:00",
+    val rating: String? = "pg_13",
+    val nsfw: String? = "white",
 ) {
     fun json(): String =
         """{"node":{"id":$id,"title":"$title",""" +
             """"main_picture":{"medium":"https://cdn.myanimelist.net/images/anime/4/$id.jpg",""" +
             """"large":"https://cdn.myanimelist.net/images/anime/4/${id}l.jpg"},""" +
+            (rating?.let { """"rating":"$it",""" } ?: "") + (nsfw?.let { """"nsfw":"$it",""" } ?: "") +
             """"num_episodes":$numEpisodes,"media_type":"$mediaType","status":"$airingStatus"},""" +
             """"list_status":{"status":"$watchStatus","score":$score,""" +
             """"num_episodes_watched":$watched,"updated_at":"$updatedAt"}}"""

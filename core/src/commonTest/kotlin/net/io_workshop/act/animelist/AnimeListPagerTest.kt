@@ -89,6 +89,24 @@ class AnimeListPagerTest {
     }
 
     @Test
+    fun the_list_asks_for_the_cover_marks_and_classifies_each_entry() = runTest {
+        val (pager, mal) = pagerOver(
+            page(
+                FakeEntry(1, "Safe"),
+                FakeEntry(2, "Rx", rating = "rx"),
+                FakeEntry(3, "Unmarked", rating = null, nsfw = null),
+            ),
+        )
+
+        pager.start()
+
+        val fields = mal.animeListRequests.single().parameters["fields"].orEmpty().split(",")
+        assertTrue("rating" in fields && "nsfw" in fields)
+        assertEquals(listOf(false, true, true), pager.shown().entries.map { it.adultCover })
+        assertEquals("true", mal.animeListRequests.single().parameters["nsfw"])
+    }
+
+    @Test
     fun a_pager_given_no_filter_opens_on_watching() = runTest {
         val mal = FakeMal(acceptedAccessToken = "t", animeList = page(FakeEntry(1, "Cowboy Bebop")))
         val http = HttpClient(mal.engine) {

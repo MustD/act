@@ -42,6 +42,26 @@ class AnimePageRelatedTest {
     }
 
     @Test
+    fun a_related_anime_is_an_adult_cover_by_its_own_marks_and_failing_closed_when_they_are_missing() = runTest {
+        val h = harness(animeDetails = {
+            details(
+                it,
+                listOf(
+                    FakeRelated(10, "Safe"),
+                    FakeRelated(11, "Rx", rating = "rx"),
+                    FakeRelated(12, "Gray", nsfw = "gray"),
+                    FakeRelated(13, "Unmarked", rating = null, nsfw = null),
+                ),
+            )
+        })
+        h.pages.open(h.entry(1))
+        val page = h.awaitLoaded()
+
+        assertEquals(listOf(false, true, true, true), page.related.map { it.adultCover })
+        assertFalse(page.anime.adultCover)
+    }
+
+    @Test
     fun a_related_anime_without_a_picture_still_parses() = runTest {
         val h = harness(animeDetails = { details(it, listOf(FakeRelated(10, "Bare", withPicture = false))) })
         h.pages.open(h.entry(1))

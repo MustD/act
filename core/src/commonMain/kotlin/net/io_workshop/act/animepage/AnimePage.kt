@@ -19,6 +19,8 @@ data class RelatedAnime(
     /** MAL's `relation_type_formatted`: "Sequel", "Side Story", ... */
     val relation: String,
     val onList: Boolean,
+    /** Whether the cover is an Adult Cover; true unless MAL said otherwise on both marks. */
+    val adultCover: Boolean = true,
 )
 
 /** What `GET /anime/{id}` returned: the anime, and the user's entry for it if there is one. */
@@ -146,6 +148,7 @@ data class AnimePage(
                 animeId = related.animeId,
                 title = related.title,
                 picture = related.picture,
+                adultCover = related.adultCover,
                 totalEpisodes = 0,
                 mediaType = null,
                 airingStatus = AiringStatus.Unknown,

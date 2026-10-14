@@ -6,6 +6,7 @@ import net.io_workshop.act.auth.StartupRedirect
 import net.io_workshop.act.session.AndroidKeyValueStore
 import net.io_workshop.act.session.KeyValueStore
 import net.io_workshop.act.session.MAL_STORE_NAMESPACE
+import net.io_workshop.act.animelist.CoverPolicy
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
@@ -26,4 +27,7 @@ actual val platformModule: Module = module {
     // at a launch only when the process was killed while the user was away on myanimelist.net —
     // which is ordinary on a low-RAM device — and then there is no armed channel left to take it.
     single<StartupRedirect> { AndroidStartupRedirect() }
+
+    // Play's sexual-content policy: Rx covers are censored nudity, so Android never draws an Adult Cover.
+    single<CoverPolicy> { CoverPolicy.HideAdult }
 }

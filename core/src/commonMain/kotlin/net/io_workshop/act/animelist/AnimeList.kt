@@ -100,6 +100,8 @@ data class Anime(
     /** MAL's `media_type`, verbatim: `tv`, `movie`, `ova`, … Left a string because MAL adds them. */
     val mediaType: String?,
     val airingStatus: AiringStatus,
+    /** Whether the cover is an Adult Cover; true unless MAL said otherwise on both marks. */
+    val adultCover: Boolean = true,
 )
 
 /**
@@ -125,9 +127,11 @@ data class AnimeListEntry(
     val episodesWatched: Int,
     /** MAL's ISO-8601 stamp, verbatim. Nothing here parses it — the sort happens server-side. */
     val updatedAt: String?,
+    /** Whether the cover is an Adult Cover; true unless MAL said otherwise on both marks. */
+    val adultCover: Boolean = true,
 ) {
     /** The anime's half of this entry. */
-    val anime: Anime get() = Anime(animeId, title, picture, totalEpisodes, mediaType, airingStatus)
+    val anime: Anime get() = Anime(animeId, title, picture, totalEpisodes, mediaType, airingStatus, adultCover)
 
     /** The user's half of this entry. Without dates: the list endpoint is not asked for them. */
     val listEntry: ListEntry

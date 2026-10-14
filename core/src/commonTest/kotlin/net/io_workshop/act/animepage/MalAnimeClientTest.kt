@@ -51,8 +51,8 @@ class MalAnimeClientTest {
         // The braces are what puts `my_list_status` on each Related Anime, and the two dates are
         // already inside a top-level `my_list_status` — asking for them by name misfires.
         assertEquals(
-            "id,title,main_picture,synopsis,num_episodes,media_type,status,my_list_status," +
-                "related_anime{my_list_status}",
+            "id,title,main_picture,rating,nsfw,synopsis,num_episodes,media_type,status,my_list_status," +
+                "related_anime{my_list_status,rating,nsfw}",
             MalAnimeClient.ANIME_PAGE_FIELDS,
         )
     }

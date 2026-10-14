@@ -46,6 +46,7 @@ internal fun RelatedSection(related: List<RelatedAnime>, onOpen: (RelatedAnime) 
                     AnimeCoverBox(
                         title = anime.title,
                         url = anime.picture.coverUrl(preferLarge = false),
+                        adult = anime.adultCover,
                         modifier = Modifier.width(RELATED_TILE_WIDTH).height(RELATED_TILE_WIDTH * 3 / 2),
                     )
                     if (anime.relation.isNotEmpty()) {

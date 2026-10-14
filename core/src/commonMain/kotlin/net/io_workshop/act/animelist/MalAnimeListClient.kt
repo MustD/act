@@ -65,7 +65,7 @@ class MalAnimeListClient(
          * outgoing string for that reason, rather than trusting the parsed result.
          */
         const val ANIME_LIST_FIELDS: String =
-            "id,title,main_picture,num_episodes,media_type,status," +
+            "id,title,main_picture,rating,nsfw,num_episodes,media_type,status," +
                 "list_status{status,score,num_episodes_watched,updated_at}"
     }
 }
@@ -104,6 +104,7 @@ internal data class AnimeListRowBody(
         animeId = node.id,
         title = node.title,
         picture = node.mainPicture,
+        adultCover = isAdultCover(node.rating, node.nsfw),
         totalEpisodes = node.numEpisodes,
         mediaType = node.mediaType,
         airingStatus = node.status,
@@ -119,6 +120,8 @@ internal data class AnimeNodeBody(
     val id: Long = 0,
     val title: String = "",
     @SerialName("main_picture") val mainPicture: AnimePicture? = null,
+    val rating: String? = null,
+    val nsfw: String? = null,
     @SerialName("num_episodes") val numEpisodes: Int = 0,
     @SerialName("media_type") val mediaType: String? = null,
     /** MAL's `status` on the anime is the **Airing** Status. The one in `list_status` is not. */

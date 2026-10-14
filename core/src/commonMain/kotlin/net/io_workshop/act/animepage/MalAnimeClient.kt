@@ -5,6 +5,7 @@ import net.io_workshop.act.animelist.Anime
 import net.io_workshop.act.animelist.AnimePicture
 import net.io_workshop.act.animelist.ListEntry
 import net.io_workshop.act.animelist.ListStatusBody
+import net.io_workshop.act.animelist.isAdultCover
 import net.io_workshop.act.mal.decodeOrThrow
 import net.io_workshop.act.mal.reachMalApi
 import io.ktor.client.HttpClient
@@ -74,8 +75,8 @@ class MalAnimeClient(
          * MAL answers 200 to a wrong string and just omits data, so the test asserts this one.
          */
         const val ANIME_PAGE_FIELDS: String =
-            "id,title,main_picture,synopsis,num_episodes,media_type,status,my_list_status," +
-                "related_anime{my_list_status}"
+            "id,title,main_picture,rating,nsfw,synopsis,num_episodes,media_type,status,my_list_status," +
+                "related_anime{my_list_status,rating,nsfw}"
     }
 }
 
@@ -85,6 +86,8 @@ internal data class AnimeDetailsBody(
     val id: Long = 0,
     val title: String = "",
     @SerialName("main_picture") val mainPicture: AnimePicture? = null,
+    val rating: String? = null,
+    val nsfw: String? = null,
     val synopsis: String? = null,
     @SerialName("num_episodes") val numEpisodes: Int = 0,
     @SerialName("media_type") val mediaType: String? = null,
@@ -98,6 +101,7 @@ internal data class AnimeDetailsBody(
             animeId = id,
             title = title,
             picture = mainPicture,
+            adultCover = isAdultCover(rating, nsfw),
             totalEpisodes = numEpisodes,
             mediaType = mediaType,
             airingStatus = status,
@@ -118,6 +122,7 @@ internal data class RelatedAnimeBody(
         animeId = node.id,
         title = node.title,
         picture = node.mainPicture,
+        adultCover = isAdultCover(node.rating, node.nsfw),
         relation = relationTypeFormatted,
         // The key is absent for an anime that is not on the list.
         onList = node.myListStatus != null,
@@ -129,6 +134,8 @@ internal data class RelatedNodeBody(
     val id: Long = 0,
     val title: String = "",
     @SerialName("main_picture") val mainPicture: AnimePicture? = null,
+    val rating: String? = null,
+    val nsfw: String? = null,
     @SerialName("my_list_status") val myListStatus: ListStatusBody? = null,
 )
 

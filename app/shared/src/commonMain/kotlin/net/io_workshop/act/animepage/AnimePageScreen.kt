@@ -205,6 +205,7 @@ private fun Header(anime: Anime) {
         AnimeCoverBox(
             title = anime.title,
             url = anime.picture.coverUrl(preferLarge = true),
+            adult = anime.adultCover,
             modifier = Modifier.width(COVER_WIDTH).height(COVER_WIDTH * 3 / 2),
         )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
