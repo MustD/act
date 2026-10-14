@@ -83,8 +83,10 @@ fun AboutScreen(onBack: (() -> Unit)?, modifier: Modifier = Modifier) {
                 style = Act.type.meta,
                 color = Act.colors.dim,
             )
-            Text("Anime data provided by MyAnimeList.net", style = Act.type.meta, color = Act.colors.dim)
+            TerminalLink("Anime data provided by MyAnimeList.net", onClick = { uriHandler.openUri(MAL_HOME_URL) })
         }
+
+        PaneSection("licences") { LicenceList() }
     }
 }
 

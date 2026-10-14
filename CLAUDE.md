@@ -23,6 +23,7 @@ mise run build:android:release  # signed, minified .aab; needs .secure.release.e
 mise run run:android        # install the debug build on the real device in ANDROID_TEST_DEVICE_ID and launch it
 mise run run:desktop        # Desktop
 mise run run:desktop:hot    # Desktop with Compose Hot Reload
+mise run licences           # regenerate the About Screen's licence list (AboutLibraries) after a dependency change; commit it
 mise run run:server         # Ktor server on :18010
 mise run run:web            # Web, Wasm target, on :18020; no live reload
 mise run run:web:hot        # Web with live reload on change

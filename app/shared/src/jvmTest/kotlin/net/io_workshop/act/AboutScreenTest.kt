@@ -12,7 +12,9 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.waitUntilAtLeastOneExists
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -33,7 +35,10 @@ import net.io_workshop.act.auth.ABOUT_SCREEN_TAG
 import net.io_workshop.act.auth.ABOUT_VERSION_TAG
 import net.io_workshop.act.auth.ANIME_LIST_TAG
 import net.io_workshop.act.auth.ANIME_PAGE_PANEL_TAG
+import net.io_workshop.act.auth.ABOUT_LICENCES_TAG
+import net.io_workshop.act.auth.ABOUT_LICENCES_TOGGLE_TAG
 import net.io_workshop.act.auth.GITHUB_URL
+import net.io_workshop.act.auth.MAL_HOME_URL
 import net.io_workshop.act.auth.PRIVACY_URL
 import net.io_workshop.act.auth.REPORT_ISSUE_URL
 import net.io_workshop.act.auth.SESSION_MENU_BUTTON_TAG
@@ -74,6 +79,17 @@ class AboutScreenTest {
     }
 
     @Test
+    fun the_licences_section_lists_the_libraries_this_build_ships_once_opened() {
+        runComposeUiTest {
+            setContent { ThemedSessionRoute(signedOut(screen = SignedOutScreen.About), RecordedActions().actions) }
+            onAllNodesWithTag(ABOUT_LICENCES_TAG).assertCountEquals(0)
+            onNodeWithTag(ABOUT_LICENCES_TOGGLE_TAG).performClick()
+            waitUntilAtLeastOneExists(hasText("ktor", substring = true, ignoreCase = true), 10_000)
+            onNodeWithTag(ABOUT_LICENCES_TAG).assertIsDisplayed()
+        }
+    }
+
+    @Test
     fun signed_out_esc_leaves_about() {
         val actions = RecordedActions()
         runComposeUiTest {
@@ -95,11 +111,14 @@ class AboutScreenTest {
             onNodeWithText("Unofficial", substring = true).assertIsDisplayed()
             onNodeWithText("Anime data provided by MyAnimeList.net").assertIsDisplayed()
 
-            for (link in listOf("GitHub", "Report an issue", "Support MyAnimeList", "Support development", "Privacy policy")) {
+            for (link in listOf(
+                "GitHub", "Report an issue", "Support MyAnimeList", "Support development", "Privacy policy",
+                "Anime data provided by MyAnimeList.net",
+            )) {
                 onNodeWithText(link).performClick()
             }
             assertEquals(
-                listOf(GITHUB_URL, REPORT_ISSUE_URL, SUPPORT_MAL_URL, SUPPORT_DEVELOPMENT_URL, PRIVACY_URL),
+                listOf(GITHUB_URL, REPORT_ISSUE_URL, SUPPORT_MAL_URL, SUPPORT_DEVELOPMENT_URL, PRIVACY_URL, MAL_HOME_URL),
                 opened,
             )
         }

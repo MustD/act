@@ -267,6 +267,10 @@ val ABOUT_BACK_TAG: String = "$ABOUT_SCREEN_TAG.back"
 /** The `ACT <version> · <Target>` line. */
 val ABOUT_VERSION_TAG: String = "$ABOUT_SCREEN_TAG.version"
 
+/** The `// licences` section's show/hide link, and the list it reveals. */
+val ABOUT_LICENCES_TOGGLE_TAG: String = "$ABOUT_SCREEN_TAG.licences.toggle"
+val ABOUT_LICENCES_TAG: String = "$ABOUT_SCREEN_TAG.licences"
+
 /** The `about` link on the Welcome Screen. */
 val WELCOME_ABOUT_TAG: String = "${SessionScreenTag.SignIn.tag}.about"
 

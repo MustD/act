@@ -169,7 +169,8 @@ always qualified that way. _Avoid_: About page, diagnostics page, welcome page (
 **About Screen**:
 What the app is, which version this is, and where to go next — the source on GitHub, reporting an issue, supporting
 MyAnimeList or development, the privacy policy — together with the two notices that it is unofficial and that its data
-is MyAnimeList's. The same content signed in or out. _Avoid_: Info, help, settings
+is MyAnimeList's (a link to myanimelist.net), and a `// licences` section listing the open-source libraries the build
+ships, collapsed until asked for. The same content signed in or out. _Avoid_: Info, help, settings
 
 **Diagnostics Screen**:
 Where this build sends MAL traffic and what state the Session's tokens are in, with the buttons that exercise the refresh

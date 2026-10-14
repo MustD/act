@@ -17,6 +17,10 @@ terraform = "1.15.9" # inside versions.tf's "~> 1.15"
 
 # --- run locally -------------------------------------------------------------------------------------------------
 
+[tasks.licences]
+description = "Regenerate the About Screen's open-source licence list (commit the result)"
+run = "./gradlew :app:shared:exportLibraryDefinitions"
+
 [tasks."run:desktop"]
 description = "Desktop app, with the Client ID from .secure.build.env"
 env = { _ = { file = ".secure.build.env" } }
