@@ -23,15 +23,14 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -80,7 +79,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
@@ -340,6 +338,17 @@ fun SignedInScreen(
             motion(tween(SIDE_PANEL_MS, easing = ActEasing)),
             label = "phonePage",
         )
+        // How far the side panel has slid in. The list does not follow it: it narrows once, when the
+        // panel has arrived, and widens once, when it has gone — see [AnimePageSidePanel].
+        val panelProgress by animateFloatAsState(
+            if (page != null && sideBySide) 1f else 0f,
+            motion(tween(SIDE_PANEL_MS, easing = ActEasing)),
+            label = "sidePanel",
+        )
+        var panelReserved by remember { mutableStateOf(false) }
+        LaunchedEffect(panelProgress) {
+            if (panelProgress == 1f) panelReserved = true else if (panelProgress == 0f) panelReserved = false
+        }
         // Held so that closing can run the slide backwards: `page` is already null by then.
         val heldPhonePage = remember { mutableStateOf(page) }
         if (page != null) heldPhonePage.value = page
@@ -352,34 +361,38 @@ fun SignedInScreen(
                     OtherScreen(state, actions, onBack = actions.onBackToList)
                 } else {
                     // The list is always laid out; on a phone the page slides in over it and the list steps back.
-                    Row(
-                        Modifier.fillMaxSize().graphicsLayer {
-                            if (!sideBySide) {
-                                translationX = -PHONE_LIST_SHIFT * size.width * phoneProgress
-                                alpha = 1f - (1f - PHONE_LIST_DIM) * phoneProgress
+                    Box(Modifier.fillMaxSize()) {
+                        Row(
+                            Modifier.fillMaxSize().graphicsLayer {
+                                if (!sideBySide) {
+                                    translationX = -PHONE_LIST_SHIFT * size.width * phoneProgress
+                                    alpha = 1f - (1f - PHONE_LIST_DIM) * phoneProgress
+                                }
+                            },
+                        ) {
+                            if (sideBySide) {
+                                WideSidebar(state, actions)
                             }
-                        },
-                    ) {
-                        if (sideBySide) {
-                            WideSidebar(state, actions)
-                        }
-                        if (other) {
-                            // The sidebar stays; the prompt row, the list and the page panel are not drawn.
-                            OtherScreen(state, actions, onBack = null, modifier = Modifier.weight(1f))
-                        } else {
-                            Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
-                                SignedInPromptRow(
-                                    state = state,
-                                    actions = actions,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    wide = sideBySide,
-                                )
-                                AnimeListPane(state, actions, gridState, Modifier.weight(1f).fillMaxWidth(), tabs = !sideBySide)
+                            if (other) {
+                                // The sidebar stays; the prompt row, the list and the page panel are not drawn.
+                                OtherScreen(state, actions, onBack = null, modifier = Modifier.weight(1f))
+                            } else {
+                                Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    SignedInPromptRow(
+                                        state = state,
+                                        actions = actions,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        wide = sideBySide,
+                                    )
+                                    AnimeListPane(state, actions, gridState, Modifier.weight(1f).fillMaxWidth(), tabs = !sideBySide)
+                                }
                             }
-                        }
-                        if (sideBySide && !other) {
-                            AnimePageSidePanel(page, canGoBack, pageActions)
-                        }
+                            // Room for the panel, taken once it has arrived and given back once it has left.
+                            if (sideBySide && !other && panelReserved) Spacer(Modifier.width(SIDE_PANEL_WIDTH))
+                    }
+                    if (sideBySide && !other) {
+                        AnimePageSidePanel(page, panelProgress, canGoBack, pageActions, Modifier.align(Alignment.CenterEnd))
+                    }
                     }
                     val shown = heldPhonePage.value
                     if (!sideBySide && shown != null && (page != null || phoneProgress > 0f)) {
@@ -480,35 +493,35 @@ internal val SIDE_PANEL_WIDTH = 480.dp
 /** How long the side panel takes to open or close. */
 internal const val SIDE_PANEL_MS = 400
 
-/** How far to the right the panel's content starts, and fades in from. */
-private val SIDE_PANEL_SLIDE = 24.dp
-
 /**
- * The Anime Page beside the list. Its *width* animates between 0 and [SIDE_PANEL_WIDTH], so the
- * list reflows as it goes, while the content is laid out at the full 480dp the whole time and is
- * only clipped — a page that re-wrapped on every frame of the animation would be unreadable.
- * The content fades in from [SIDE_PANEL_SLIDE] to the right as the width grows.
+ * The Anime Page beside the list. It slides in over the right edge at its full [SIDE_PANEL_WIDTH]
+ * while the list keeps its width; the caller reserves the room only once [progress] reaches 1 and
+ * gives it back at 0, so the list reflows once per open and once per close, not on every frame.
+ * The content is laid out at the full width the whole time, so it never re-wraps either.
  *
  * Closing reverses it, which needs the page that was open: [page] is already null by then, so the
- * last one is held until the width is back at 0.
+ * last one is held until the panel is gone.
  */
 @Composable
 private fun AnimePageSidePanel(
     page: AnimePage?,
+    progress: Float,
     canGoBack: Boolean,
     actions: AnimePageActions,
+    modifier: Modifier = Modifier,
 ) {
     val held = remember { mutableStateOf(page) }
     if (page != null) held.value = page
-    val width by animateDpAsState(
-        if (page != null) SIDE_PANEL_WIDTH else 0.dp,
-        motion(tween(SIDE_PANEL_MS, easing = ActEasing)),
-        label = "sidePanelWidth",
-    )
     val shown = held.value
-    if (shown == null || width == 0.dp && page == null) return
-    val progress = (width / SIDE_PANEL_WIDTH).coerceIn(0f, 1f)
-    Row(Modifier.width(width).fillMaxHeight().clipToBounds()) {
+    if (shown == null || progress == 0f && page == null) return
+    Row(
+        modifier
+            .width(SIDE_PANEL_WIDTH)
+            .fillMaxHeight()
+            .graphicsLayer { translationX = (1f - progress) * SIDE_PANEL_WIDTH.toPx() }
+            .background(Act.colors.bg)
+            .testTag(ANIME_PAGE_PANEL_TAG),
+    ) {
         VerticalDivider()
         AnimePageScreen(
             page = shown,
@@ -516,15 +529,7 @@ private fun AnimePageSidePanel(
             actions = actions,
             sidePanel = true,
             open = page != null,
-            modifier = Modifier
-                .wrapContentWidth(Alignment.Start, unbounded = true)
-                .width(SIDE_PANEL_WIDTH)
-                .fillMaxHeight()
-                .graphicsLayer {
-                    alpha = progress
-                    translationX = (1f - progress) * SIDE_PANEL_SLIDE.toPx()
-                }
-                .testTag(ANIME_PAGE_PANEL_TAG),
+            modifier = Modifier.weight(1f).fillMaxHeight(),
         )
     }
 }

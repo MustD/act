@@ -33,7 +33,7 @@ Unofficial — not affiliated with or endorsed by MyAnimeList. Anime data provid
 Also available on the web and desktop.
 ```
 
-Not mentioned, deliberately: Patreon, any MAL logo or mark as a name.
+Not mentioned, deliberately: Ko-fi, any MAL logo or mark as a name.
 
 **Privacy policy URL:** `https://act.io-workshop.net/privacy`
 

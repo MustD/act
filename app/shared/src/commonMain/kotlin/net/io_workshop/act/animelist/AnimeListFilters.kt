@@ -2,7 +2,6 @@ package net.io_workshop.act.animelist
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,6 +15,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import net.io_workshop.act.theme.Act
+import net.io_workshop.act.theme.wheelHorizontalScroll
 import net.io_workshop.act.theme.enabledAlpha
 import net.io_workshop.act.theme.motion
 import androidx.compose.foundation.layout.Arrangement
@@ -123,6 +123,7 @@ fun AnimeListFilters(
     modifier: Modifier = Modifier,
 ) {
     val ln = Act.colors.ln
+    val scroll = rememberScrollState()
     Row(
         modifier = modifier.testTag(ANIME_LIST_FILTERS_TAG)
             .fillMaxWidth()
@@ -132,7 +133,7 @@ fun AnimeListFilters(
                     strokeWidth = 1.dp.toPx(),
                 )
             }
-            .horizontalScroll(rememberScrollState())
+            .wheelHorizontalScroll(scroll)
             .padding(start = 16.dp, end = 16.dp, top = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(18.dp),
     ) {

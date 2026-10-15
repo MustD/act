@@ -25,6 +25,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // Before super.onCreate: swaps Theme.ACT.Starting for Theme.ACT, so the splash follows the system theme.
         installSplashScreen()
+        // First-frame default only; `SystemBarsFollowTheme` restyles the bars once the in-app Theme is resolved.
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         // A cold start *is* a redirect delivery when the process was killed while the user was away.

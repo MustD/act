@@ -78,7 +78,9 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.todayIn
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 
 /** The sections of the List Entry, in the order they are drawn; the one a refused Save is reported under comes from it. */
 private enum class EntrySection { Episodes, WatchStatus, Score, Dates }
@@ -344,9 +346,10 @@ private fun StepButton(
 
 /**
  * A date as MAL holds it — shown verbatim, so a partial `2024` reads as `2024` — in a 48dp row with
- * `set today` when empty and `clear` when set. `set today` opens a Material 3 [DatePicker] in a
- * dialog rather than saving at once; only a full date can be picked, and picking one replaces
- * whatever was there. The value carries [tag], the actions [setTag] and [clearTag].
+ * `set`, whether or not a date is held. `set` opens a Material 3 [DatePicker] in a dialog rather
+ * than saving at once, on the held date or on today; only a full date can be picked, and picking
+ * one replaces whatever was there. A held date can be cleared from the dialog. The value carries
+ * [tag], the action [setTag] and the dialog's clear button [clearTag].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -374,14 +377,13 @@ private fun DateRow(
         )
         SavingIndicator(saving, Modifier.padding(start = 8.dp).testTag(animePageSavingTag(tag)))
         Spacer(Modifier.weight(1f))
-        val (action, actionTag) = if (date == null) "set today" to setTag else "clear" to clearTag
         Text(
-            action,
+            "set",
             style = Act.type.meta,
             color = Act.colors.acc.copy(alpha = if (enabled) 1f else 0.4f),
-            modifier = Modifier.testTag(actionTag)
-                .semantics { contentDescription = if (date == null) "Set $label date" else "Clear $label date" }
-                .clickable(enabled = enabled, role = Role.Button) { if (date == null) picking = true else onPick(null) }
+            modifier = Modifier.testTag(setTag)
+                .semantics { contentDescription = "Set $label date" }
+                .clickable(enabled = enabled, role = Role.Button) { picking = true }
                 .padding(vertical = 12.dp),
         )
     }
@@ -389,7 +391,8 @@ private fun DateRow(
         val state = rememberDatePickerState(
             initialSelectedDateMillis = date
                 ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-                ?.atStartOfDayIn(TimeZone.UTC)?.toEpochMilliseconds(),
+                ?.atStartOfDayIn(TimeZone.UTC)?.toEpochMilliseconds()
+                ?: Clock.System.todayIn(TimeZone.currentSystemDefault()).atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds(),
         )
         DatePickerDialog(
             onDismissRequest = { picking = false },
@@ -404,7 +407,15 @@ private fun DateRow(
                     },
                 ) { Text("OK") }
             },
-            dismissButton = { TextButton(onClick = { picking = false }) { Text("Cancel") } },
+            dismissButton = {
+                if (date != null) {
+                    TextButton(
+                        onClick = { picking = false; onPick(null) },
+                        modifier = Modifier.testTag(clearTag).semantics { contentDescription = "Clear $label date" },
+                    ) { Text("Clear") }
+                }
+                TextButton(onClick = { picking = false }) { Text("Cancel") }
+            },
         ) { DatePicker(state) }
     }
 }

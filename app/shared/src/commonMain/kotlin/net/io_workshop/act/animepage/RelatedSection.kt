@@ -1,7 +1,6 @@
 package net.io_workshop.act.animepage
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,6 +23,7 @@ import net.io_workshop.act.auth.animePageRelatedOnListTag
 import net.io_workshop.act.auth.animePageRelatedTag
 import net.io_workshop.act.theme.Act
 import net.io_workshop.act.theme.SectionLabel
+import net.io_workshop.act.theme.wheelHorizontalScroll
 
 /**
  * `// related`: the Related Anime, in MAL's order, as a horizontal scroller of 96dp tiles — cover,
@@ -35,7 +35,8 @@ internal fun RelatedSection(related: List<RelatedAnime>, onOpen: (RelatedAnime) 
     if (related.isEmpty()) return
     Column(Modifier.fillMaxWidth().testTag(ANIME_PAGE_RELATED_TAG), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SectionLabel("related")
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        val scroll = rememberScrollState()
+        Row(Modifier.wheelHorizontalScroll(scroll), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             related.forEach { anime ->
                 Column(
                     Modifier.width(RELATED_TILE_WIDTH)

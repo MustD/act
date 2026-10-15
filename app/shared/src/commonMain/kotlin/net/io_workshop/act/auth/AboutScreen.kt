@@ -28,7 +28,7 @@ import net.io_workshop.act.theme.Act
 
 /** MAL's own Supporter page. */
 const val SUPPORT_MAL_URL: String = "https://myanimelist.net/membership"
-const val SUPPORT_DEVELOPMENT_URL: String = "https://patreon.com/MustD"
+const val SUPPORT_DEVELOPMENT_URL: String = "https://ko-fi.com/mustd0"
 const val GITHUB_URL: String = "https://github.com/MustD/act"
 const val REPORT_ISSUE_URL: String = "$GITHUB_URL/issues"
 const val MAL_HOME_URL: String = "https://myanimelist.net"

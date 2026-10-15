@@ -232,7 +232,7 @@ val ANIME_PAGE_EPISODES_PLUS_TAG: String = "$ANIME_PAGE_TAG.episodesPlus"
 /** The score button, which opens the picker of MAL's labels. */
 val ANIME_PAGE_SCORE_TAG: String = "$ANIME_PAGE_TAG.score"
 
-/** Each date's value as MAL holds it, then its `set today` action (which opens the DatePicker) and its `clear` action. */
+/** Each date's value as MAL holds it, then its `set` action (which opens the DatePicker) and the picker dialog's `clear` button. */
 val ANIME_PAGE_START_DATE_TAG: String = "$ANIME_PAGE_TAG.startDate"
 val ANIME_PAGE_START_DATE_SET_TAG: String = "$ANIME_PAGE_TAG.startDateSet"
 val ANIME_PAGE_START_DATE_CLEAR_TAG: String = "$ANIME_PAGE_TAG.startDateClear"

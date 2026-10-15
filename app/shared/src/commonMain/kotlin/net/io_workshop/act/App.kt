@@ -31,6 +31,7 @@ import net.io_workshop.act.screen.SignedOutScreen
 import net.io_workshop.act.session.MalSessionRepository
 import net.io_workshop.act.session.SessionControls
 import net.io_workshop.act.theme.ActTheme
+import net.io_workshop.act.theme.SystemBarsFollowTheme
 import net.io_workshop.act.theme.ThemePreference
 import androidx.compose.runtime.CompositionLocalProvider
 import net.io_workshop.act.animelist.CoverPolicy
@@ -70,6 +71,7 @@ fun App(
 
     val systemDark = isSystemInDarkTheme()
     val dark = theme.value.collectAsStateWithLifecycle().value.isDark(systemDark)
+    SystemBarsFollowTheme(dark)
 
     CompositionLocalProvider(LocalCoverPolicy provides coverPolicy) {
         ActTheme(dark = dark) {

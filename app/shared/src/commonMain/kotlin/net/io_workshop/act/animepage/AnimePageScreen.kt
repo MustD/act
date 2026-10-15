@@ -14,6 +14,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
+import net.io_workshop.act.getPlatform
 import net.io_workshop.act.theme.Act
 import net.io_workshop.act.theme.ActSmall
 import net.io_workshop.act.theme.SectionLabel
@@ -102,9 +103,12 @@ fun AnimePageScreen(
 ) {
     BackHandler(enabled = open, onBack = actions.onBack)
 
-    // Esc needs focus to be heard, so the page takes it as it opens.
+    // Esc needs focus to be heard, so the page takes it as it opens. Not on a device without a
+    // keyboard: Android spends a Back press on clearing a focused node before `BackHandler` sees
+    // it, which made leaving the page take two.
     val focus = remember { FocusRequester() }
-    LaunchedEffect(page.animeId) { runCatching { focus.requestFocus() } }
+    val takesFocus = remember { getPlatform().hasKeyboard }
+    LaunchedEffect(page.animeId) { if (takesFocus) runCatching { focus.requestFocus() } }
 
     // The caller's modifier carries the signed-in screen's tag, and a second `testTag` on the same
     // node is ignored, so the page's own goes on a child.
