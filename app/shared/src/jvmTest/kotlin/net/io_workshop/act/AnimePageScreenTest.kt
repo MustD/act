@@ -57,6 +57,8 @@ import net.io_workshop.act.auth.ANIME_PAGE_EPISODES_PLUS_TAG
 import net.io_workshop.act.auth.ANIME_PAGE_EPISODES_TAG
 import net.io_workshop.act.auth.ANIME_PAGE_ERROR_TAG
 import net.io_workshop.act.auth.ANIME_PAGE_FINISH_DATE_CLEAR_TAG
+import net.io_workshop.act.auth.ANIME_PAGE_FINISH_DATE_SET_TAG
+import net.io_workshop.act.auth.ANIME_PAGE_START_DATE_SET_TAG
 import net.io_workshop.act.auth.ANIME_PAGE_FINISH_DATE_TAG
 import net.io_workshop.act.auth.ANIME_PAGE_LOADING_TAG
 import net.io_workshop.act.auth.ANIME_PAGE_PANEL_TAG
@@ -511,7 +513,7 @@ class AnimePageScreenTest {
     }
 
     @Test
-    fun a_date_can_be_cleared_and_only_a_set_one_offers_it() {
+    fun a_date_is_cleared_through_the_dialog_and_only_a_set_one_offers_it() {
         runComposeUiTest {
             val recorded = RecordedActions()
             val status = ListEntry(WatchStatus.Completed, 9, 26, null, "2024", null)
@@ -519,9 +521,14 @@ class AnimePageScreenTest {
                 ThemedSessionRoute(stateWith(page(load = AnimePageLoad.Loaded, listEntry = status)), recorded.actions)
             }
 
+            onNodeWithTag(ANIME_PAGE_START_DATE_SET_TAG).performScrollTo().performClick()
             onAllNodesWithTag(net.io_workshop.act.auth.ANIME_PAGE_START_DATE_CLEAR_TAG).assertCountEquals(0)
+            onNodeWithText("Cancel").performClick()
+
             onNodeWithTag(ANIME_PAGE_FINISH_DATE_TAG).performScrollTo().assertTextContains("2024")
-            onNodeWithTag(ANIME_PAGE_FINISH_DATE_CLEAR_TAG).performScrollTo().performClick()
+            onNodeWithTag(ANIME_PAGE_FINISH_DATE_SET_TAG).performScrollTo().assertTextContains("set").performClick()
+            assertEquals(emptyList<ListEdit>(), recorded.edits)
+            onNodeWithTag(ANIME_PAGE_FINISH_DATE_CLEAR_TAG).performClick()
 
             assertEquals(listOf<ListEdit>(ListEdit.SetFinishDate(null)), recorded.edits)
         }
@@ -570,12 +577,12 @@ class AnimePageScreenTest {
     }
 
     @Test
-    fun set_today_opens_the_date_picker_and_saves_nothing_by_itself() {
+    fun set_opens_the_date_picker_and_saves_nothing_by_itself() {
         runComposeUiTest {
             val recorded = RecordedActions()
             setContent { ThemedSessionRoute(stateWith(page(load = AnimePageLoad.Loaded)), recorded.actions) }
 
-            onNodeWithTag(net.io_workshop.act.auth.ANIME_PAGE_START_DATE_SET_TAG).performScrollTo().assertTextContains("set today").performClick()
+            onNodeWithTag(net.io_workshop.act.auth.ANIME_PAGE_START_DATE_SET_TAG).performScrollTo().assertTextContains("set").performClick()
 
             onNodeWithText("OK").assertIsDisplayed()
             assertEquals(emptyList<ListEdit>(), recorded.edits)
