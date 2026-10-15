@@ -78,11 +78,15 @@ Expect roughly **Teen**; if the questionnaire lands higher, answer honestly rath
 
 ## Screenshot shot list (phone, real device, signed in with a clean list)
 
-1. Cards Layout
-2. List Layout
-3. Anime Page
-4. Editing a List Entry
-5. Welcome Screen
+Taken and processed: `docs/play-assets/screenshots/`, upload in this order.
+
+1. Cards Layout (dark)
+2. Anime Page, not on the list, with Related Anime (dark)
+3. Editing a List Entry (light)
+4. Rows Layout (light)
+5. Table Layout (dark)
+6. Welcome Screen (light)
 
 **No shot may show an Adult Cover placeholder** — choose a list or a filter with none (and no real adult-themed title).
+**Every cover is blurred** in the store images (the art is the studios'); `docs/play-assets/screenshots.sh` does it.
 Assets: icon `docs/play-assets/store-icon-512.png`, feature graphic `docs/play-assets/feature-graphic-1024x500.png`.

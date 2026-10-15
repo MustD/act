@@ -21,5 +21,15 @@ two Android drawables.
 `ic_launcher_background.xml` is the solid `#0D0E0C`. `feature-graphic.svg` reuses the glyph markup of `icon.svg`,
 so a change to the letters has to be made in both files.
 
+## Store screenshots
+
+`screenshots/` holds the six phone screenshots, 1080×1920 (9:16), in upload order — the shot list is in
+`docs/play-listing.md`. They come from raw `adb exec-out screencap -p` captures on the test phone, kept outside git in
+`.scratch/screenshots/raw/`; `screenshots.sh` crops away the system bars (a 1080×2400 capture is too tall for Play),
+blurs every cover and paints out Samsung's Edge Panel handle. The cover rectangles in it are measured by hand on those
+captures, so a recapture means measuring them again.
+
+## Regenerating the icon
+
 To regenerate: run `outline_glyphs.py`, edit `icon.svg` (and the two Android vector drawables to match), then run
 `docs/play-assets/regenerate.sh`. It needs `rsvg-convert` and ImageMagick (`magick`); nothing is fetched.
