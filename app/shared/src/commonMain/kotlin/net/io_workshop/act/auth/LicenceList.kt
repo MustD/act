@@ -25,7 +25,16 @@ internal data class LicenceLine(val text: String)
  * rather than showing nothing, which would look like "no dependencies".
  */
 internal suspend fun loadLicences(): List<LicenceLine>? = runCatching {
-    Libs.Builder().withJson(Res.readBytes("files/aboutlibraries.json").decodeToString()).build()
+    licenceLines(Res.readBytes("files/aboutlibraries.json").decodeToString())
+}.getOrNull()
+
+/**
+ * The lines for [json], sorted by name, each shown once: the file has a record per artifact, and several
+ * artifacts share a name, version and licence, so identical text is dropped. Lines that differ in anything
+ * shown (a version, say) stay.
+ */
+internal fun licenceLines(json: String): List<LicenceLine> =
+    Libs.Builder().withJson(json).build()
         .libraries
         .sortedBy { it.name.lowercase() }
         .map { lib ->
@@ -38,7 +47,7 @@ internal suspend fun loadLicences(): List<LicenceLine>? = runCatching {
                 },
             )
         }
-}.getOrNull()
+        .distinct()
 
 /** Where [LicenceList] is: a failed load stays distinct from a list that loaded. */
 private sealed interface LicencesState {
