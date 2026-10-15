@@ -39,6 +39,24 @@ Not mentioned, deliberately: Ko-fi, any MAL logo or mark as a name.
 
 **Category:** Entertainment (alternative: Tools). **Contact email:** the owner's choice. **Language:** English.
 
+## Release notes — first release (0.8.0)
+
+Paste into the release's "Release notes" box as is (403/500 characters, `en-US` only). Release name: `0.8.0`.
+
+```
+<en-US>
+First release of ACT on Google Play.
+
+• Sign in with MyAnimeList — your password is only ever typed on myanimelist.net
+• Your anime list as Cards, List or Table; filter by Watch Status and sort
+• Anime Pages with synopsis, scores, studios, genres and Related Anime
+• Update Watch Status, episodes and score, or add an anime to your list
+• Light, dark or system theme
+
+No ads, no analytics, no tracking.
+</en-US>
+```
+
 ## Data safety
 
 | Question | Answer |

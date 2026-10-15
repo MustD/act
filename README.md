@@ -4,6 +4,19 @@ A [MyAnimeList](https://myanimelist.net) client built with Kotlin Multiplatform 
 
 **Live demo:** [https://act.io-workshop.net](https://act.io-workshop.net)
 
+## Screenshots
+
+<p>
+  <img src="docs/play-assets/screenshots/01-cards.png" alt="Anime List as cards" width="260">
+  <img src="docs/play-assets/screenshots/02-anime-page.png" alt="Anime Page" width="260">
+  <img src="docs/play-assets/screenshots/03-edit-entry.png" alt="Editing a list entry" width="260">
+</p>
+<p>
+  <img src="docs/play-assets/screenshots/04-rows.png" alt="Anime List as rows" width="260">
+  <img src="docs/play-assets/screenshots/05-table.png" alt="Anime List as a table" width="260">
+  <img src="docs/play-assets/screenshots/06-welcome.png" alt="Welcome Screen" width="260">
+</p>
+
 ## Features
 
 - **OAuth2 Authentication** — Full OAuth2 authorization code flow with PKCE (`code_challenge_method=plain`). Each
