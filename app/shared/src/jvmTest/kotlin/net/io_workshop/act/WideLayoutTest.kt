@@ -100,7 +100,7 @@ class WideLayoutTest {
     }
 
     @Test
-    fun the_side_panel_grows_to_480dp_and_gives_the_width_back_on_close() {
+    fun the_list_reflows_once_per_side_panel_open_and_close() {
         runComposeUiTest {
             mainClock.autoAdvance = false
             var history by mutableStateOf(AnimePageHistory(emptyList()))
@@ -110,24 +110,27 @@ class WideLayoutTest {
                 }
             }
             onAllNodesWithTag(ANIME_PAGE_PANEL_TAG).assertCountEquals(0)
+            val before = onNodeWithTag(ANIME_LIST_TAG).getBoundsInRoot().width
 
             history = AnimePageHistory(listOf(openPage()))
             mainClock.advanceTimeByFrame()
             mainClock.advanceTimeBy(100)
             val partial = onNodeWithTag(ANIME_LIST_TAG).getBoundsInRoot().width
+            assertEquals(before, partial, "the list keeps its width while the panel slides in")
             mainClock.advanceTimeBy(600)
             val open = onNodeWithTag(ANIME_LIST_TAG).getBoundsInRoot().width
-            assertTrue(open < partial, "the list should keep narrowing while the panel opens: $partial then $open")
             onNodeWithTag(ANIME_PAGE_PANEL_TAG).assertWidthIsEqualTo(480.dp)
             assertEquals(1000.dp - 208.dp - 480.dp, open, "list takes the rest beside the sidebar and the panel")
 
             history = AnimePageHistory(emptyList())
             mainClock.advanceTimeByFrame()
             mainClock.advanceTimeBy(100)
-            // Still there mid-close: the page is held while the width animates back.
+            // Still there mid-close: the page is held while it slides out over the still-narrow list.
             onNodeWithTag(ANIME_PAGE_PANEL_TAG).assertExists()
+            assertEquals(open, onNodeWithTag(ANIME_LIST_TAG).getBoundsInRoot().width, "the list stays narrow until the panel has gone")
             mainClock.advanceTimeBy(600)
             onAllNodesWithTag(ANIME_PAGE_PANEL_TAG).assertCountEquals(0)
+            assertEquals(before, onNodeWithTag(ANIME_LIST_TAG).getBoundsInRoot().width)
         }
     }
 
