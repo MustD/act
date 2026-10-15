@@ -1,8 +1,14 @@
 # Play assets and the ACT icon
 
-`icon.svg` is the one source of every icon: the `ACT_` wordmark, ink letters and a phosphor underscore cursor on
-Act's dark background (the colours of `ActTheme.kt`). It deliberately shares nothing with MAL's blue or logo shape.
-It is a placeholder, replaceable before production.
+`icon.svg` is the one source of every icon: the `>ACT_` wordmark — a shell prompt, the name, the cursor — with ink
+letters and a phosphor `>` and `_` on Act's dark background (the colours of `ActTheme.kt`). It deliberately shares
+nothing with MAL's blue or logo shape.
+
+All five glyphs are filled paths outlined from IBM Plex Mono SemiBold (the app's own font, OFL), so there is no `<text>`
+and no font dependency. They are made by `outline_glyphs.py` (`pip install fonttools`, then
+`python3 docs/play-assets/outline_glyphs.py`), which prints the `ink` (`ACT`) and `accent` (`>` and `_`) path data, scaled
+together to fit the 66×66 safe zone and centred on the canvas. Paste those into `icon.svg`, `feature-graphic.svg` and the
+two Android drawables.
 
 | Derived file | From | How |
 |---|---|---|
@@ -15,5 +21,5 @@ It is a placeholder, replaceable before production.
 `ic_launcher_background.xml` is the solid `#0D0E0C`. `feature-graphic.svg` reuses the glyph markup of `icon.svg`,
 so a change to the letters has to be made in both files.
 
-To regenerate: edit `icon.svg` (and the two Android vector drawables to match), then run
+To regenerate: run `outline_glyphs.py`, edit `icon.svg` (and the two Android vector drawables to match), then run
 `docs/play-assets/regenerate.sh`. It needs `rsvg-convert` and ImageMagick (`magick`); nothing is fetched.

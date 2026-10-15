@@ -4,13 +4,11 @@
         android:height="108dp"
         android:viewportWidth="108"
         android:viewportHeight="108">
-    <!-- The ACT_ wordmark: ink letters, phosphor cursor. Same path data as docs/play-assets/icon.svg. -->
+    <!-- The >ACT_ wordmark: ink letters, phosphor prompt and cursor. Same path data as docs/play-assets/icon.svg. -->
     <path
-            android:pathData="M26.5,60 L34,40 L41.5,60 M29.5,53 H38.5 M61.5,40 H50 Q46.5,40 46.5,43.5 V56.5 Q46.5,60 50,60 H61.5 M66.5,40 H81.5 M74,40 V60"
-            android:strokeColor="#E8EAE2"
-            android:strokeWidth="5"/>
+            android:fillColor="#E8EAE2"
+            android:pathData="M43.93 59.7 42.87 55.86H38.38L37.33 59.7H34.47L38.72 44.54H42.67L46.95 59.7ZM40.72 47.34H40.55L38.87 53.53H42.39ZM54.12 59.96Q51.14 59.96 49.72 57.92Q48.3 55.88 48.3 52.12Q48.3 48.39 49.72 46.33Q51.14 44.28 54.12 44.28Q55.25 44.28 56.11 44.59Q56.96 44.89 57.59 45.42Q58.22 45.95 58.64 46.7Q59.05 47.45 59.29 48.34L56.68 49.08Q56.53 48.56 56.33 48.1Q56.14 47.65 55.85 47.31Q55.55 46.97 55.12 46.79Q54.68 46.61 54.08 46.61Q52.6 46.61 51.96 47.73Q51.32 48.86 51.32 50.82V53.42Q51.32 55.38 51.96 56.51Q52.6 57.64 54.08 57.64Q54.68 57.64 55.12 57.45Q55.55 57.27 55.85 56.93Q56.14 56.6 56.33 56.14Q56.53 55.68 56.68 55.16L59.29 55.9Q59.05 56.79 58.64 57.54Q58.22 58.29 57.59 58.82Q56.96 59.35 56.11 59.66Q55.25 59.96 54.12 59.96ZM68.17 46.89V59.7H65.35V46.89H60.79V44.54H72.73V46.89Z"/>
     <path
-            android:pathData="M66.5,69 H81.5"
-            android:strokeColor="#8CEB7B"
-            android:strokeWidth="5"/>
+            android:fillColor="#8CEB7B"
+            android:pathData="M23 56.86 29.82 53.16V52.99L23 49.3V46.65L32.34 51.77V54.38L23 59.51ZM74.58 63.72V61.39H85V63.72Z"/>
 </vector>
