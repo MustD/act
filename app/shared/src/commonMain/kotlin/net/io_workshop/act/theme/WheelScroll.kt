@@ -1,15 +1,16 @@
 package net.io_workshop.act.theme
 
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 
 /**
- * Turns a plain vertical mouse wheel over a horizontal row into scrolling of that row's [state].
- * `horizontalScroll` alone answers only Shift+wheel and horizontal swipes, so a long row cannot be
- * scrolled with a mouse. At either end the event is left unconsumed, so the enclosing vertical
+ * `horizontalScroll`, plus a plain vertical mouse wheel over the row turned into scrolling of its
+ * [state]. `horizontalScroll` alone answers only Shift+wheel and horizontal swipes, so a long row
+ * cannot be scrolled with a mouse; the two are one modifier so that no row gets one without the other. At either end the event is left unconsumed, so the enclosing vertical
  * scroll takes it and a cursor resting on the row never traps the page.
  */
 fun Modifier.wheelHorizontalScroll(state: ScrollState): Modifier = pointerInput(state) {
@@ -29,6 +30,6 @@ fun Modifier.wheelHorizontalScroll(state: ScrollState): Modifier = pointerInput(
             change.consume()
         }
     }
-}
+}.horizontalScroll(state)
 
 private val WHEEL_STEP = 48.dp

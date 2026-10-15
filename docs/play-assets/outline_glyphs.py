@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Outlines `>ACT_` from IBM Plex Mono SemiBold into 108x108 canvas path data (needs fontTools).
 
-Prints three lines, `ink`, `accent`: the SVG `d` strings. `>` and `_` are the accent, `ACT` the ink. The five glyphs
+Prints two lines, `ink` and `accent`: the SVG `d` strings. `>` and `_` are the accent, `ACT` the ink. The five glyphs
 are scaled together so the ink fits INK_WIDTH, centred on the canvas. See README.md.
 """
 import sys

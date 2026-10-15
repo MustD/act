@@ -12,6 +12,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -30,6 +31,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextClearance
@@ -48,6 +50,7 @@ import net.io_workshop.act.animepage.AnimePageLoad
 import net.io_workshop.act.animepage.ListEdit
 import net.io_workshop.act.animepage.Save
 import net.io_workshop.act.animepage.RelatedAnime
+import net.io_workshop.act.animepage.RelatedSection
 import net.io_workshop.act.auth.ANIME_LIST_TAG
 import net.io_workshop.act.auth.ANIME_PAGE_ADD_TAG
 import net.io_workshop.act.auth.ANIME_PAGE_BACK_TAG
@@ -58,6 +61,7 @@ import net.io_workshop.act.auth.ANIME_PAGE_EPISODES_TAG
 import net.io_workshop.act.auth.ANIME_PAGE_ERROR_TAG
 import net.io_workshop.act.auth.ANIME_PAGE_FINISH_DATE_CLEAR_TAG
 import net.io_workshop.act.auth.ANIME_PAGE_FINISH_DATE_SET_TAG
+import net.io_workshop.act.auth.ANIME_PAGE_START_DATE_CLEAR_TAG
 import net.io_workshop.act.auth.ANIME_PAGE_START_DATE_SET_TAG
 import net.io_workshop.act.auth.ANIME_PAGE_FINISH_DATE_TAG
 import net.io_workshop.act.auth.ANIME_PAGE_LOADING_TAG
@@ -76,6 +80,7 @@ import net.io_workshop.act.auth.animePageSavingTag
 import net.io_workshop.act.theme.actColors
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * The Anime Page as drawn: what each load state shows, and that the controls are wired. What opening
@@ -396,10 +401,31 @@ class AnimePageScreenTest {
         }
     }
 
+    /** [RelatedSection] alone: on the full route the row is below the test window, and a wheel event there lands nowhere. */
+    @Test
+    fun the_mouse_wheel_over_the_related_anime_row_scrolls_it_sideways() {
+        runComposeUiTest {
+            val many = (1..12).map { RelatedAnime(100L + it, "Related $it", null, "Sequel", onList = false) }
+            setContent {
+                net.io_workshop.act.theme.ActTheme(dark = true) {
+                    Box(Modifier.width(400.dp)) { RelatedSection(many) {} }
+                }
+            }
+            val first = onNodeWithTag(animePageRelatedTag(101))
+            val before = first.getUnclippedBoundsInRoot().left
+
+            // The mouse starts at the window's corner, over the `// related` label, not the row.
+            first.performMouseInput { moveTo(center); scroll(3f) }
+            waitForIdle()
+
+            assertTrue(first.getUnclippedBoundsInRoot().left < before, "the row did not move")
+        }
+    }
+
     private val editControls = listOf(
         ANIME_PAGE_EPISODES_MINUS_TAG,
         ANIME_PAGE_EPISODES_PLUS_TAG,
-        net.io_workshop.act.auth.ANIME_PAGE_START_DATE_SET_TAG, net.io_workshop.act.auth.ANIME_PAGE_FINISH_DATE_SET_TAG,
+        ANIME_PAGE_START_DATE_SET_TAG, ANIME_PAGE_FINISH_DATE_SET_TAG,
     )
 
     /** The controls that have no tag of their own: a chip, a score cell, an episode cell. */
@@ -522,7 +548,7 @@ class AnimePageScreenTest {
             }
 
             onNodeWithTag(ANIME_PAGE_START_DATE_SET_TAG).performScrollTo().performClick()
-            onAllNodesWithTag(net.io_workshop.act.auth.ANIME_PAGE_START_DATE_CLEAR_TAG).assertCountEquals(0)
+            onAllNodesWithTag(ANIME_PAGE_START_DATE_CLEAR_TAG).assertCountEquals(0)
             onNodeWithText("Cancel").performClick()
 
             onNodeWithTag(ANIME_PAGE_FINISH_DATE_TAG).performScrollTo().assertTextContains("2024")
@@ -582,7 +608,7 @@ class AnimePageScreenTest {
             val recorded = RecordedActions()
             setContent { ThemedSessionRoute(stateWith(page(load = AnimePageLoad.Loaded)), recorded.actions) }
 
-            onNodeWithTag(net.io_workshop.act.auth.ANIME_PAGE_START_DATE_SET_TAG).performScrollTo().assertTextContains("set").performClick()
+            onNodeWithTag(ANIME_PAGE_START_DATE_SET_TAG).performScrollTo().assertTextContains("set").performClick()
 
             onNodeWithText("OK").assertIsDisplayed()
             assertEquals(emptyList<ListEdit>(), recorded.edits)

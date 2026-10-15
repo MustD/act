@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -32,7 +31,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -81,7 +79,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
@@ -365,33 +362,33 @@ fun SignedInScreen(
                 } else {
                     // The list is always laid out; on a phone the page slides in over it and the list steps back.
                     Box(Modifier.fillMaxSize()) {
-                    Row(
-                        Modifier.fillMaxSize().graphicsLayer {
-                            if (!sideBySide) {
-                                translationX = -PHONE_LIST_SHIFT * size.width * phoneProgress
-                                alpha = 1f - (1f - PHONE_LIST_DIM) * phoneProgress
+                        Row(
+                            Modifier.fillMaxSize().graphicsLayer {
+                                if (!sideBySide) {
+                                    translationX = -PHONE_LIST_SHIFT * size.width * phoneProgress
+                                    alpha = 1f - (1f - PHONE_LIST_DIM) * phoneProgress
+                                }
+                            },
+                        ) {
+                            if (sideBySide) {
+                                WideSidebar(state, actions)
                             }
-                        },
-                    ) {
-                        if (sideBySide) {
-                            WideSidebar(state, actions)
-                        }
-                        if (other) {
-                            // The sidebar stays; the prompt row, the list and the page panel are not drawn.
-                            OtherScreen(state, actions, onBack = null, modifier = Modifier.weight(1f))
-                        } else {
-                            Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
-                                SignedInPromptRow(
-                                    state = state,
-                                    actions = actions,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    wide = sideBySide,
-                                )
-                                AnimeListPane(state, actions, gridState, Modifier.weight(1f).fillMaxWidth(), tabs = !sideBySide)
+                            if (other) {
+                                // The sidebar stays; the prompt row, the list and the page panel are not drawn.
+                                OtherScreen(state, actions, onBack = null, modifier = Modifier.weight(1f))
+                            } else {
+                                Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    SignedInPromptRow(
+                                        state = state,
+                                        actions = actions,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        wide = sideBySide,
+                                    )
+                                    AnimeListPane(state, actions, gridState, Modifier.weight(1f).fillMaxWidth(), tabs = !sideBySide)
+                                }
                             }
-                        }
-                        // Room for the panel, taken once it has arrived and given back once it has left.
-                        if (sideBySide && !other && panelReserved) Spacer(Modifier.width(SIDE_PANEL_WIDTH))
+                            // Room for the panel, taken once it has arrived and given back once it has left.
+                            if (sideBySide && !other && panelReserved) Spacer(Modifier.width(SIDE_PANEL_WIDTH))
                     }
                     if (sideBySide && !other) {
                         AnimePageSidePanel(page, panelProgress, canGoBack, pageActions, Modifier.align(Alignment.CenterEnd))

@@ -2,7 +2,6 @@ package net.io_workshop.act.animelist
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -135,7 +134,6 @@ fun AnimeListFilters(
                 )
             }
             .wheelHorizontalScroll(scroll)
-            .horizontalScroll(scroll)
             .padding(start = 16.dp, end = 16.dp, top = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(18.dp),
     ) {

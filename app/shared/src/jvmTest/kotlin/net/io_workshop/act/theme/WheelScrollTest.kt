@@ -3,7 +3,6 @@
 package net.io_workshop.act.theme
 
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,7 +33,7 @@ class WheelScrollTest {
         scrolls.row = rememberScrollState()
         scrolls.page = rememberScrollState()
         Column(Modifier.height(200.dp).width(200.dp).verticalScroll(scrolls.page)) {
-            Row(Modifier.testTag("row").width(200.dp).wheelHorizontalScroll(scrolls.row).horizontalScroll(scrolls.row)) {
+            Row(Modifier.testTag("row").width(200.dp).wheelHorizontalScroll(scrolls.row)) {
                 Box(Modifier.width(1000.dp).height(50.dp))
             }
             Box(Modifier.height(1000.dp))
