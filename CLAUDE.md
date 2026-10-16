@@ -13,7 +13,7 @@ scripts call the tasks too — so the task names are the interface and the build
 document or script `./gradlew` directly; add a task. `mise tasks` lists them.
 
 mise also provides the tools: `mise install` once per machine fetches the JDK (`java = "zulu-21"`) and Terraform.
-`docker` (with buildx), `ssh` and `dpkg-deb` (from `dpkg`; `pacman -S dpkg` on Arch) are **not** managed by mise — the deploy and desktop-installer tasks expect them on the machine.
+`docker` (with buildx), `ssh`, `dpkg-deb` (from `dpkg`; `pacman -S dpkg` on Arch) and, on a Mac, the Xcode command-line tools (`xcrun`; `xcode-select --install`) are **not** managed by mise — the deploy and desktop-installer tasks expect them on the machine. WiX, which `build:desktop:msi` needs, is not either, but the Compose plugin downloads it, so Windows needs nothing extra.
 
 Build / run:
 
@@ -276,6 +276,8 @@ The Client ID ends up in plain text in a public image, deliberately: it is equal
 | `mise run deploy:build`                           | `build:web:dist` + `build:server:dist`, then both images (`linux/amd64`)                                                                    |
 | `mise run deploy:push`                            | pushes both; refuses if either tag exists on Docker Hub                                                                                     |
 | `mise run build:desktop:deb`                      | Linux `.deb` of the desktop app (ADR-0009); see [Desktop release](#desktop-release)                                                        |
+| `mise run build:desktop:msi`                      | Windows `.msi`; needs Windows. Unsigned, never built; see [Desktop release](#desktop-release)                                              |
+| `mise run build:desktop:dmg`                      | macOS `.dmg`; needs macOS and `xcrun`. Unsigned, never built; see [Desktop release](#desktop-release)                                     |
 | `mise run deploy [version]`                       | the whole path below; with a version, only redeploys that pushed tag                                                                        |
 | `mise run deploy:status`                          | `ACT_VERSION` and `docker compose ps` on the droplet                                                                                        |
 
@@ -304,6 +306,16 @@ starts, and runs `:app:desktopApp:packageDeb`. The installer is
 `app/desktopApp/build/compose/binaries/main/deb/io-workshop-act_<act.version>_amd64.deb`. Every `package*Deb/Msi/Dmg`
 task depends on `:core:requireMalClientId`, so without a Client ID it fails with that task's message and writes no
 installer. It is not part of `mise run build`.
+
+`mise run build:desktop:msi` (Windows) and `build:desktop:dmg` (macOS, plus `xcrun`) follow the same pattern: they load
+`.secure.build.env`, check the OS before Gradle starts and name what is missing, and run `packageMsi` / `packageDmg`.
+Neither is part of `mise run build`. `act.version` is 1.0.0 because `.msi` and `.dmg` reject a major version of 0.
+
+**Neither the `.msi` nor the `.dmg` has been built yet** — the maintainer has no Windows or macOS machine, and both
+installers are unsigned:
+
+- Windows: SmartScreen warns about an unknown publisher; choose "More info → Run anyway".
+- macOS: Gatekeeper quarantines the downloaded app; clear it with `xattr -dr com.apple.quarantine /Applications/ACT.app`.
 
 ## Architecture
 

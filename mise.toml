@@ -9,7 +9,8 @@
 # The test tasks load none of them: a test must pass the same with or without a Client ID. (The two that `deploy` runs
 # inherit its build env, Client ID included — lib.sh's `task` strips only the deploy secrets.)
 #
-# Not managed here: docker (with buildx), ssh and dpkg-deb (build:desktop:deb), which the tasks expect on the machine.
+# Not managed here: docker (with buildx), ssh, dpkg-deb (build:desktop:deb) and the Xcode command-line tools
+# (build:desktop:dmg), which the tasks expect on the machine. WiX for build:desktop:msi is fetched by Compose.
 [tools]
 # The JDK Gradle runs on. Nothing downloads one any more — gradle-daemon-jvm.properties names the same vendor and
 # version and has no toolchain URLs — so a different JDK fails the build rather than being replaced.
@@ -99,6 +100,23 @@ run = """
 [ "$(uname -s)" = Linux ] || { echo "build:desktop:deb builds a .deb and needs Linux; this is $(uname -s)" >&2; exit 1; }
 command -v dpkg-deb >/dev/null || { echo "build:desktop:deb needs dpkg-deb on PATH (Arch: pacman -S dpkg; Debian/Ubuntu: dpkg)" >&2; exit 1; }
 ./gradlew :app:desktopApp:packageDeb
+"""
+
+[tasks."build:desktop:msi"]
+description = "Windows .msi installer (unsigned, never built); fails without a Client ID"
+env = { _ = { file = ".secure.build.env" } }
+run = """
+case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) ;; *) echo "build:desktop:msi builds an .msi and needs Windows; this is $(uname -s)" >&2; exit 1;; esac
+./gradlew :app:desktopApp:packageMsi
+"""
+
+[tasks."build:desktop:dmg"]
+description = "macOS .dmg installer (unsigned, never built); fails without a Client ID"
+env = { _ = { file = ".secure.build.env" } }
+run = """
+[ "$(uname -s)" = Darwin ] || { echo "build:desktop:dmg builds a .dmg and needs macOS; this is $(uname -s)" >&2; exit 1; }
+command -v xcrun >/dev/null || { echo "build:desktop:dmg needs the Xcode command-line tools (xcode-select --install)" >&2; exit 1; }
+./gradlew :app:desktopApp:packageDmg
 """
 
 [tasks."build:web"]
