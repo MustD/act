@@ -9,7 +9,7 @@
 # The test tasks load none of them: a test must pass the same with or without a Client ID. (The two that `deploy` runs
 # inherit its build env, Client ID included — lib.sh's `task` strips only the deploy secrets.)
 #
-# Not managed here: docker (with buildx), ssh, gh (release:desktop; logged in), dpkg-deb (build:desktop:deb) and the
+# Not managed here: docker (with buildx), ssh, gh (release:desktop, release:aur; logged in), makepkg and namcap (release:aur), dpkg-deb (build:desktop:deb) and the
 # Xcode command-line tools (build:desktop:dmg), which the tasks expect on the machine. WiX for build:desktop:msi is fetched by Compose.
 [tools]
 # The JDK Gradle runs on. Nothing downloads one any more — gradle-daemon-jvm.properties names the same vendor and
@@ -218,6 +218,14 @@ run = "deploy/scripts/deploy.sh"
 [tasks."release:desktop"]
 description = "Attach this OS's installer to the existing GitHub Release for act.version; never creates a Release or replaces an asset"
 run = "deploy/scripts/release-desktop.sh"
+
+[tasks."release:aur"]
+description = "Publish io-workshop-act-bin to the AUR from the Release's .deb; `release:aur [pkgrel]`, default 1"
+run = "deploy/scripts/release-aur.sh push"
+
+[tasks."release:aur:local"]
+description = "Render and build the AUR package without pushing; `release:aur:local [deb] [pkgrel]`, the Release asset when no .deb is given"
+run = "deploy/scripts/release-aur.sh local"
 
 [tasks."deploy:status"]
 description = "What is running on the droplet"

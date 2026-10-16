@@ -13,7 +13,7 @@ scripts call the tasks too — so the task names are the interface and the build
 document or script `./gradlew` directly; add a task. `mise tasks` lists them.
 
 mise also provides the tools: `mise install` once per machine fetches the JDK (`java = "zulu-21"`) and Terraform.
-`docker` (with buildx), `ssh`, `gh` (the GitHub CLI, logged in; `release:desktop` uses it), `dpkg-deb` (from `dpkg`; `pacman -S dpkg` on Arch) and, on a Mac, the Xcode command-line tools (`xcrun`; `xcode-select --install`) are **not** managed by mise — the deploy and desktop-installer tasks expect them on the machine. WiX, which `build:desktop:msi` needs, is not either, but the Compose plugin downloads it, so Windows needs nothing extra.
+`docker` (with buildx), `ssh`, `gh` (the GitHub CLI, logged in; `release:desktop` and `release:aur` use it), `dpkg-deb` (from `dpkg`; `pacman -S dpkg` on Arch), `makepkg` and `namcap` (`pacman -S base-devel namcap`; `release:aur`) and, on a Mac, the Xcode command-line tools (`xcrun`; `xcode-select --install`) are **not** managed by mise — the deploy and desktop-installer tasks expect them on the machine. WiX, which `build:desktop:msi` needs, is not either, but the Compose plugin downloads it, so Windows needs nothing extra.
 
 Build / run:
 
@@ -279,6 +279,8 @@ The Client ID ends up in plain text in a public image, deliberately: it is equal
 | `mise run build:desktop:msi`                      | Windows `.msi`; needs Windows. Unsigned, never built; see [Desktop release](#desktop-release)                                              |
 | `mise run build:desktop:dmg`                      | macOS `.dmg`; needs macOS and `xcrun`. Unsigned, never built; see [Desktop release](#desktop-release)                                     |
 | `mise run release:desktop`                        | attaches this OS's installer to the existing GitHub Release for `act.version`; see [Desktop release](#desktop-release)                     |
+| `mise run release:aur [pkgrel]`                   | publishes `io-workshop-act-bin` to the AUR from the Release's `.deb`; `pkgrel` defaults to 1; see [Desktop release](#desktop-release)    |
+| `mise run release:aur:local [deb] [pkgrel]`       | the same without the clone and push: renders, builds with `makepkg`, runs `namcap`, leaves the result in `packaging/aur/build/`; takes a local `.deb` or else the Release's |
 | `mise run deploy [version]`                       | the whole path below; with a version, only redeploys that pushed tag                                                                        |
 | `mise run deploy:status`                          | `ACT_VERSION` and `docker compose ps` on the droplet                                                                                        |
 
@@ -331,6 +333,20 @@ Releases are manual, from the maintainer's machine. In this order:
 `release:desktop` uses `gh`, loads no env file, and uploads the one installer this OS built. It refuses, in this order:
 a dirty tree, a `HEAD` that is not the commit tagged `act.version`, no Release for that version, no installer built, and
 an asset of that name already attached. It never creates or edits a Release and never replaces an asset.
+
+### AUR package
+
+`packaging/aur/PKGBUILD.in` is the template; the AUR git repo is only an output. `release:aur` downloads the Release's
+`io-workshop-act_<act.version>_amd64.deb`, takes its sha256, renders the PKGBUILD, writes `.SRCINFO` with
+`makepkg --printsrcinfo`, builds with `makepkg` as a check, then clones
+`ssh://aur@aur.archlinux.org/io-workshop-act-bin.git` into a scratch folder, refuses if it already holds this
+`pkgver-pkgrel`, commits and pushes. `release:aur:local` stops before the clone, so the PKGBUILD can be checked before a
+1.0.0 Release exists; check the result with `pacman -U packaging/aur/build/*.pkg.tar.zst`.
+
+The package extracts the `.deb`'s data into `/opt/io-workshop-act/` and, because a `.deb`'s maintainer scripts never run
+under `makepkg`, installs the `.desktop` entry, the icon and the `/usr/bin/io-workshop-act` link itself.
+
+One-time setup, by hand: an AUR account with an SSH key registered on it. The first push claims the package name.
 
 ## Architecture
 
