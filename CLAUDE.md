@@ -13,7 +13,7 @@ scripts call the tasks too — so the task names are the interface and the build
 document or script `./gradlew` directly; add a task. `mise tasks` lists them.
 
 mise also provides the tools: `mise install` once per machine fetches the JDK (`java = "zulu-21"`) and Terraform.
-`docker` (with buildx) and `ssh` are **not** managed by mise — the deploy tasks expect them on the machine.
+`docker` (with buildx), `ssh`, `gh` (the GitHub CLI, logged in; `release:desktop` and `release:aur` use it), `dpkg-deb` (from `dpkg`; `pacman -S dpkg` on Arch; `build:desktop:deb`, and `release:aur:local` given a local `.deb`), `makepkg`, `vercmp` and `namcap` (`pacman -S base-devel namcap`; `release:aur`), Git Bash on Windows (`build:desktop:msi` and `release:desktop` set `shell = "bash -c"`, because mise otherwise runs inline tasks under `cmd`) and, on a Mac, the Xcode command-line tools (`xcrun`; `xcode-select --install`) are **not** managed by mise — the deploy and desktop-installer tasks expect them on the machine. WiX, which `build:desktop:msi` needs, is not either, but the Compose plugin downloads it, so Windows needs nothing beyond Git Bash.
 
 Build / run:
 
@@ -275,6 +275,12 @@ The Client ID ends up in plain text in a public image, deliberately: it is equal
 | `mise run build:android:release`                  | `bundleRelease`: signed with the upload key, R8 and resource shrinking on; the mapping ships in the AAB                                       |
 | `mise run deploy:build`                           | `build:web:dist` + `build:server:dist`, then both images (`linux/amd64`)                                                                    |
 | `mise run deploy:push`                            | pushes both; refuses if either tag exists on Docker Hub                                                                                     |
+| `mise run build:desktop:deb`                      | Linux `.deb` of the desktop app (ADR-0009); see [Desktop release](#desktop-release)                                                        |
+| `mise run build:desktop:msi`                      | Windows `.msi`; needs Windows. Unsigned, never built; see [Desktop release](#desktop-release)                                              |
+| `mise run build:desktop:dmg`                      | macOS `.dmg`; needs macOS and `xcrun`. Unsigned, never built; see [Desktop release](#desktop-release)                                     |
+| `mise run release:desktop`                        | attaches this OS's installer to the existing GitHub Release for `act.version`; see [Desktop release](#desktop-release)                     |
+| `mise run release:aur [pkgrel]`                   | publishes `io-workshop-act-bin` to the AUR from the Release's `.deb`; `pkgrel` defaults to 1; see [Desktop release](#desktop-release)    |
+| `mise run release:aur:local [deb] [pkgrel]`       | the same without the clone and push: renders, builds with `makepkg`, runs `namcap`, leaves the result in `packaging/aur/build/`; takes a local `.deb` or else the Release's |
 | `mise run deploy [version]`                       | the whole path below; with a version, only redeploys that pushed tag                                                                        |
 | `mise run deploy:status`                          | `ACT_VERSION` and `docker compose ps` on the droplet                                                                                        |
 
@@ -291,6 +297,58 @@ build and push and redeploys that tag as it is on Docker Hub, after checking bot
 
 The relay's trusted proxies in `docker-compose.yml` are the Compose network (pinned to `172.29.0.0/24`) **and** the edge's
 private IP — both hops, as the table under [Commands](#commands) explains.
+
+## Desktop release
+
+The desktop app ships as the package `io-workshop-act` (ADR-0009): the display name is `ACT`, the package, the
+`/opt/io-workshop-act/` folder and the `.desktop` file are `io-workshop-act`, and the launcher inside is `bin/ACT`
+(jpackage names it after the generic `packageName`). `packageVersion` is `act.version`.
+
+`mise run build:desktop:deb` loads `.secure.build.env`, refuses on a non-Linux OS or without `dpkg-deb` before Gradle
+starts, and runs `:app:desktopApp:packageDeb`. The installer is
+`app/desktopApp/build/compose/binaries/main/deb/io-workshop-act_<act.version>_amd64.deb`. Every `package*Deb/Msi/Dmg`
+task depends on `:core:requireMalClientId`, so without a Client ID it fails with that task's message and writes no
+installer. It is not part of `mise run build`.
+
+`mise run build:desktop:msi` (Windows) and `build:desktop:dmg` (macOS, plus `xcrun`) follow the same pattern: they load
+`.secure.build.env`, check the OS before Gradle starts and name what is missing, and run `packageMsi` / `packageDmg`.
+Neither is part of `mise run build`. `act.version` is 1.0.0 because `.msi` and `.dmg` reject a major version of 0.
+
+**Neither the `.msi` nor the `.dmg` has been built yet** — the maintainer has no Windows or macOS machine, and both
+installers are unsigned:
+
+- Windows: SmartScreen warns about an unknown publisher; choose "More info → Run anyway".
+- macOS: Gatekeeper quarantines the downloaded app; clear it with `xattr -dr com.apple.quarantine /Applications/ACT.app`.
+
+### Release order
+
+Releases are manual, from the maintainer's machine. In this order:
+
+1. Bump `act.version` in `gradle.properties` and commit.
+2. Tag that commit `<act.version>` (no `v`) and write the GitHub Release and its notes by hand.
+3. `mise run build:desktop:<deb|msi|dmg>` on the OS that format needs.
+4. `mise run release:desktop`.
+5. `mise run release:aur` (the `.deb`'s asset must already be attached).
+
+`release:desktop` uses `gh`, loads no env file, and uploads the one installer this OS built. It refuses, in this order:
+a dirty tree, a `HEAD` that is not the commit tagged `act.version`, no Release for that version, no installer built, and
+an asset of that name already attached. It never creates or edits a Release and never replaces an asset.
+
+### AUR package
+
+`packaging/aur/PKGBUILD.in` is the template; the AUR git repo is only an output. `release:aur` downloads the Release's
+`io-workshop-act_<act.version>_amd64.deb`, takes its sha256, renders the PKGBUILD, writes `.SRCINFO` with
+`makepkg --printsrcinfo`, builds with `makepkg` as a check, then clones
+`ssh://aur@aur.archlinux.org/io-workshop-act-bin.git` into a scratch folder, refuses unless this
+`pkgver-pkgrel` is newer than the one it holds (by `vercmp`, so a lower `pkgrel` is refused as well as a repeat), commits
+and pushes. The repo's `LICENSE` travels beside the PKGBUILD as a local source and is installed under
+`/usr/share/licenses/`. `release:aur:local` stops before the clone, so the PKGBUILD can be checked before a
+1.0.0 Release exists; check the result with `pacman -U packaging/aur/build/*.pkg.tar.zst`.
+
+The package extracts the `.deb`'s data into `/opt/io-workshop-act/` and, because a `.deb`'s maintainer scripts never run
+under `makepkg`, installs the `.desktop` entry, the icon and the `/usr/bin/io-workshop-act` link itself.
+
+One-time setup, by hand: an AUR account with an SSH key registered on it. The first push claims the package name.
 
 ## Architecture
 

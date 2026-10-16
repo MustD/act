@@ -107,11 +107,44 @@ class FileKeyValueStoreTest {
     }
 
     @Test
-    fun the_default_path_uses_appdata_on_windows() {
-        val env = mapOf("APPDATA" to "C:\\Users\\someone\\AppData\\Roaming", "HOME" to "C:\\Users\\someone")
+    fun the_default_path_uses_local_appdata_on_windows() {
+        val env = mapOf(
+            "LOCALAPPDATA" to "C:\\Users\\someone\\AppData\\Local",
+            "APPDATA" to "C:\\Users\\someone\\AppData\\Roaming",
+            "HOME" to "C:\\Users\\someone",
+        )
         val path = FileKeyValueStore.defaultPathFor("ns", env::get, osName = "Windows 11")
 
-        assertTrue(path.toString().contains("Roaming"), "was $path")
+        assertTrue(path.toString().contains("Local"), "was $path")
+        assertTrue(!path.toString().contains("Roaming"), "was $path")
         assertTrue(path.toString().endsWith("store.json"), "was $path")
+    }
+
+    @Test
+    fun the_windows_default_falls_back_to_appdata_local_when_local_appdata_is_blank() {
+        val env = mapOf("LOCALAPPDATA" to " ", "APPDATA" to "C:\\Roaming", "HOME" to "C:\\Users\\someone")
+        val path = FileKeyValueStore.defaultPathFor("ns", env::get, osName = "Windows 11")
+
+        assertTrue(path.toString().contains("AppData"), "was $path")
+        assertTrue(path.toString().contains("Local"), "was $path")
+        assertTrue(!path.toString().contains("Roaming"), "was $path")
+    }
+
+    @Test
+    fun the_default_path_uses_application_support_on_macos() {
+        val env = mapOf("HOME" to "/Users/someone")
+        assertEquals(
+            Path.of("/Users/someone/Library/Application Support", "ns", "store.json"),
+            FileKeyValueStore.defaultPathFor("ns", env::get, osName = "Mac OS X"),
+        )
+    }
+
+    @Test
+    fun macos_ignores_xdg_state_home() {
+        val env = mapOf("XDG_STATE_HOME" to "/tmp/state", "HOME" to "/Users/someone")
+        assertEquals(
+            Path.of("/Users/someone/Library/Application Support", "ns", "store.json"),
+            FileKeyValueStore.defaultPathFor("ns", env::get, osName = "Mac OS X"),
+        )
     }
 }

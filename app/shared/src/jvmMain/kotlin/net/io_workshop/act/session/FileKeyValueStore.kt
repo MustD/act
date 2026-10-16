@@ -13,7 +13,7 @@ import java.nio.file.attribute.PosixFilePermission
 import java.nio.file.attribute.PosixFilePermissions
 
 /**
- * Desktop [KeyValueStore]: one JSON file, `0600`, under `$XDG_STATE_HOME`.
+ * Desktop [KeyValueStore]: one JSON file, `0600`, in the OS's per-user state folder (see [defaultPathFor]).
  *
  * No OS keychain — see `docs/adr/0002-hand-rolled-key-value-store.md`. Every candidate library
  * looked dormant, pulled JNA plus native bits that complicate `jpackage`, and headless Linux
@@ -79,8 +79,13 @@ class FileKeyValueStore(
         private val OWNER_ONLY_DIR: Set<PosixFilePermission> = PosixFilePermissions.fromString("rwx------")
 
         /**
-         * `$XDG_STATE_HOME/<namespace>/store.json`, falling back to the spec's
-         * `~/.local/state`, and to `%APPDATA%` on Windows.
+         * `<namespace>/store.json` under the OS's per-user, non-roaming state folder:
+         * - Windows: `%LOCALAPPDATA%`, falling back to `<home>\AppData\Local`. Never `%APPDATA%`,
+         *   which a roaming profile copies to other machines, refresh token included.
+         * - macOS: `~/Library/Application Support`; `XDG_STATE_HOME` is not consulted.
+         * - Anything else: `$XDG_STATE_HOME`, falling back to `~/.local/state`.
+         *
+         * `instance.lock` is resolved beside this file, so it follows.
          */
         fun defaultPathFor(
             namespace: String,
@@ -88,10 +93,11 @@ class FileKeyValueStore(
             osName: String = System.getProperty("os.name").orEmpty(),
         ): Path {
             val home = env("HOME") ?: System.getProperty("user.home").orEmpty()
-            val base = if (osName.startsWith("Windows", ignoreCase = true)) {
-                env("APPDATA")?.takeIf { it.isNotBlank() } ?: "$home\\AppData\\Roaming"
-            } else {
-                env("XDG_STATE_HOME")?.takeIf { it.isNotBlank() } ?: "$home/.local/state"
+            val base = when {
+                osName.startsWith("Windows", ignoreCase = true) ->
+                    env("LOCALAPPDATA")?.takeIf { it.isNotBlank() } ?: "$home\\AppData\\Local"
+                osName.startsWith("Mac", ignoreCase = true) -> "$home/Library/Application Support"
+                else -> env("XDG_STATE_HOME")?.takeIf { it.isNotBlank() } ?: "$home/.local/state"
             }
             return Paths.get(base, namespace, "store.json")
         }
