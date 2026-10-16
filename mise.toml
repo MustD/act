@@ -9,7 +9,7 @@
 # The test tasks load none of them: a test must pass the same with or without a Client ID. (The two that `deploy` runs
 # inherit its build env, Client ID included — lib.sh's `task` strips only the deploy secrets.)
 #
-# Not managed here: docker (with buildx) and ssh, which the deploy tasks expect on the machine.
+# Not managed here: docker (with buildx), ssh and dpkg-deb (build:desktop:deb), which the tasks expect on the machine.
 [tools]
 # The JDK Gradle runs on. Nothing downloads one any more — gradle-daemon-jvm.properties names the same vendor and
 # version and has no toolchain URLs — so a different JDK fails the build rather than being replaced.
@@ -91,6 +91,15 @@ run = "./gradlew :app:androidApp:assembleDebug"
 description = "Signed, minified Android App Bundle; needs .secure.release.env"
 env = { _ = { file = [".secure.build.env", ".secure.release.env"] } }
 run = "./gradlew :app:androidApp:bundleRelease"
+
+[tasks."build:desktop:deb"]
+description = "Linux .deb installer (io-workshop-act) in app/desktopApp/build/compose/binaries; fails without a Client ID"
+env = { _ = { file = ".secure.build.env" } }
+run = """
+[ "$(uname -s)" = Linux ] || { echo "build:desktop:deb builds a .deb and needs Linux; this is $(uname -s)" >&2; exit 1; }
+command -v dpkg-deb >/dev/null || { echo "build:desktop:deb needs dpkg-deb on PATH (Arch: pacman -S dpkg; Debian/Ubuntu: dpkg)" >&2; exit 1; }
+./gradlew :app:desktopApp:packageDeb
+"""
 
 [tasks."build:web"]
 description = "Development Wasm bundle, no server; build:web:dist is the production one"

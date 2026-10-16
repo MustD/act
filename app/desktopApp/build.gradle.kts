@@ -24,8 +24,13 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "net.io_workshop.act"
-            packageVersion = "1.0.0"
+            // The display name. The package, install folder and launcher are `io-workshop-act` (ADR-0009), set
+            // below for Linux, where the generic name would otherwise become all three.
+            packageName = "ACT"
+            // From act.version, as :server's version and Android's versionName are: no second number to bump.
+            packageVersion = providers.gradleProperty("act.version").get()
+
+            linux { packageName = "io-workshop-act" }
 
             // Rendered from docs/play-assets/icon.svg by docs/play-assets/regenerate.sh.
             linux { iconFile.set(project.file("icons/icon.png")) }
@@ -40,4 +45,10 @@ compose.desktop {
             modules("jdk.httpserver")
         }
     }
+}
+
+// On the tasks that write an installer, not only on a lifecycle task above them, for the same reason as the Android
+// release tasks: no installer without a Client ID is ever written. The check itself lives in :core.
+tasks.matching { it.name.matches(Regex("package(Release)?(Deb|Msi|Dmg)")) }.configureEach {
+    dependsOn(":core:requireMalClientId")
 }

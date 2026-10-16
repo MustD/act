@@ -13,7 +13,7 @@ scripts call the tasks too — so the task names are the interface and the build
 document or script `./gradlew` directly; add a task. `mise tasks` lists them.
 
 mise also provides the tools: `mise install` once per machine fetches the JDK (`java = "zulu-21"`) and Terraform.
-`docker` (with buildx) and `ssh` are **not** managed by mise — the deploy tasks expect them on the machine.
+`docker` (with buildx), `ssh` and `dpkg-deb` (from `dpkg`; `pacman -S dpkg` on Arch) are **not** managed by mise — the deploy and desktop-installer tasks expect them on the machine.
 
 Build / run:
 
@@ -275,6 +275,7 @@ The Client ID ends up in plain text in a public image, deliberately: it is equal
 | `mise run build:android:release`                  | `bundleRelease`: signed with the upload key, R8 and resource shrinking on; the mapping ships in the AAB                                       |
 | `mise run deploy:build`                           | `build:web:dist` + `build:server:dist`, then both images (`linux/amd64`)                                                                    |
 | `mise run deploy:push`                            | pushes both; refuses if either tag exists on Docker Hub                                                                                     |
+| `mise run build:desktop:deb`                      | Linux `.deb` of the desktop app (ADR-0009); see [Desktop release](#desktop-release)                                                        |
 | `mise run deploy [version]`                       | the whole path below; with a version, only redeploys that pushed tag                                                                        |
 | `mise run deploy:status`                          | `ACT_VERSION` and `docker compose ps` on the droplet                                                                                        |
 
@@ -291,6 +292,18 @@ build and push and redeploys that tag as it is on Docker Hub, after checking bot
 
 The relay's trusted proxies in `docker-compose.yml` are the Compose network (pinned to `172.29.0.0/24`) **and** the edge's
 private IP — both hops, as the table under [Commands](#commands) explains.
+
+## Desktop release
+
+The desktop app ships as the package `io-workshop-act` (ADR-0009): the display name is `ACT`, the package, the
+`/opt/io-workshop-act/` folder and the `.desktop` file are `io-workshop-act`, and the launcher inside is `bin/ACT`
+(jpackage names it after the generic `packageName`). `packageVersion` is `act.version`.
+
+`mise run build:desktop:deb` loads `.secure.build.env`, refuses on a non-Linux OS or without `dpkg-deb` before Gradle
+starts, and runs `:app:desktopApp:packageDeb`. The installer is
+`app/desktopApp/build/compose/binaries/main/deb/io-workshop-act_<act.version>_amd64.deb`. Every `package*Deb/Msi/Dmg`
+task depends on `:core:requireMalClientId`, so without a Client ID it fails with that task's message and writes no
+installer. It is not part of `mise run build`.
 
 ## Architecture
 
