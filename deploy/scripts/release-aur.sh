@@ -7,8 +7,9 @@
 
 MODE="${1:?usage: release-aur.sh push [pkgrel] | local [deb] [pkgrel]}"
 shift
+[[ $MODE == push || $MODE == local ]] || { echo "Unknown mode '$MODE' (push or local)." >&2; exit 1; }
 DEB_ARG=""
-if [ "$MODE" = local ] && [ "${1:-}" != "" ] && [[ $1 != [0-9]* ]]; then DEB_ARG="$1"; shift; fi
+if [ "$MODE" = local ] && [[ ${1:-} == *.deb ]]; then DEB_ARG="$1"; shift; fi
 PKGREL="${1:-1}"
 
 for t in makepkg namcap gh; do
