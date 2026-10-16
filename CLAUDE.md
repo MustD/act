@@ -13,7 +13,7 @@ scripts call the tasks too — so the task names are the interface and the build
 document or script `./gradlew` directly; add a task. `mise tasks` lists them.
 
 mise also provides the tools: `mise install` once per machine fetches the JDK (`java = "zulu-21"`) and Terraform.
-`docker` (with buildx), `ssh`, `gh` (the GitHub CLI, logged in; `release:desktop` and `release:aur` use it), `dpkg-deb` (from `dpkg`; `pacman -S dpkg` on Arch), `makepkg` and `namcap` (`pacman -S base-devel namcap`; `release:aur`) and, on a Mac, the Xcode command-line tools (`xcrun`; `xcode-select --install`) are **not** managed by mise — the deploy and desktop-installer tasks expect them on the machine. WiX, which `build:desktop:msi` needs, is not either, but the Compose plugin downloads it, so Windows needs nothing extra.
+`docker` (with buildx), `ssh`, `gh` (the GitHub CLI, logged in; `release:desktop` and `release:aur` use it), `dpkg-deb` (from `dpkg`; `pacman -S dpkg` on Arch; `build:desktop:deb`, and `release:aur:local` given a local `.deb`), `makepkg`, `vercmp` and `namcap` (`pacman -S base-devel namcap`; `release:aur`), Git Bash on Windows (`build:desktop:msi` and `release:desktop` set `shell = "bash -c"`, because mise otherwise runs inline tasks under `cmd`) and, on a Mac, the Xcode command-line tools (`xcrun`; `xcode-select --install`) are **not** managed by mise — the deploy and desktop-installer tasks expect them on the machine. WiX, which `build:desktop:msi` needs, is not either, but the Compose plugin downloads it, so Windows needs nothing beyond Git Bash.
 
 Build / run:
 
@@ -339,8 +339,10 @@ an asset of that name already attached. It never creates or edits a Release and 
 `packaging/aur/PKGBUILD.in` is the template; the AUR git repo is only an output. `release:aur` downloads the Release's
 `io-workshop-act_<act.version>_amd64.deb`, takes its sha256, renders the PKGBUILD, writes `.SRCINFO` with
 `makepkg --printsrcinfo`, builds with `makepkg` as a check, then clones
-`ssh://aur@aur.archlinux.org/io-workshop-act-bin.git` into a scratch folder, refuses if it already holds this
-`pkgver-pkgrel`, commits and pushes. `release:aur:local` stops before the clone, so the PKGBUILD can be checked before a
+`ssh://aur@aur.archlinux.org/io-workshop-act-bin.git` into a scratch folder, refuses unless this
+`pkgver-pkgrel` is newer than the one it holds (by `vercmp`, so a lower `pkgrel` is refused as well as a repeat), commits
+and pushes. The repo's `LICENSE` travels beside the PKGBUILD as a local source and is installed under
+`/usr/share/licenses/`. `release:aur:local` stops before the clone, so the PKGBUILD can be checked before a
 1.0.0 Release exists; check the result with `pacman -U packaging/aur/build/*.pkg.tar.zst`.
 
 The package extracts the `.deb`'s data into `/opt/io-workshop-act/` and, because a `.deb`'s maintainer scripts never run

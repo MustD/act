@@ -9,8 +9,10 @@
 # The test tasks load none of them: a test must pass the same with or without a Client ID. (The two that `deploy` runs
 # inherit its build env, Client ID included — lib.sh's `task` strips only the deploy secrets.)
 #
-# Not managed here: docker (with buildx), ssh, gh (release:desktop, release:aur; logged in), makepkg and namcap (release:aur), dpkg-deb (build:desktop:deb) and the
-# Xcode command-line tools (build:desktop:dmg), which the tasks expect on the machine. WiX for build:desktop:msi is fetched by Compose.
+# Not managed here: docker (with buildx), ssh, gh (release:desktop, release:aur; logged in), makepkg, vercmp and namcap
+# (release:aur), dpkg-deb (build:desktop:deb, release:aur:local with a .deb), Git Bash on Windows (build:desktop:msi,
+# release:desktop) and the Xcode command-line tools (build:desktop:dmg), which the tasks expect on the machine. WiX for
+# build:desktop:msi is fetched by Compose.
 [tools]
 # The JDK Gradle runs on. Nothing downloads one any more — gradle-daemon-jvm.properties names the same vendor and
 # version and has no toolchain URLs — so a different JDK fails the build rather than being replaced.
@@ -105,6 +107,8 @@ command -v dpkg-deb >/dev/null || { echo "build:desktop:deb needs dpkg-deb on PA
 [tasks."build:desktop:msi"]
 description = "Windows .msi installer (unsigned, never built); fails without a Client ID"
 env = { _ = { file = ".secure.build.env" } }
+# mise runs inline tasks under cmd on Windows; this script and ./gradlew need Git Bash's bash.
+shell = "bash -c"
 run = """
 case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) ;; *) echo "build:desktop:msi builds an .msi and needs Windows; this is $(uname -s)" >&2; exit 1;; esac
 ./gradlew :app:desktopApp:packageMsi
@@ -217,6 +221,8 @@ run = "deploy/scripts/deploy.sh"
 
 [tasks."release:desktop"]
 description = "Attach this OS's installer to the existing GitHub Release for act.version; never creates a Release or replaces an asset"
+# cmd on Windows cannot run a .sh; under bash this is the same command on every OS.
+shell = "bash -c"
 run = "deploy/scripts/release-desktop.sh"
 
 [tasks."release:aur"]

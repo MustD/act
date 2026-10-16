@@ -12,8 +12,13 @@ DEB_ARG=""
 if [ "$MODE" = local ] && [[ ${1:-} == *.deb ]]; then DEB_ARG="$1"; shift; fi
 PKGREL="${1:-1}"
 
-for t in makepkg namcap gh; do
-	command -v "$t" >/dev/null || { echo "release:aur needs $t on PATH (makepkg, namcap: pacman -S base-devel namcap)." >&2; exit 1; }
+# gh only fetches the Release's .deb, dpkg-deb only reads a local one's version, vercmp only orders the AUR's versions.
+TOOLS=(makepkg namcap)
+if [ -n "$DEB_ARG" ]; then TOOLS+=(dpkg-deb); else TOOLS+=(gh); fi
+[ "$MODE" = push ] && TOOLS+=(vercmp)
+for t in "${TOOLS[@]}"; do
+	command -v "$t" >/dev/null ||
+		{ echo "release:aur needs $t on PATH (makepkg, vercmp: pacman; namcap: pacman -S namcap; dpkg-deb: pacman -S dpkg)." >&2; exit 1; }
 done
 [[ $PKGREL =~ ^[1-9][0-9]*$ ]] || { echo "pkgrel must be a positive integer, got: $PKGREL" >&2; exit 1; }
 
@@ -28,9 +33,9 @@ mkdir "$BUILD"
 
 if [ -n "$DEB_ARG" ]; then
 	[ -f "$DEB_ARG" ] || { echo "No such file: $DEB_ARG" >&2; exit 1; }
-	have="$(dpkg-deb -f "$DEB_ARG" Version 2>/dev/null || true)"
-	[ "$have" = "$VERSION" ] ||
-		{ echo "$DEB_ARG is version '$have', act.version is $VERSION. Build it again: mise run build:desktop:deb" >&2; exit 1; }
+	DEB_VERSION="$(dpkg-deb -f "$DEB_ARG" Version 2>/dev/null || true)"
+	[ "$DEB_VERSION" = "$VERSION" ] ||
+		{ echo "$DEB_ARG is version '$DEB_VERSION', act.version is $VERSION. Build it again: mise run build:desktop:deb" >&2; exit 1; }
 	cp "$DEB_ARG" "$BUILD/$DEB"
 else
 	gh auth status >/dev/null 2>&1 || { echo "gh is not logged in — run: gh auth login" >&2; exit 1; }
@@ -40,7 +45,11 @@ fi
 
 # The checksum is taken from the very file makepkg will build from, which is what users download.
 SHA="$(sha256sum "$BUILD/$DEB" | cut -d' ' -f1)"
-sed -e "s/@PKGVER@/$VERSION/" -e "s/@PKGREL@/$PKGREL/" -e "s/@SHA256@/$SHA/" packaging/aur/PKGBUILD.in >"$BUILD/PKGBUILD"
+# The licence travels in the AUR repo beside the PKGBUILD, so it needs no Release asset of its own.
+cp "$ROOT/LICENSE" "$BUILD/LICENSE"
+LICENSE_SHA="$(sha256sum "$BUILD/LICENSE" | cut -d' ' -f1)"
+sed -e "s/@PKGVER@/$VERSION/" -e "s/@PKGREL@/$PKGREL/" -e "s/@SHA256@/$SHA/" -e "s/@LICENSE_SHA256@/$LICENSE_SHA/" \
+	packaging/aur/PKGBUILD.in >"$BUILD/PKGBUILD"
 
 (
 	cd "$BUILD"
@@ -54,20 +63,22 @@ if [ "$MODE" = local ]; then
 	OUT="$ROOT/packaging/aur/build"
 	rm -rf "$OUT"
 	mkdir -p "$OUT"
-	cp "$BUILD/PKGBUILD" "$BUILD/.SRCINFO" "$BUILD"/*.pkg.tar.* "$OUT/"
+	cp "$BUILD/PKGBUILD" "$BUILD/.SRCINFO" "$BUILD/LICENSE" "$BUILD"/*.pkg.tar.* "$OUT/"
 	echo "Built $OUT/ — not pushed. Check: namcap output above, then pacman -U $OUT/*.pkg.tar.*"
 	exit 0
 fi
 
 REPO="$WORK/aur"
 git clone ssh://aur@aur.archlinux.org/io-workshop-act-bin.git "$REPO"
-if [ -f "$REPO/.SRCINFO" ] &&
-	grep -qx "[[:space:]]*pkgver = $VERSION" "$REPO/.SRCINFO" && grep -qx "[[:space:]]*pkgrel = $PKGREL" "$REPO/.SRCINFO"; then
-	echo "The AUR already has io-workshop-act-bin $VERSION-$PKGREL. Pass a higher pkgrel; versions are never pushed twice." >&2
-	exit 1
+if [ -f "$REPO/.SRCINFO" ]; then
+	PUBLISHED="$(awk -F' = ' '$1 ~ /^[[:space:]]*pkgver$/ {v=$2} $1 ~ /^[[:space:]]*pkgrel$/ {r=$2} END {print v "-" r}' "$REPO/.SRCINFO")"
+	if [ "$(vercmp "$VERSION-$PKGREL" "$PUBLISHED")" -le 0 ]; then
+		echo "The AUR already has io-workshop-act-bin $PUBLISHED; $VERSION-$PKGREL is not newer. Pass a higher pkgrel; versions are never pushed twice or backwards." >&2
+		exit 1
+	fi
 fi
-cp "$BUILD/PKGBUILD" "$BUILD/.SRCINFO" "$REPO/"
-git -C "$REPO" add PKGBUILD .SRCINFO
+cp "$BUILD/PKGBUILD" "$BUILD/.SRCINFO" "$BUILD/LICENSE" "$REPO/"
+git -C "$REPO" add PKGBUILD .SRCINFO LICENSE
 git -C "$REPO" commit -m "io-workshop-act-bin $VERSION-$PKGREL"
 git -C "$REPO" push origin HEAD:master
 echo "Pushed io-workshop-act-bin $VERSION-$PKGREL to the AUR."

@@ -6,15 +6,15 @@ pkgrel=@PKGREL@
 pkgdesc='ACT — a MyAnimeList client (desktop build)'
 arch=('x86_64')
 url='https://github.com/MustD/act'
-license=('custom')
+license=('MIT')
 # The bundled runtime brings its own JVM; these are what its AWT and Skia libraries link against.
 depends=('alsa-lib' 'fontconfig' 'freetype2' 'gcc-libs' 'glibc' 'libglvnd' 'libx11' 'libxext' 'libxi' 'libxrender'
          'libxtst' 'xdg-utils')
 options=('!strip')
 _deb="io-workshop-act_${pkgver}_amd64.deb"
-source=("$_deb::https://github.com/MustD/act/releases/download/$pkgver/$_deb")
+source=("$_deb::https://github.com/MustD/act/releases/download/$pkgver/$_deb" 'LICENSE')
 noextract=("$_deb")
-sha256sums=('@SHA256@')
+sha256sums=('@SHA256@' '@LICENSE_SHA256@')
 
 package() {
 	# A .deb's maintainer scripts never run here, so the menu entry, icon and /usr/bin link are installed by hand.
@@ -38,6 +38,8 @@ Icon=io-workshop-act
 Terminal=false
 Categories=Network;Utility;
 DESKTOP
+
+	install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 
 	# jpackage's own entry points at /opt paths and Categories=Unknown; ours replaces it.
 	rm -f "$pkgdir/opt/io-workshop-act/lib/io-workshop-act-ACT.desktop"

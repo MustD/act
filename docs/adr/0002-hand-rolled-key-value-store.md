@@ -27,7 +27,8 @@ out the closest candidates.
   instead": since Android 10 enforces file-based encryption device-wide and the app sandbox already blocks other apps,
   the security delta was approximately zero while adding StrictMode violations and Tink keyset-corruption crashes. On
   Android, **excluding the store from Auto Backup matters more than encrypting it** — see ticket 14.
-- Desktop writes a `0600` file under `$XDG_STATE_HOME`. The interface is deliberately narrow enough that an OS-keychain
+- Desktop writes a `0600` file under `$XDG_STATE_HOME` on Linux, `%LOCALAPPDATA%` on Windows and
+  `~/Library/Application Support` on macOS. The interface is deliberately narrow enough that an OS-keychain
   implementation can be swapped in later without touching a caller.
 - Keys are versioned (`mal.session.v1`), so a format change is a clean re-login rather than a crash loop. The store
   holds three such records, not one: the Session, the Pending Authorization and the Anime List's Layout
