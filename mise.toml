@@ -9,8 +9,8 @@
 # The test tasks load none of them: a test must pass the same with or without a Client ID. (The two that `deploy` runs
 # inherit its build env, Client ID included — lib.sh's `task` strips only the deploy secrets.)
 #
-# Not managed here: docker (with buildx), ssh, dpkg-deb (build:desktop:deb) and the Xcode command-line tools
-# (build:desktop:dmg), which the tasks expect on the machine. WiX for build:desktop:msi is fetched by Compose.
+# Not managed here: docker (with buildx), ssh, gh (release:desktop; logged in), dpkg-deb (build:desktop:deb) and the
+# Xcode command-line tools (build:desktop:dmg), which the tasks expect on the machine. WiX for build:desktop:msi is fetched by Compose.
 [tools]
 # The JDK Gradle runs on. Nothing downloads one any more — gradle-daemon-jvm.properties names the same vendor and
 # version and has no toolchain URLs — so a different JDK fails the build rather than being replaced.
@@ -214,6 +214,10 @@ run = "deploy/scripts/push.sh"
 description = "Test, build, push and deploy act.version; `deploy <version>` redeploys that pushed tag"
 env = { _ = { file = [".secure.build.env", ".secure.deploy.env"] } }
 run = "deploy/scripts/deploy.sh"
+
+[tasks."release:desktop"]
+description = "Attach this OS's installer to the existing GitHub Release for act.version; never creates a Release or replaces an asset"
+run = "deploy/scripts/release-desktop.sh"
 
 [tasks."deploy:status"]
 description = "What is running on the droplet"
