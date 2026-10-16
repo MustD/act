@@ -30,10 +30,12 @@ compose.desktop {
             // From act.version, as :server's version and Android's versionName are: no second number to bump.
             packageVersion = providers.gradleProperty("act.version").get()
 
-            linux { packageName = "io-workshop-act" }
 
             // Rendered from docs/play-assets/icon.svg by docs/play-assets/regenerate.sh.
-            linux { iconFile.set(project.file("icons/icon.png")) }
+            linux {
+                packageName = "io-workshop-act"
+                iconFile.set(project.file("icons/icon.png"))
+            }
             windows { iconFile.set(project.file("icons/icon.ico")) }
             macOS { iconFile.set(project.file("icons/icon.icns")) }
 
