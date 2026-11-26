@@ -25,7 +25,7 @@ Build / run:
 ```bash
 mise run build:android      # Android debug APK
 mise run build:android:release  # signed, minified .aab; needs .secure.release.env (the upload key)
-mise run run:android        # install the debug build on the real device in ANDROID_TEST_DEVICE_ID and launch it
+mise run run:android        # install the debug build on the attached device (USB first, then wireless) and launch it
 mise run run:android:release  # the same with the signed, minified release build; needs .secure.release.env
 mise run run:desktop        # Desktop
 mise run run:desktop:hot    # Desktop with Compose Hot Reload
@@ -34,16 +34,20 @@ mise run run:server         # Ktor server on :18010
 mise run run:web            # Web, Wasm target, on :18020; no live reload
 mise run run:web:hot        # Web with live reload on change
 mise run build:web          # Web development bundle only, no server (build:web:dist is the production one)
-mise run build              # everything: every target compiled, every test run
+mise run build              # everything: every target compiled, every test run; release APK debug-signed without the upload key
 ```
 
 `run:web` and `run:web:hot` pass Gradle `--continuous`, which is required for the web target, not just for hot reload: the run task
 starts webpack-dev-server without blocking, so without it Gradle finishes (`BUILD SUCCESSFUL` in well under a second)
 and takes the dev server down with it, leaving nothing on the port.
 
-The `run:desktop*`, `run:web*`, `run:android` and `build*` tasks load `.secure.build.env` (the Client ID); `run:android` reads `ANDROID_TEST_DEVICE_ID` from it too (the serial from `adb devices`); the `test*` tasks load
+The `run:desktop*`, `run:web*`, `run:android` and `build*` tasks load `.secure.build.env` (the Client ID); the `test*` tasks load
 nothing, because a test must pass the same with or without one — the two that `deploy` runs inherit its Client ID all
 the same. See [Deployment](#deployment) for the env files.
+
+`run:android` and `run:android:release` install on whatever `adb devices` lists as ready — a USB device first, then a
+wireless one, then an emulator (`deploy/scripts/android-device.sh`) — and fail naming any device adb sees but cannot
+use (unauthorized, offline). There is no device setting to fill in.
 
 `:server` reads its configuration from the environment (`RelayConfig`, parsed once in `main()` and passed to
 `Application.module`); with nothing set it binds `127.0.0.1:18010` and allows `RelayConfig.DEFAULT_CORS_ORIGINS` —
@@ -257,7 +261,7 @@ bring the original failure back; the edge must pass `/mal` through with `PATCH` 
 `Cross-Origin-Opener-Policy` (see [the popup](#web-sign-in-the-popup-and-two-things-that-must-not-change)).
 
 **Env files:** three, gitignored (`.secure.*.env`), each with a committed `.example` listing every key.
-`.secure.build.env` holds `MAL_CLIENT_ID`, `DOCKERHUB_USER` and `ANDROID_TEST_DEVICE_ID`; `.secure.release.env` holds the four `ACT_UPLOAD_*` upload-keystore variables, is loaded by `build:android:release` and `run:android:release` alone, and Gradle reads it only through `providers.environmentVariable` (`requireUploadSigning` fails a release build naming what is unset; debug builds never read it); `.secure.deploy.env` holds `DIGITALOCEAN_TOKEN`,
+`.secure.build.env` holds `MAL_CLIENT_ID` and `DOCKERHUB_USER`; `.secure.release.env` holds the four `ACT_UPLOAD_*` upload-keystore variables, is required by `build:android:release` and `run:android:release` and loaded by `build` when present, and Gradle reads it only through `providers.environmentVariable` (`requireUploadSigning` fails a release build naming what is unset; debug builds never read it). The one exception is `-Pact.allowDebugSigning=true`, which only `build` passes: there a missing upload key signs the release APK with the debug key and `requireUploadSigning` warns instead of failing, so `mise run build` works in a checkout without the keystore; `.secure.deploy.env` holds `DIGITALOCEAN_TOKEN`,
 `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`, `EDGE_SSH` and the `TF_VAR_*`. **mise reads them, per task**
 (`env = { _ = { file = ... } }` in `mise.toml`) — never a global `[env]` — so the DO token reaches only `infra:*` and
 `deploy*`; `deploy` and `deploy:status` load the file for `EDGE_SSH` and `unset` the token at once (`terraform output`

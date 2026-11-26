@@ -40,6 +40,12 @@ val uploadEnv = listOf(
     "ACT_UPLOAD_KEY_ALIAS",
     "ACT_UPLOAD_KEY_PASSWORD",
 ).associateWith { providers.environmentVariable(it) }
+val uploadKeySet = uploadEnv.values.all { !it.orNull.isNullOrEmpty() }
+// Passed by `mise run build` only: `gradle build` includes the release APK, and a checkout without the upload key
+// should still build everything. Never by build:android:release or run:android:release — a debug-signed artifact cannot
+// go to Play. `requireUploadSigning` warns on every run that falls back.
+val allowDebugSigning = providers.gradleProperty("act.allowDebugSigning").map { it.toBoolean() }.orElse(false)
+val releaseSignedWithDebugKey = !uploadKeySet && allowDebugSigning.get()
 
 android {
     namespace = "net.io_workshop.act"
@@ -72,7 +78,8 @@ android {
     }
     signingConfigs {
         // Upload key, from the environment only. Values stay null when unset, so debug builds and
-        // configuration never need them; `requireUploadSigning` is what fails a release build.
+        // configuration never need them; `requireUploadSigning` is what fails a release build (or, under
+        // act.allowDebugSigning, warns that it fell back to the debug key).
         create("upload") {
             uploadEnv["ACT_UPLOAD_STORE_FILE"]!!.orNull?.let { storeFile = file(it) }
             storePassword = uploadEnv["ACT_UPLOAD_STORE_PASSWORD"]!!.orNull
@@ -82,7 +89,7 @@ android {
     }
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("upload")
+            signingConfig = signingConfigs.getByName(if (releaseSignedWithDebugKey) "debug" else "upload")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -107,11 +114,20 @@ androidComponents {
 }
 
 val requireUploadSigning by tasks.registering {
-    description = "Fails naming the ACT_UPLOAD_* variables that are unset or empty"
+    description = "Fails naming the ACT_UPLOAD_* variables that are unset or empty; warns instead under act.allowDebugSigning"
     val values = uploadEnv.mapValues { (_, provider) -> provider.orElse("") }
+    val fallBack = allowDebugSigning
     inputs.property("uploadEnvSet", providers.provider { values.mapValues { it.value.get().isNotEmpty() } })
+    inputs.property("allowDebugSigning", fallBack)
     doLast {
         val missing = values.filterValues { it.get().isEmpty() }.keys
+        if (missing.isNotEmpty() && fallBack.get()) {
+            logger.warn(
+                "The release build is signed with the DEBUG key, not the upload key: ${missing.joinToString()} " +
+                    "unset. Fine for `mise run build`; Play will reject it. Fill in .secure.release.env for a real one."
+            )
+            return@doLast
+        }
         check(missing.isEmpty()) {
             "A release build is signed with the upload key and these variables are unset: " +
                 "${missing.joinToString()}. Fill in .secure.release.env (see .secure.release.env.example) and run " +

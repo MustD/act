@@ -4,8 +4,8 @@
 #
 # mise loads the env files per task — never a global [env] — so DIGITALOCEAN_TOKEN reaches only the infra and deploy
 # tasks, not Gradle or an interactive shell. See CLAUDE.md, "Deployment".
-#   .secure.build.env   MAL_CLIENT_ID, DOCKERHUB_USER, ANDROID_TEST_DEVICE_ID   (run:desktop*, run:web*, run:android*, build*, deploy, deploy:build, deploy:push)
-#   .secure.release.env ACT_UPLOAD_* (the upload keystore)   (build:android:release, run:android:release)
+#   .secure.build.env   MAL_CLIENT_ID, DOCKERHUB_USER   (run:desktop*, run:web*, run:android*, build*, deploy, deploy:build, deploy:push)
+#   .secure.release.env ACT_UPLOAD_* (the upload keystore)   (build:android:release, run:android:release; build, if present)
 #   .secure.deploy.env  DIGITALOCEAN_TOKEN, AWS_* (state bucket), EDGE_SSH, TF_VAR_*   (infra:*, deploy, deploy:status)
 # The test tasks load none of them: a test must pass the same with or without a Client ID. (The two that `deploy` runs
 # inherit its build env, Client ID included — lib.sh's `task` strips only the deploy secrets.)
@@ -53,28 +53,22 @@ env = { _ = { file = ".secure.build.env" } }
 run = "gradle :app:webApp:wasmJsBrowserDevelopmentRun --continuous"
 
 [tasks."run:android"]
-description = "Install the debug build on the device named by ANDROID_TEST_DEVICE_ID and launch it"
+description = "Install the debug build on the attached device (USB first, then wireless) and launch it"
 env = { _ = { file = ".secure.build.env" } }
 run = """
-if [ -z "${ANDROID_TEST_DEVICE_ID:-}" ]; then
-  echo "ANDROID_TEST_DEVICE_ID is not set: put the serial from adb devices in .secure.build.env" >&2
-  exit 1
-fi
 # adb and Gradle's installDebug both read ANDROID_SERIAL, so one value picks the device for install and launch.
-export ANDROID_SERIAL="$ANDROID_TEST_DEVICE_ID"
+ANDROID_SERIAL="$(deploy/scripts/android-device.sh)" || exit 1
+export ANDROID_SERIAL
 gradle :app:androidApp:installDebug
 adb shell am start -n net.io_workshop.act/.MainActivity
 """
 
 [tasks."run:android:release"]
-description = "Install the signed, minified release build on ANDROID_TEST_DEVICE_ID and launch it; needs .secure.release.env"
+description = "Install the signed, minified release build on the attached device (USB first) and launch it; needs .secure.release.env"
 env = { _ = { file = [".secure.build.env", ".secure.release.env"] } }
 run = """
-if [ -z "${ANDROID_TEST_DEVICE_ID:-}" ]; then
-  echo "ANDROID_TEST_DEVICE_ID is not set: put the serial from adb devices in .secure.build.env" >&2
-  exit 1
-fi
-export ANDROID_SERIAL="$ANDROID_TEST_DEVICE_ID"
+ANDROID_SERIAL="$(deploy/scripts/android-device.sh)" || exit 1
+export ANDROID_SERIAL
 # Debug and release share the applicationId but not the signing key, so a debug build on the device makes this
 # install fail with INSTALL_FAILED_UPDATE_INCOMPATIBLE. Uninstall it first (that drops its Session).
 gradle :app:androidApp:installRelease
@@ -84,9 +78,12 @@ adb shell am start -n net.io_workshop.act/.MainActivity
 # --- build -------------------------------------------------------------------------------------------------------
 
 [tasks.build]
-description = "Everything: every target compiled and every test run"
-env = { _ = { file = ".secure.build.env" } }
-run = "gradle build"
+description = "Everything: every target compiled and every test run; release signed with the debug key, warning, without .secure.release.env"
+# .secure.release.env is optional here (mise skips a missing file): `gradle build` includes the release APK, and
+# act.allowDebugSigning lets it fall back to the debug key, with a warning, instead of failing. build:android:release
+# and run:android:release do not pass it, so an artifact meant for Play still needs the upload key.
+env = { _ = { file = [".secure.build.env", ".secure.release.env"] } }
+run = "gradle build -Pact.allowDebugSigning=true"
 
 [tasks."build:android"]
 description = "Android debug APK"
