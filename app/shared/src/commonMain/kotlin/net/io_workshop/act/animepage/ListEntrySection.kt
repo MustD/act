@@ -353,7 +353,7 @@ private fun StepButton(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DateRow(
+internal fun DateRow(
     label: String,
     date: String?,
     enabled: Boolean,
@@ -407,14 +407,18 @@ private fun DateRow(
                     },
                 ) { Text("OK") }
             },
+            // One Row, not two buttons loose in the slot: Android's dialog wraps the slot in a Box,
+            // which stacks them; skiko's lays them straight into the button row.
             dismissButton = {
-                if (date != null) {
-                    TextButton(
-                        onClick = { picking = false; onPick(null) },
-                        modifier = Modifier.testTag(clearTag).semantics { contentDescription = "Clear $label date" },
-                    ) { Text("Clear") }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (date != null) {
+                        TextButton(
+                            onClick = { picking = false; onPick(null) },
+                            modifier = Modifier.testTag(clearTag).semantics { contentDescription = "Clear $label date" },
+                        ) { Text("Clear") }
+                    }
+                    TextButton(onClick = { picking = false }) { Text("Cancel") }
                 }
-                TextButton(onClick = { picking = false }) { Text("Cancel") }
             },
         ) { DatePicker(state) }
     }
