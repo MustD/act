@@ -93,10 +93,18 @@ kotlin {
         getByName("androidHostTest").dependencies {
             implementation(libs.kotlin.testJunit)
             implementation(libs.robolectric)
+            // `DatePickerDialogButtonsTest`: the one UI test that has to run here, because the
+            // layout it checks is androidx's own `DatePickerDialog.android.kt`, which skiko never draws.
+            implementation(libs.compose.uiTest)
+            implementation(libs.androidx.compose.uiTestManifest)
+            // ui-test brings espresso-core 3.5.0, which calls `InputManager.getInstance()` — gone
+            // from the SDK Robolectric runs.
+            implementation(libs.androidx.espresso.core)
         }
-        // The Compose UI tests run on this target only. The routing they exercise is common code
-        // with no expect/actual in it, and the other three targets would each need a second test
-        // harness — Robolectric, karma — to prove the same thing.
+        // The Compose UI tests run on this target, bar one: the routing they exercise is common code
+        // with no expect/actual in it, and the other targets would each need a second test harness
+        // — Robolectric, karma — to prove the same thing. The exception is androidHostTest's
+        // `DatePickerDialogButtonsTest`, whose subject is a layout only androidx's Material 3 has.
         jvmTest.dependencies {
             implementation(libs.compose.uiTest)
             // Skiko's host-native binaries. Without them a UI test has nothing to draw on.
