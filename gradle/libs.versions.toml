@@ -7,6 +7,9 @@ aboutlibraries = "15.3.0"
 androidx-activity = "1.13.0"
 androidx-appcompat = "1.8.0"
 androidx-browser = "1.10.0"
+# What `composeMultiplatform` resolves to on Android (CMP 1.12.2 → androidx.compose.ui 1.12.1); read it from
+# org.jetbrains.compose.ui:ui-android's .module when bumping CMP. Only `ui-test-manifest` names it directly.
+androidx-compose = "1.12.1"
 androidx-core = "1.19.1"
 androidx-core-splashscreen = "1.2.0"
 androidx-espresso = "3.7.0"
@@ -16,7 +19,7 @@ androidx-testExt = "1.3.0"
 # drags the whole graph up with it, leaving Skiko behind and failing at run time — not at
 # resolution — with `AbstractMethodError`. Bump the two together or not at all.
 coil = "3.6.3"
-composeMultiplatform = "1.12.1"
+composeMultiplatform = "1.12.2"
 junit = "4.13.2"
 koin = "4.2.2"
 kotlin = "2.4.21"
@@ -52,9 +55,9 @@ compose-material3 = { module = "org.jetbrains.compose.material3:material3", vers
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
 compose-uiBackhandler = { module = "org.jetbrains.compose.ui:ui-backhandler", version.ref = "composeMultiplatform" }
 compose-uiTest = { module = "org.jetbrains.compose.ui:ui-test", version.ref = "composeMultiplatform" }
-# Declares the `ComponentActivity` that `runComposeUiTest` launches on Android. androidx, not JetBrains:
-# CMP 1.12.1 resolves to androidx.compose.ui 1.12.1 on Android, so the two share a version.
-androidx-compose-uiTestManifest = { module = "androidx.compose.ui:ui-test-manifest", version.ref = "composeMultiplatform" }
+# Declares the `ComponentActivity` that `runComposeUiTest` launches on Android. androidx, not JetBrains, so it takes
+# the androidx version CMP resolves to — not CMP's own, which androidx may never publish (there is no 1.12.2).
+androidx-compose-uiTestManifest = { module = "androidx.compose.ui:ui-test-manifest", version.ref = "androidx-compose" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
 compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
