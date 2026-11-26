@@ -64,14 +64,16 @@ is only ever typed there; ACT never sees it. On desktop the sign-in opens in you
 Requires [mise](https://mise.jdx.dev). Every command is a mise task; `mise tasks` lists them.
 
 ```bash
-mise install                                     # the JDK (Azul Zulu 21) and Terraform
+mise install                                     # the JDK (Temurin 25), Gradle and Terraform
 cp .secure.build.env.example .secure.build.env   # then fill in MAL_CLIENT_ID
 ```
 
 `MAL_CLIENT_ID` comes from an app you register at [myanimelist.net/apiconfig](https://myanimelist.net/apiconfig) with
 App Type **other**. Without one everything still builds, runs and tests, but Sign-in is disabled.
 
-In an IDE, point the Gradle JDK at the mise install (`mise where java`); Gradle does not download one.
+There is no Gradle wrapper: Gradle runs only from mise's environment (a `mise run` task, `mise exec -- gradle …`, or a
+shell with `mise activate`). In an IDE, set the Gradle distribution to the local installation at `mise where gradle`
+and the Gradle JDK to `mise where java`.
 
 ### Run
 

@@ -25,3 +25,8 @@ node_modules/
 
 .secure.*.env
 packaging/aur/build/
+
+# No Gradle wrapper (docs/adr/0010-gradle-and-jdk-from-mise.md); an IDE not yet pointed at mise's Gradle may generate one.
+/gradlew
+/gradlew.bat
+/gradle/wrapper/
