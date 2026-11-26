@@ -9,7 +9,9 @@
 #       -t "$DOCKERHUB_USER/act-relay:$ACT_VERSION" server/build/install/server
 #
 # Started by the generated start script, not by mainClass, so renaming the Kotlin package touches nothing here.
-FROM eclipse-temurin:21-jre-alpine
+# Pinned exactly, in step with mise.toml's java (the JDK the desktop .deb bundles): see CLAUDE.md, "Conventions".
+# A floating tag would not do — the build does not --pull, so a stale local base would ship unnoticed.
+FROM eclipse-temurin:25.0.5.1_2-jre-alpine
 
 RUN addgroup -S -g 10001 relay && adduser -S -u 10001 -G relay -H -s /sbin/nologin relay
 

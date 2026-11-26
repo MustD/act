@@ -10,9 +10,14 @@ Kotlin Multiplatform / Compose Multiplatform project targeting Android, Web (Was
 
 **Every command is a mise task.** `mise.toml` is the only place a Gradle command line is written down — the deploy
 scripts call the tasks too — so the task names are the interface and the build tool behind them can change. Do not
-document or script `./gradlew` directly; add a task. `mise tasks` lists them.
+document or script `gradle` directly; add a task. `mise tasks` lists them.
 
-mise also provides the tools: `mise install` once per machine fetches the JDK (`java = "zulu-21"`) and Terraform.
+mise also provides the tools: `mise install` once per machine fetches the JDK (`java = "temurin-25.0.5.1+2.0.LTS"`),
+Gradle (`gradle = "9.5.1"`) and Terraform. **There is no Gradle wrapper** (ADR-0010): Gradle exists only inside mise's
+environment — a `mise run` task, `mise exec -- gradle …`, or a shell with `mise activate` — and a shell without mise
+has no `gradle` at all rather than one on some other JDK. `.gitignore` lists the wrapper files because an IDE not
+yet pointed at mise may regenerate them; delete them, do not commit them.
+
 `docker` (with buildx), `ssh`, `gh` (the GitHub CLI, logged in; `release:desktop` and `release:aur` use it), `dpkg-deb` (from `dpkg`; `pacman -S dpkg` on Arch; `build:desktop:deb`, and `release:aur:local` given a local `.deb`), `makepkg`, `vercmp` and `namcap` (`pacman -S base-devel namcap`; `release:aur`), Git Bash on Windows (`build:desktop:msi` and `release:desktop` set `shell = "bash -c"`, because mise otherwise runs inline tasks under `cmd`) and, on a Mac, the Xcode command-line tools (`xcrun`; `xcode-select --install`) are **not** managed by mise — the deploy and desktop-installer tasks expect them on the machine. WiX, which `build:desktop:msi` needs, is not either, but the Compose plugin downloads it, so Windows needs nothing beyond Git Bash.
 
 Build / run:
@@ -491,7 +496,18 @@ Four things in `app/androidApp/src/main/AndroidManifest.xml` are each a silent f
 
 - **The product version is `act.version` in `gradle.properties`** — `:server`'s `version` and Android's `versionName` read it via `providers.gradleProperty`. Shell tasks read it without Gradle: `grep '^act.version=' gradle.properties | cut -d= -f2`. `versionCode` is derived from it as `major*1_000_000 + minor*1_000 + patch` (ADR-0008), per variant through a `Provider`; a malformed version or a part above 999 fails the build. It is also generated into `:core` `commonMain` as `const val ACT_VERSION` by `generateActVersion`, the way `MAL_CLIENT_ID` is (a lazy `Provider`, `inputs.property`, no BuildKonfig), and is read in two places: the About Screen and the Diagnostics Screen.
 - **All dependency and plugin versions live in `gradle/libs.versions.toml`.** Build scripts reference `libs.*` aliases only — never inline a version string in a `build.gradle.kts`.
-- Java is 21, Azul Zulu, **pinned in `mise.toml` and not downloaded by Gradle**: `gradle/gradle-daemon-jvm.properties` names the vendor and version, there is no foojay resolver and no `toolchainUrl.*`, so a machine without that JDK fails with "No defined toolchain download url" rather than fetching one — the fix is `mise install`, not `updateDaemonJvm` (which would write the URLs back). An IDE's Gradle sync does not go through mise: set its Gradle JDK to the mise install once (`mise where java`). Android and Android-KMP modules compile to **JVM target 11**.
+- **The JDK is Eclipse Temurin 25, pinned to an exact build in two places that must move together**: `mise.toml`'s
+  `java`, which Gradle runs on and which is therefore the runtime the desktop `.deb` bundles; and
+  `deploy/relay.Dockerfile`'s `FROM eclipse-temurin:<build>-jre-alpine`, the relay's runtime. A JDK security release
+  means bumping both to the same Temurin build, then releasing (a new `act.version`, `deploy`, and the desktop
+  release). Both are exact on purpose: the floating `21-jre-alpine` tag, built without `--pull`, could keep a stale
+  base, and Gradle's daemon-JVM criteria could only ask for a major version. 1.0.1 moved both from Zulu 21 / Temurin
+  21 to Temurin 25.0.5.1+2 for Java4Shell (CVE-2026-114938, a HotSpot Base64-intrinsic overflow) — ADR-0010.
+  `act-web`'s `caddy:2-alpine` stays a floating tag: Caddy is Go, not a JVM, and pushed tags are immutable anyway.
+  There is no daemon-JVM criteria file and no wrapper: an IDE's Gradle sync does not go through mise, so set its Gradle
+  distribution to `mise where gradle` and its Gradle JDK to `mise where java`, and redo both after a pin changes.
+  Android and Android-KMP modules compile to **JVM target 11**; the jvm targets (`:core`, `:app:shared`, `:server`)
+  set none, so they compile for the JDK Gradle runs on — every runtime that loads them is that same 25.
 - Gradle configuration cache and build cache are enabled in `gradle.properties`. Build logic that reads state at execution time will fail configuration-cache validation.
 
 ## Agent skills

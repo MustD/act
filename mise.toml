@@ -1,5 +1,6 @@
 # Every command in this repo is a mise task; these are the only place a Gradle command line is written down, so the
-# deploy scripts and the docs name tasks, not `./gradlew`. See CLAUDE.md, "Commands".
+# deploy scripts and the docs name tasks, not `gradle`. Gradle itself comes from [tools] below; there is no wrapper.
+# See CLAUDE.md, "Commands".
 #
 # mise loads the env files per task — never a global [env] — so DIGITALOCEAN_TOKEN reaches only the infra and deploy
 # tasks, not Gradle or an interactive shell. See CLAUDE.md, "Deployment".
@@ -14,40 +15,42 @@
 # release:desktop) and the Xcode command-line tools (build:desktop:dmg), which the tasks expect on the machine. WiX for
 # build:desktop:msi is fetched by Compose.
 [tools]
-# The JDK Gradle runs on. Nothing downloads one any more — gradle-daemon-jvm.properties names the same vendor and
-# version and has no toolchain URLs — so a different JDK fails the build rather than being replaced.
-java = "zulu-21"
+# Gradle and the JDK it runs on, both pinned exactly; there is no Gradle wrapper and no daemon-JVM criteria
+# (docs/adr/0010-gradle-and-jdk-from-mise.md), so Gradle only exists inside mise's environment. The JDK is also the
+# runtime the desktop .deb bundles: keep it the same build as deploy/relay.Dockerfile's FROM (CLAUDE.md, "Conventions").
+gradle = "9.5.1"
+java = "temurin-25.0.5.1+2.0.LTS"
 terraform = "1.15.9" # inside versions.tf's "~> 1.15"
 
 # --- run locally -------------------------------------------------------------------------------------------------
 
 [tasks.licences]
 description = "Regenerate the About Screen's open-source licence list (commit the result)"
-run = "./gradlew :app:shared:exportLibraryDefinitions"
+run = "gradle :app:shared:exportLibraryDefinitions"
 
 [tasks."run:desktop"]
 description = "Desktop app, with the Client ID from .secure.build.env"
 env = { _ = { file = ".secure.build.env" } }
-run = "./gradlew :app:desktopApp:run"
+run = "gradle :app:desktopApp:run"
 
 [tasks."run:desktop:hot"]
 description = "Desktop app with Compose Hot Reload"
 env = { _ = { file = ".secure.build.env" } }
-run = "./gradlew :app:desktopApp:hotRun --auto"
+run = "gradle :app:desktopApp:hotRun --auto"
 
 [tasks."run:server"]
 description = "Ktor relay on :18010"
-run = "./gradlew :server:run"
+run = "gradle :server:run"
 
 [tasks."run:web"]
 description = "Web dev server on :18020, no live reload (needs run:server too)"
 env = { ACT_WEB_HOT = "0", _ = { file = ".secure.build.env" } }
-run = "./gradlew :app:webApp:wasmJsBrowserDevelopmentRun --continuous"
+run = "gradle :app:webApp:wasmJsBrowserDevelopmentRun --continuous"
 
 [tasks."run:web:hot"]
 description = "Web dev server on :18020 with live reload (needs run:server too)"
 env = { _ = { file = ".secure.build.env" } }
-run = "./gradlew :app:webApp:wasmJsBrowserDevelopmentRun --continuous"
+run = "gradle :app:webApp:wasmJsBrowserDevelopmentRun --continuous"
 
 [tasks."run:android"]
 description = "Install the debug build on the device named by ANDROID_TEST_DEVICE_ID and launch it"
@@ -59,7 +62,7 @@ if [ -z "${ANDROID_TEST_DEVICE_ID:-}" ]; then
 fi
 # adb and Gradle's installDebug both read ANDROID_SERIAL, so one value picks the device for install and launch.
 export ANDROID_SERIAL="$ANDROID_TEST_DEVICE_ID"
-./gradlew :app:androidApp:installDebug
+gradle :app:androidApp:installDebug
 adb shell am start -n net.io_workshop.act/.MainActivity
 """
 
@@ -74,7 +77,7 @@ fi
 export ANDROID_SERIAL="$ANDROID_TEST_DEVICE_ID"
 # Debug and release share the applicationId but not the signing key, so a debug build on the device makes this
 # install fail with INSTALL_FAILED_UPDATE_INCOMPATIBLE. Uninstall it first (that drops its Session).
-./gradlew :app:androidApp:installRelease
+gradle :app:androidApp:installRelease
 adb shell am start -n net.io_workshop.act/.MainActivity
 """
 
@@ -83,17 +86,17 @@ adb shell am start -n net.io_workshop.act/.MainActivity
 [tasks.build]
 description = "Everything: every target compiled and every test run"
 env = { _ = { file = ".secure.build.env" } }
-run = "./gradlew build"
+run = "gradle build"
 
 [tasks."build:android"]
 description = "Android debug APK"
 env = { _ = { file = ".secure.build.env" } }
-run = "./gradlew :app:androidApp:assembleDebug"
+run = "gradle :app:androidApp:assembleDebug"
 
 [tasks."build:android:release"]
 description = "Signed, minified Android App Bundle; needs .secure.release.env"
 env = { _ = { file = [".secure.build.env", ".secure.release.env"] } }
-run = "./gradlew :app:androidApp:bundleRelease"
+run = "gradle :app:androidApp:bundleRelease"
 
 [tasks."build:desktop:deb"]
 description = "Linux .deb installer (io-workshop-act) in app/desktopApp/build/compose/binaries; fails without a Client ID"
@@ -101,17 +104,17 @@ env = { _ = { file = ".secure.build.env" } }
 run = """
 [ "$(uname -s)" = Linux ] || { echo "build:desktop:deb builds a .deb and needs Linux; this is $(uname -s)" >&2; exit 1; }
 command -v dpkg-deb >/dev/null || { echo "build:desktop:deb needs dpkg-deb on PATH (Arch: pacman -S dpkg; Debian/Ubuntu: dpkg)" >&2; exit 1; }
-./gradlew :app:desktopApp:packageDeb
+gradle :app:desktopApp:packageDeb
 """
 
 [tasks."build:desktop:msi"]
 description = "Windows .msi installer (unsigned, never built); fails without a Client ID"
 env = { _ = { file = ".secure.build.env" } }
-# mise runs inline tasks under cmd on Windows; this script and ./gradlew need Git Bash's bash.
+# mise runs inline tasks under cmd on Windows; this script needs Git Bash's bash.
 shell = "bash -c"
 run = """
 case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) ;; *) echo "build:desktop:msi builds an .msi and needs Windows; this is $(uname -s)" >&2; exit 1;; esac
-./gradlew :app:desktopApp:packageMsi
+gradle :app:desktopApp:packageMsi
 """
 
 [tasks."build:desktop:dmg"]
@@ -120,57 +123,57 @@ env = { _ = { file = ".secure.build.env" } }
 run = """
 [ "$(uname -s)" = Darwin ] || { echo "build:desktop:dmg builds a .dmg and needs macOS; this is $(uname -s)" >&2; exit 1; }
 command -v xcrun >/dev/null || { echo "build:desktop:dmg needs the Xcode command-line tools (xcode-select --install)" >&2; exit 1; }
-./gradlew :app:desktopApp:packageDmg
+gradle :app:desktopApp:packageDmg
 """
 
 [tasks."build:web"]
 description = "Development Wasm bundle, no server; build:web:dist is the production one"
 env = { _ = { file = ".secure.build.env" } }
-run = "./gradlew :app:webApp:wasmJsBrowserDevelopmentWebpack"
+run = "gradle :app:webApp:wasmJsBrowserDevelopmentWebpack"
 
 [tasks."build:web:dist"]
 description = "Production Wasm bundle; fails without a Client ID"
 env = { _ = { file = ".secure.build.env" } }
-run = "./gradlew :app:webApp:wasmJsBrowserDistribution"
+run = "gradle :app:webApp:wasmJsBrowserDistribution"
 
 [tasks."build:server:dist"]
 description = "The relay's installDist, the act-relay image's build context"
 env = { _ = { file = ".secure.build.env" } }
-run = "./gradlew :server:installDist"
+run = "gradle :server:installDist"
 
 [tasks."generate:mal-config"]
 description = "Only :core's generateMalBuildConfig, for the by-hand cache check in core/build.gradle.kts"
-run = "./gradlew :core:generateMalBuildConfig"
+run = "gradle :core:generateMalBuildConfig"
 
 # --- test --------------------------------------------------------------------------------------------------------
 
 [tasks.test]
 description = "Every test task below, in one Gradle invocation"
-run = "./gradlew :core:allTests :app:shared:jvmTest :app:shared:testAndroidHostTest :app:shared:wasmJsTest :app:androidApp:testDebugUnitTest :server:test"
+run = "gradle :core:allTests :app:shared:jvmTest :app:shared:testAndroidHostTest :app:shared:wasmJsTest :app:androidApp:testDebugUnitTest :server:test"
 
 [tasks."test:core"]
 description = ":core on jvm, wasmJs and android"
-run = "./gradlew :core:allTests"
+run = "gradle :core:allTests"
 
 [tasks."test:shared:jvm"]
 description = ":app:shared jvmTest + commonTest"
-run = "./gradlew :app:shared:jvmTest"
+run = "gradle :app:shared:jvmTest"
 
 [tasks."test:shared:android"]
 description = ":app:shared androidHostTest + commonTest"
-run = "./gradlew :app:shared:testAndroidHostTest"
+run = "gradle :app:shared:testAndroidHostTest"
 
 [tasks."test:shared:web"]
 description = ":app:shared webTest + commonTest"
-run = "./gradlew :app:shared:wasmJsTest"
+run = "gradle :app:shared:wasmJsTest"
 
 [tasks."test:android"]
 description = ":app:androidApp — the manifest drift guard, and nothing else"
-run = "./gradlew :app:androidApp:testDebugUnitTest"
+run = "gradle :app:androidApp:testDebugUnitTest"
 
 [tasks."test:server"]
 description = ":server"
-run = "./gradlew :server:test"
+run = "gradle :server:test"
 
 [tasks."test:one"]
 description = "One test class or method: `test:one <suite> <filter>`, on that suite's JVM-hosted test task"
@@ -187,7 +190,7 @@ case "$usage_suite" in
   server)  task=:server:test ;;
   android) task=:app:androidApp:testDebugUnitTest ;;
 esac
-./gradlew "$task" --tests "$usage_filter"
+gradle "$task" --tests "$usage_filter"
 """
 
 # --- infrastructure ----------------------------------------------------------------------------------------------
