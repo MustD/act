@@ -80,7 +80,7 @@ and the Gradle JDK to `mise where java`.
 ```bash
 mise run run:desktop        # desktop
 mise run run:desktop:hot    # desktop with Compose Hot Reload
-mise run run:android        # install and launch on the device in ANDROID_TEST_DEVICE_ID
+mise run run:android        # install and launch on the attached device (USB first, then wireless)
 mise run run:server         # MAL relay on :18010
 mise run run:web            # web on :18020; needs run:server running too
 ```
